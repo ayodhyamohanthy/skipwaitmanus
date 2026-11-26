@@ -1,0 +1,109 @@
+{
+  "signedIn": {
+    "id": 11,
+    "name": "Meera Iyer",
+    "email": "meera@example.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 3
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "mdy"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/dms/threads",
+      "status": 200,
+      "body": {
+        "threads": [
+          {
+            "counterpartUserId": 22,
+            "counterpartLabel": "Referrer \u00b7 acme.com",
+            "lastMessageBody": "Thanks, I have shared the job link.",
+            "lastMessageIsMine": true,
+            "lastMessageAt": "2026-10-08T02:40:00.000Z",
+            "unreadCount": 0
+          },
+          {
+            "counterpartUserId": 33,
+            "counterpartLabel": "Asha R. \u00b7 Wipro",
+            "lastMessageBody": "Happy to refer you. Can you send your latest resume?",
+            "lastMessageIsMine": false,
+            "lastMessageAt": "2026-10-08T04:10:00.000Z",
+            "unreadCount": 2
+          }
+        ]
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/dms/threads/33",
+      "status": 200,
+      "body": {
+        "thread": {
+          "counterpartUserId": 33,
+          "counterpartLabel": "Asha R. \u00b7 Wipro",
+          "messages": [
+            {
+              "id": 1,
+              "body": "Hi Asha, thank you for accepting my referral request.",
+              "createdAt": "2026-10-08T03:40:00.000Z",
+              "isMine": true
+            },
+            {
+              "id": 2,
+              "body": "Happy to refer you. Can you send your latest resume?",
+              "createdAt": "2026-10-08T04:10:00.000Z",
+              "isMine": false
+            }
+          ]
+        },
+        "sendBlock": null
+      }
+    }
+  ],
+  "actions": [
+    {
+      "wait": 2500
+    },
+    {
+      "click": "text=Reply to Asha R. \u00b7 Wipro"
+    },
+    {
+      "wait": 800
+    }
+  ]
+}

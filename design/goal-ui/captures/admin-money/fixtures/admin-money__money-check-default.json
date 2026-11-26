@@ -1,0 +1,46 @@
+{
+  "signedIn": {
+    "id": 1,
+    "role": "admin"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/notifications",
+      "status": 200,
+      "body": {
+        "notifications": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 0
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/money-check/status",
+      "status": 200,
+      "body": {
+        "latestOutcome": null,
+        "latestAt": null,
+        "lastSuccessAt": null,
+        "failuresLast7Days": 0,
+        "ownerNotReached": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "status": 200,
+      "body": {
+        "preferences": {}
+      }
+    }
+  ]
+}

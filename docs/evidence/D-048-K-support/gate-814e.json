@@ -1,0 +1,20 @@
+{
+  "task": "D-048-K-support",
+  "session": "GPT-6.1 Sol · 814e",
+  "testedIntegrationHead": "74bae48d46d1e1cc609074c39f7e1a5275fe3f4b",
+  "command": "LANG=en_US.UTF-8 pnpm vitest run --maxWorkers=1",
+  "termination": "Tool deadline after 3600 seconds",
+  "completed": false,
+  "finalTotalsAvailable": false,
+  "localFullSuiteGreen": false,
+  "runtimeChangedDuringRun": false,
+  "failedTestsRerun": false,
+  "testsOrTimeoutsWeakened": false,
+  "focused": {"files":3,"passed":61,"failed":0},
+  "otherCompletedChecks": ["TypeScript","production build","design-token audit","migration lint","deploy-trigger coverage","scope check"],
+  "exactSourceCI": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44540471159",
+  "exactSourceCIGreen": true,
+  "retainedBrowserProof": {"pairs":12,"pixelIdentical":11,"remainingPairDifferentPixels":6,"allManifestChecksPassed":true},
+  "limits": "Observed per-case failure lines are recorded in the packet/PR handoff without inventing final totals or retrying the suite. Retained synthetic screenshots were independently decoded; they are not new signed-in/live proof.",
+  "releaseStatus": "Not landed; final exact-head CI and canonical verification remain required"
+}

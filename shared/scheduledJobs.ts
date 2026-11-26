@@ -7,7 +7,7 @@
 // boundary parses with these schemas; nothing else defines these shapes.
 import { z } from "zod";
 
-export const SCHEDULED_JOB_NAMES = ["ask-expiry-sweep", "first-look-release", "plan-credit-cycles", "chargebee-pending-reconcile", "chargebee-subscription-reconcile", "work-email-reverify-sweep", "data-export-sweep", "work-email-otp-purge", "coverage-delivery-retry", "referral-timers", "daily-money-check", "billing-review-retry"] as const;
+export const SCHEDULED_JOB_NAMES = ["ask-expiry-sweep", "ask-invite-expiry", "first-look-release", "plan-credit-cycles", "chargebee-pending-reconcile", "chargebee-subscription-reconcile", "work-email-reverify-sweep", "data-export-sweep", "work-email-otp-purge", "coverage-delivery-retry", "referral-timers", "daily-money-check", "daily-ops-check", "billing-review-retry", "job-catalog-sync", "review-delivery-retry", "agent-auto-send-digest", "pool-review-email", "auth-activity-retention"] as const;
 export const scheduledJobNameSchema = z.enum(SCHEDULED_JOB_NAMES);
 export type ScheduledJobName = z.infer<typeof scheduledJobNameSchema>;
 
@@ -84,6 +84,18 @@ export const adminScheduledJobsResponseSchema = z.strictObject({
   jobs: z.array(adminScheduledJobSchema),
 });
 export type AdminScheduledJobsResponse = z.infer<typeof adminScheduledJobsResponseSchema>;
+
+export const healthScheduledJobSchema = z.strictObject({
+  name: scheduledJobNameSchema,
+  overdue: z.boolean(),
+});
+export type HealthScheduledJob = z.infer<typeof healthScheduledJobSchema>;
+
+export const healthJobsResponseSchema = z.strictObject({
+  ok: z.boolean(),
+  jobs: z.array(healthScheduledJobSchema),
+});
+export type HealthJobsResponse = z.infer<typeof healthJobsResponseSchema>;
 
 /** Windows are aligned to the epoch, so every runner derives the same key for the same instant. */
 export function jobWindowKey(nowMs: number, windowMs: number): string {

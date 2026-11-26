@@ -1,0 +1,234 @@
+{
+  "baseline": "45258e7a158fd66d8063883a0a91d6f923994b8f",
+  "unchangedSource": [
+    "client/src/pages/goal/email-review/GoalEmailReviewAction.tsx",
+    "client/public/brand/lockup.svg",
+    "client/src/components/goal/GoalBrandMark.tsx",
+    "client/src/index.css"
+  ],
+  "pairs": [
+    {
+      "state": "signed-out",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "signed-out",
+      "width": 390,
+      "changedPixels": 58,
+      "bounds": {
+        "left": 217,
+        "top": 524,
+        "right": 231,
+        "bottom": 543
+      },
+      "differingRegionHashes": [
+        "3f8b2404c2bb3d4e5e843202fcaaef72c3fce51d3dabde7dd683ef53605c2c4e",
+        "9ecb8fad2ff5ede73d9fb5c08a1cfbe71a6be9b4cf2ad794998d9907077556d7"
+      ],
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "auth-loading",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "auth-loading",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "review",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "review",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "approved",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "approved",
+      "width": 390,
+      "changedPixels": 58,
+      "bounds": {
+        "left": 217,
+        "top": 684,
+        "right": 231,
+        "bottom": 703
+      },
+      "differingRegionHashes": [
+        "3f8b2404c2bb3d4e5e843202fcaaef72c3fce51d3dabde7dd683ef53605c2c4e",
+        "9ecb8fad2ff5ede73d9fb5c08a1cfbe71a6be9b4cf2ad794998d9907077556d7"
+      ],
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "passed",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "passed",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "unavailable",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "unavailable",
+      "width": 390,
+      "changedPixels": 58,
+      "bounds": {
+        "left": 217,
+        "top": 644,
+        "right": 231,
+        "bottom": 663
+      },
+      "differingRegionHashes": [
+        "3f8b2404c2bb3d4e5e843202fcaaef72c3fce51d3dabde7dd683ef53605c2c4e",
+        "9ecb8fad2ff5ede73d9fb5c08a1cfbe71a6be9b4cf2ad794998d9907077556d7"
+      ],
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "step-up",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "step-up",
+      "width": 390,
+      "changedPixels": 58,
+      "bounds": {
+        "left": 217,
+        "top": 204,
+        "right": 231,
+        "bottom": 223
+      },
+      "differingRegionHashes": [
+        "3f8b2404c2bb3d4e5e843202fcaaef72c3fce51d3dabde7dd683ef53605c2c4e",
+        "9ecb8fad2ff5ede73d9fb5c08a1cfbe71a6be9b4cf2ad794998d9907077556d7"
+      ],
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "step-up-code",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "step-up-code",
+      "width": 390,
+      "changedPixels": 58,
+      "bounds": {
+        "left": 217,
+        "top": 112,
+        "right": 231,
+        "bottom": 131
+      },
+      "differingRegionHashes": [
+        "3f8b2404c2bb3d4e5e843202fcaaef72c3fce51d3dabde7dd683ef53605c2c4e",
+        "9ecb8fad2ff5ede73d9fb5c08a1cfbe71a6be9b4cf2ad794998d9907077556d7"
+      ],
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "step-up-resumed",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "step-up-resumed",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "access-error",
+      "width": 1280,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    },
+    {
+      "state": "access-error",
+      "width": 390,
+      "changedPixels": 0,
+      "bounds": null,
+      "differingRegionHashes": null,
+      "requestMultisetMatches": true,
+      "privateFlowSequenceMatches": true
+    }
+  ],
+  "pixelIdentical": 15,
+  "visualInspectionRequired": true,
+  "noPixelMasks": true
+}

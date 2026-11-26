@@ -31,6 +31,20 @@ describe("GoalButton", () => {
     expect(reason?.textContent).toMatch(/offline/i);
   });
 
+  // P0 (Nov 24): a swallowed press tells the screen, so it can show why in the seeker's view.
+  it("reports a press it swallowed for its disabled reason, but not while busy", async () => {
+    const onClick = vi.fn();
+    const onBlockedClick = vi.fn();
+    const { rerender } = render(<GoalButton disabledReason="This posting looks like another company's" onClick={onClick} onBlockedClick={onBlockedClick}>Send ask</GoalButton>);
+    await userEvent.click(screen.getByTestId("goal-button"));
+    expect(onClick).not.toHaveBeenCalled();
+    expect(onBlockedClick).toHaveBeenCalledTimes(1);
+    rerender(<GoalButton busy busyLabel="Sending your ask…" disabledReason="Blocked" onClick={onClick} onBlockedClick={onBlockedClick}>Send ask</GoalButton>);
+    await userEvent.click(screen.getByTestId("goal-button"));
+    expect(onBlockedClick).toHaveBeenCalledTimes(1);
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
   it("never uses the native disabled attribute, even when busy", () => {
     render(<GoalButton busy busyLabel="Sending your ask…">Send ask</GoalButton>);
     const button = screen.getByTestId("goal-button");
@@ -54,6 +68,15 @@ describe("GoalButton", () => {
     const link = screen.getByRole("link", { name: /ask for a referral/i });
     expect(link.getAttribute("data-g-primary")).toBe("true");
     expect(link.tagName).toBe("A");
+  });
+
+  it("inert primary button never carries active or hover background styles", () => {
+    render(<GoalButton variant="primary" disabledReason="Waiting for input">Continue</GoalButton>);
+    const button = screen.getByTestId("goal-button");
+    expect(button.className).not.toContain("hover:not-active:bg-g-primary-hover");
+    expect(button.className).not.toContain("bg-g-primary");
+    expect(button.className).toContain("bg-transparent");
+    expect(button.className).toContain("hover:bg-transparent");
   });
 });
 

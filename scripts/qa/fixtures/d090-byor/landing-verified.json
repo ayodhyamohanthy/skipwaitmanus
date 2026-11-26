@@ -1,0 +1,52 @@
+{
+  "signedIn": {
+    "id": 4106,
+    "name": "Asha Rao",
+    "email": "asha@acme.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/ask-invites/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "invite": {
+          "state": "open",
+          "companyName": "Acme",
+          "roleTitle": "Product Designer",
+          "jobFunction": "Design",
+          "workMode": "Hybrid",
+          "location": "Mumbai",
+          "note": "I have shipped design systems at scale and would be glad to help.",
+          "lockedFileCount": 2
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "dmy"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false,
+        "workEmailDomain": null,
+        "companyName": null,
+        "companyInitials": null
+      }
+    }
+  ]
+}

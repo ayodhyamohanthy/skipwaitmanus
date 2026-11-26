@@ -1,0 +1,2523 @@
+{
+  "localPublicBuild": true,
+  "phase": "before",
+  "sourceHead": "9a00a9b53bff9a97922e66060fdb1bcec95dc961",
+  "routes": [
+    "/privacy",
+    "/terms",
+    "/refunds",
+    "/shipping",
+    "/cancellations",
+    "/about",
+    "/contact",
+    "/guidelines",
+    "/job-referral-platforms",
+    "/choosing-a-job-referral-platform",
+    "/how-employees-refer-candidates"
+  ],
+  "entryHashes": {
+    "client/src/components/PolicyPageShell.tsx": "43dac394788ea0d0b61b907410f87cc3f9e02e21883e2ed34eb39342d2397a06",
+    "client/src/pages/GuidePage.tsx": "2abde64e8e6a3f40568bf6ece515ec5528c8a006c307d0c2a9f43efa933d5045"
+  },
+  "immutableHashes": {
+    "client/src/pages/Terms.tsx": "414710e1e3169d9be007aa0051615ba6ab07f39232aa1673413428fd3e0e2849",
+    "client/src/pages/TrustPrivacy.tsx": "5dccbda6d920da1f2823810fe6bf772f3452f7b09f8218b6c66f487f4c543497",
+    "client/src/pages/RefundPolicy.tsx": "d337dfa703819a6eb4b232ed9383574d43083615e4c55da77359addeebcf8e03",
+    "client/src/pages/CancellationPolicy.tsx": "27a8920b8e73666ffcf2d04eb525b1431c73062d5922edc1aa5cc7b8753fb5d5",
+    "client/src/pages/ShippingPolicy.tsx": "f3248349acbf053162210a1c340b79bc97d19d21da1df4a4e31c4da9d74508aa",
+    "client/src/pages/Guidelines.tsx": "b1d0c3c25f794273b5f722771493643b196ff56acca457c53a009c66fdcbe772",
+    "client/src/pages/About.tsx": "9c6c894a0f5e41b680d8f16f13c9dd83f4fde36317e2a4dd3fed148911298470",
+    "client/src/pages/Contact.tsx": "e254b33dbff27bae961694d23d7957d47276e3d7ed48f73f2480ab28f6e64cba",
+    "client/src/pages/Support.tsx": "768d14ff49d634377d3db35cedbe321bf2b0716eda2a607196c202905d8fbe64",
+    "client/src/content/guides.ts": "067fb11b05d027df7373ad92f88c98a718eebd12b5c8b35cfa044735233db046",
+    "client/src/lib/business.ts": "a67e0be1d336ae57d118b2cbff9f43d7a648645d82ae37a241a2fb61cd99e416",
+    "shared/publicRoutes.ts": "642dc8bd7f37ee06841e86a2e29fc3793e84fd5c950f304781ad5e09d58a370f",
+    "shared/moneyCopy.ts": "f869dbc27625d0416d0381ea7a16c15c967326049a4ff55f2c54947446e2e7c7",
+    "client/src/pages/goal/policy/GoalPolicyPage.tsx": "e309131acf41c3ad8330ca073a891210e0639ad05177e1536a49f7f5bdd98e0c",
+    "client/src/pages/goal/policy/GoalGuidePage.tsx": "769a2ae79b986562453147d84955e6c37b73e132e3e53d2e76437c64807470a4"
+  },
+  "results": [
+    {
+      "route": "/privacy",
+      "width": 1280,
+      "file": "privacy-1280.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Home / Privacy & trust Privacy Know your rights. Last updated 18 Nov 2026 The short version Resumes and identities stay private until a referrer accepts your request. Requests reach only verified employees of the company behind the role. Payments run on hosted checkout; skipwait.me never sees card numbers. Export or delete your data anytime from Settings. Company-matched by design Documents stay private Conversation opens after acceptance Hosted payment checkout What we collect Payments Cookies & on-device storage Retention & your rights Your account controls A private handoff, not a public marketplace. skipwait.me is designed to help one Job Seeker and the right verified employee move a referral forward with the least necessary exposure. We do not publish resumes, Referrer identities, or private request conversations. 1. Company-matched by design A referral request is visible only to verified employees at the company behind the role link. 2. Documents stay private Your resume is available only to you and the verified employee who accepts your request, while that accepted referral remains active. Claiming a request does not unlock your name or resume. It is never public. 3. Conversation opens after acceptance Job Seekers and Referrers can message only after the Referrer accepts that specific request. On acceptance, the Job Seeker and the Referrer see each other's names, and the Referrer receives the resume. Before acceptance, neither is shown. 4. Hosted payment checkout Payment details are handled by the payment provider’s checkout. Referral decisions never cost Referrers anything. 5. What we collect Account details (name, email), referral content you submit (job links, notes, resumes), and transaction records (provider references, amounts, timestamps). Referrers additionally verify a company email address by one-time code. Service providers process information to run skipwait.me: WorkOS runs sign-in (account details and sign-in sessions); ZeptoMail delivers verification and notification emails (your address and message content); Sentry records errors (technical failure details, with redaction for sensitive fields and single-use links); Cloudflare hosts and delivers the site (connection and request information); Wikipedia and Wikidata (run by the Wikimedia Foundation) look up company names typed into company search (the search text is sent from our server; we do not add your name, email or account details); and Chargebee with Razorpay and PayPal handle payments as section 06 describes. When configured, Microsoft Clarity records page interactions and session replay to help us understand use and diagnose problems. It can receive an internal account identifier rather than your email address. Your analytics cookie choice controls analytics storage as described below. 6. Payments Card and bank details are entered only on the payment provider’s hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). skipwait.me does not store full card numbers. Providers return transaction information such as payment status, provider references, amounts and timestamps so we can reconcile payments, balances and refunds. Legacy referral packs are paused; existing payment records and recovery remain available. 7. Cookies & on-device storage A session cookie keeps you signed in, a short-lived security cookie protects admin checks, and an offline cache lets installed app pages open without a network. Local storage also remembers device preferences, including your cookie choice. Choose “Accept all” or “Essential only” in the cookie banner, or change your analytics cookie choice in Settings. Analytics storage for Microsoft Clarity is granted only after “Accept all”; advertising storage is denied. Essential-only mode denies analytics storage, but does not disable technical error reporting or necessarily stop all cookieless interaction telemetry. 8. Retention & your rights Account and referral data is kept while your account is active and as needed for fraud prevention and financial records. You can export your data or request account deletion review anytime from Settings; payment disputes follow the Refunds & cancellation policy. Grievance and privacy questions: support@skipwait.me. 9. Your account controls When signed in, Settings gives you a copy of the personal data held for your account and lets you request account deletion review. Requests are reviewed rather than silently deleting records that may need reconciliation or security handling. Open privacy controls This page explains product safeguards and available controls. It is not a substitute for jurisdiction-specific legal notices or formal compliance certification. Questions? Write to support@skipwait.me. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "#policy-01",
+          "text": "Company-matched by design"
+        },
+        {
+          "href": "#policy-02",
+          "text": "Documents stay private"
+        },
+        {
+          "href": "#policy-03",
+          "text": "Conversation opens after acceptance"
+        },
+        {
+          "href": "#policy-04",
+          "text": "Hosted payment checkout"
+        },
+        {
+          "href": "#policy-05",
+          "text": "What we collect"
+        },
+        {
+          "href": "#policy-06",
+          "text": "Payments"
+        },
+        {
+          "href": "#policy-07",
+          "text": "Cookies & on-device storage"
+        },
+        {
+          "href": "#policy-08",
+          "text": "Retention & your rights"
+        },
+        {
+          "href": "#policy-09",
+          "text": "Your account controls"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds & cancellation policy"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/settings",
+          "text": "Open privacy controls"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "8fc24725b93d7231cb85a0eac0880386e5e14c1acd52ae033cbb46c0c65b708d",
+      "imageHash": "71b82e38b440861dec63b2888484dec8cf6fda51df3c41a311a759f12a62e504",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/privacy",
+      "width": 390,
+      "file": "privacy-390.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Home / Privacy & trust Privacy Know your rights. Last updated 18 Nov 2026 The short version Resumes and identities stay private until a referrer accepts your request. Requests reach only verified employees of the company behind the role. Payments run on hosted checkout; skipwait.me never sees card numbers. Export or delete your data anytime from Settings. A private handoff, not a public marketplace. skipwait.me is designed to help one Job Seeker and the right verified employee move a referral forward with the least necessary exposure. We do not publish resumes, Referrer identities, or private request conversations. 1. Company-matched by design A referral request is visible only to verified employees at the company behind the role link. 2. Documents stay private Your resume is available only to you and the verified employee who accepts your request, while that accepted referral remains active. Claiming a request does not unlock your name or resume. It is never public. 3. Conversation opens after acceptance Job Seekers and Referrers can message only after the Referrer accepts that specific request. On acceptance, the Job Seeker and the Referrer see each other's names, and the Referrer receives the resume. Before acceptance, neither is shown. 4. Hosted payment checkout Payment details are handled by the payment provider’s checkout. Referral decisions never cost Referrers anything. 5. What we collect Account details (name, email), referral content you submit (job links, notes, resumes), and transaction records (provider references, amounts, timestamps). Referrers additionally verify a company email address by one-time code. Service providers process information to run skipwait.me: WorkOS runs sign-in (account details and sign-in sessions); ZeptoMail delivers verification and notification emails (your address and message content); Sentry records errors (technical failure details, with redaction for sensitive fields and single-use links); Cloudflare hosts and delivers the site (connection and request information); Wikipedia and Wikidata (run by the Wikimedia Foundation) look up company names typed into company search (the search text is sent from our server; we do not add your name, email or account details); and Chargebee with Razorpay and PayPal handle payments as section 06 describes. When configured, Microsoft Clarity records page interactions and session replay to help us understand use and diagnose problems. It can receive an internal account identifier rather than your email address. Your analytics cookie choice controls analytics storage as described below. 6. Payments Card and bank details are entered only on the payment provider’s hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). skipwait.me does not store full card numbers. Providers return transaction information such as payment status, provider references, amounts and timestamps so we can reconcile payments, balances and refunds. Legacy referral packs are paused; existing payment records and recovery remain available. 7. Cookies & on-device storage A session cookie keeps you signed in, a short-lived security cookie protects admin checks, and an offline cache lets installed app pages open without a network. Local storage also remembers device preferences, including your cookie choice. Choose “Accept all” or “Essential only” in the cookie banner, or change your analytics cookie choice in Settings. Analytics storage for Microsoft Clarity is granted only after “Accept all”; advertising storage is denied. Essential-only mode denies analytics storage, but does not disable technical error reporting or necessarily stop all cookieless interaction telemetry. 8. Retention & your rights Account and referral data is kept while your account is active and as needed for fraud prevention and financial records. You can export your data or request account deletion review anytime from Settings; payment disputes follow the Refunds & cancellation policy. Grievance and privacy questions: support@skipwait.me. 9. Your account controls When signed in, Settings gives you a copy of the personal data held for your account and lets you request account deletion review. Requests are reviewed rather than silently deleting records that may need reconciliation or security handling. Open privacy controls This page explains product safeguards and available controls. It is not a substitute for jurisdiction-specific legal notices or formal compliance certification. Questions? Write to support@skipwait.me. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "#policy-01",
+          "text": "Company-matched by design"
+        },
+        {
+          "href": "#policy-02",
+          "text": "Documents stay private"
+        },
+        {
+          "href": "#policy-03",
+          "text": "Conversation opens after acceptance"
+        },
+        {
+          "href": "#policy-04",
+          "text": "Hosted payment checkout"
+        },
+        {
+          "href": "#policy-05",
+          "text": "What we collect"
+        },
+        {
+          "href": "#policy-06",
+          "text": "Payments"
+        },
+        {
+          "href": "#policy-07",
+          "text": "Cookies & on-device storage"
+        },
+        {
+          "href": "#policy-08",
+          "text": "Retention & your rights"
+        },
+        {
+          "href": "#policy-09",
+          "text": "Your account controls"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds & cancellation policy"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/settings",
+          "text": "Open privacy controls"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "8a81a2fd91ee081b56ead45d1243a33b0ab4ae52a96ccf15874f46211fc9e3e4",
+      "imageHash": "ec52807268168f84d9762c03047d146555f907a97be9a532528f73d2ee32e62b",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/terms",
+      "width": 1280,
+      "file": "terms-1280.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Home / Terms of Service Terms Know your rights. Last updated 16 Nov 2026 The short version A request uses your referral balance only when a verified employee can see it. Any payment covers the service, never an employee's decision or a hiring outcome. Referrers decide each request. A referral is an introduction, never a promise of an interview or a job. Private by default. Resumes and referrer identities stay hidden until a referrer accepts. Be honest. Misuse — unsolicited bulk requests, misrepresentation, harassment — can limit or close an account. What skipwait.me is Accounts and verification Credits, plans, and payment Privacy inside a request Acceptable use Administrator review Liability and changes Contact Business identity Governing law Grievance officer Plain terms for a private referral handoff. These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past. By creating an account or using skipwait.me, you agree to these terms. 1. What skipwait.me is skipwait.me lets a Job Seeker send one private referral request for a specific role to verified employees of the company behind that role. A verified employee (a Referrer) may accept or decline. We route and record the request; we are not an employer, recruiter, or hiring agent. A referral is an introduction. We do not promise an interview, an offer, or any hiring outcome, and neither does a Referrer by accepting. 2. Accounts and verification You must be at least 18 and provide accurate information. Referrers verify a company email address by one-time code. Referrer access to a company’s requests ends when that verification no longer applies. You are responsible for activity under your session. Signing out on shared devices clears your local session data. 3. Credits, plans, and payment The free allowance is 3 referral requests per calendar month, subject to account eligibility and card verification when required. Unused monthly allowance does not carry forward. A referral request at a company where no verified employee is available yet waits at no cost. The moment one can see your referral request, 1 is deducted from your balance; if your balance is empty then, we hold the referral request until you add to it. The charge is refunded once if you withdraw before someone picks it up, or if it expires unclaimed 7 days after it first reached a verified employee, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. A referral request that never reaches one closes after 90 days and costs nothing. Once someone picks the referral request up, it stays charged, even if they pass. If an accepted referral request is not marked Referred in time, or the referrer steps back, the referral request reopens to other employees with its charge still on it, and the charge is refunded if it is then withdrawn or expires unclaimed, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. Legacy referral packs are paused, and new paid plans are not on sale right now. Existing balances and already-started payments remain subject to their applicable terms and recovery process. If you have an existing renewing plan, cancellation stops renewal at the end of its paid term. Payments are processed by a hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). Purchased referral balance is added only after the payment is verified. Refund and cancellation rules are in the Refunds & cancellation policy. Basic reviewing and referring is free for Referrers. Employees are never paid by skipwait.me for a referral and decide independently under their employer's own process. 4. Privacy inside a request Your note is visible to verified employees at the company behind the role while your request is open. Your resume is visible only to you and the verified employee who accepts your request, while that accepted referral remains active. Claiming a request does not unlock your name or resume. Referrer identities are hidden from Job Seekers until the Referrer accepts. After acceptance, the Job Seeker and the Referrer see each other's names, and the Referrer receives the resume. Before acceptance, a Referrer sees neither the Job Seeker's name nor resume. Conversations open only after acceptance and are never public. Details are in our Privacy & trust page. 5. Acceptable use Do not use skipwait.me to send unsolicited bulk requests, misrepresent your identity or employment, upload content you do not have the right to share, harass anyone, or attempt to access another person’s requests, documents, or conversations. We may pause or close accounts that do, and may withhold referral balance obtained through misuse. Account closure does not remove any refund or consumer right that applies by law. 6. Administrator review Some actions — such as payment reconciliation, data-export and deletion requests, and reports of misuse — are reviewed by a skipwait.me administrator rather than applied silently. Reviews are logged in a privacy-safe activity record so decisions can be audited. 7. Liability and changes The service is provided as-is and as available. To the extent permitted by law, skipwait.me is not liable for hiring decisions, a Referrer’s or Job Seeker’s conduct, or losses that follow from an introduction. Nothing in these terms excludes liability or consumer rights that cannot lawfully be excluded. Changes to these terms will be published on this page with an updated date. 8. Contact Questions about these terms: support@skipwait.me, or visit the Support page. 9. Business identity skipwait.me is operated by a sole proprietor based in India, trading as skipwait.me. The business is not GST-registered. We do not charge GST. Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India. Phone: +91 95130 64808 (Mon–Fri, IST business hours). Email: support@skipwait.me. 10. Governing law These terms are governed by the laws of India. 11. Grievance officer Grievance officer: the Proprietor, skipwait.me. Phone +91 95130 64808. Email support@skipwait.me. We acknowledge complaints within 48 hours and resolve them within one month. These terms describe how the product works today. If we change them, we will update the date above. Questions? Write to support@skipwait.me. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "#policy-01",
+          "text": "What skipwait.me is"
+        },
+        {
+          "href": "#policy-02",
+          "text": "Accounts and verification"
+        },
+        {
+          "href": "#policy-03",
+          "text": "Credits, plans, and payment"
+        },
+        {
+          "href": "#policy-04",
+          "text": "Privacy inside a request"
+        },
+        {
+          "href": "#policy-05",
+          "text": "Acceptable use"
+        },
+        {
+          "href": "#policy-06",
+          "text": "Administrator review"
+        },
+        {
+          "href": "#policy-07",
+          "text": "Liability and changes"
+        },
+        {
+          "href": "#policy-08",
+          "text": "Contact"
+        },
+        {
+          "href": "#policy-09",
+          "text": "Business identity"
+        },
+        {
+          "href": "#policy-10",
+          "text": "Governing law"
+        },
+        {
+          "href": "#policy-11",
+          "text": "Grievance officer"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds & cancellation policy"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy & trust"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "tel:+919513064808",
+          "text": "+91 95130 64808"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "tel:+919513064808",
+          "text": "+91 95130 64808"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "9c80c035e716728d120eb9cc2ba459e66f724bab8c75f8b620a1b0ddf10c972f",
+      "imageHash": "ab2c28fade7954007b474c567b8490fc45d3f244da8fee6b57751a22eba7adbd",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/terms",
+      "width": 390,
+      "file": "terms-390.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Home / Terms of Service Terms Know your rights. Last updated 16 Nov 2026 The short version A request uses your referral balance only when a verified employee can see it. Any payment covers the service, never an employee's decision or a hiring outcome. Referrers decide each request. A referral is an introduction, never a promise of an interview or a job. Private by default. Resumes and referrer identities stay hidden until a referrer accepts. Be honest. Misuse — unsolicited bulk requests, misrepresentation, harassment — can limit or close an account. Plain terms for a private referral handoff. These terms explain what skipwait.me does, what you agree to when you use it, and what we will never promise. They are written to be read, not skimmed past. By creating an account or using skipwait.me, you agree to these terms. 1. What skipwait.me is skipwait.me lets a Job Seeker send one private referral request for a specific role to verified employees of the company behind that role. A verified employee (a Referrer) may accept or decline. We route and record the request; we are not an employer, recruiter, or hiring agent. A referral is an introduction. We do not promise an interview, an offer, or any hiring outcome, and neither does a Referrer by accepting. 2. Accounts and verification You must be at least 18 and provide accurate information. Referrers verify a company email address by one-time code. Referrer access to a company’s requests ends when that verification no longer applies. You are responsible for activity under your session. Signing out on shared devices clears your local session data. 3. Credits, plans, and payment The free allowance is 3 referral requests per calendar month, subject to account eligibility and card verification when required. Unused monthly allowance does not carry forward. A referral request at a company where no verified employee is available yet waits at no cost. The moment one can see your referral request, 1 is deducted from your balance; if your balance is empty then, we hold the referral request until you add to it. The charge is refunded once if you withdraw before someone picks it up, or if it expires unclaimed 7 days after it first reached a verified employee, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. A referral request that never reaches one closes after 90 days and costs nothing. Once someone picks the referral request up, it stays charged, even if they pass. If an accepted referral request is not marked Referred in time, or the referrer steps back, the referral request reopens to other employees with its charge still on it, and the charge is refunded if it is then withdrawn or expires unclaimed, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. Legacy referral packs are paused, and new paid plans are not on sale right now. Existing balances and already-started payments remain subject to their applicable terms and recovery process. If you have an existing renewing plan, cancellation stops renewal at the end of its paid term. Payments are processed by a hosted checkout (Chargebee with Razorpay for India/INR and PayPal internationally). Purchased referral balance is added only after the payment is verified. Refund and cancellation rules are in the Refunds & cancellation policy. Basic reviewing and referring is free for Referrers. Employees are never paid by skipwait.me for a referral and decide independently under their employer's own process. 4. Privacy inside a request Your note is visible to verified employees at the company behind the role while your request is open. Your resume is visible only to you and the verified employee who accepts your request, while that accepted referral remains active. Claiming a request does not unlock your name or resume. Referrer identities are hidden from Job Seekers until the Referrer accepts. After acceptance, the Job Seeker and the Referrer see each other's names, and the Referrer receives the resume. Before acceptance, a Referrer sees neither the Job Seeker's name nor resume. Conversations open only after acceptance and are never public. Details are in our Privacy & trust page. 5. Acceptable use Do not use skipwait.me to send unsolicited bulk requests, misrepresent your identity or employment, upload content you do not have the right to share, harass anyone, or attempt to access another person’s requests, documents, or conversations. We may pause or close accounts that do, and may withhold referral balance obtained through misuse. Account closure does not remove any refund or consumer right that applies by law. 6. Administrator review Some actions — such as payment reconciliation, data-export and deletion requests, and reports of misuse — are reviewed by a skipwait.me administrator rather than applied silently. Reviews are logged in a privacy-safe activity record so decisions can be audited. 7. Liability and changes The service is provided as-is and as available. To the extent permitted by law, skipwait.me is not liable for hiring decisions, a Referrer’s or Job Seeker’s conduct, or losses that follow from an introduction. Nothing in these terms excludes liability or consumer rights that cannot lawfully be excluded. Changes to these terms will be published on this page with an updated date. 8. Contact Questions about these terms: support@skipwait.me, or visit the Support page. 9. Business identity skipwait.me is operated by a sole proprietor based in India, trading as skipwait.me. The business is not GST-registered. We do not charge GST. Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India. Phone: +91 95130 64808 (Mon–Fri, IST business hours). Email: support@skipwait.me. 10. Governing law These terms are governed by the laws of India. 11. Grievance officer Grievance officer: the Proprietor, skipwait.me. Phone +91 95130 64808. Email support@skipwait.me. We acknowledge complaints within 48 hours and resolve them within one month. These terms describe how the product works today. If we change them, we will update the date above. Questions? Write to support@skipwait.me. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "#policy-01",
+          "text": "What skipwait.me is"
+        },
+        {
+          "href": "#policy-02",
+          "text": "Accounts and verification"
+        },
+        {
+          "href": "#policy-03",
+          "text": "Credits, plans, and payment"
+        },
+        {
+          "href": "#policy-04",
+          "text": "Privacy inside a request"
+        },
+        {
+          "href": "#policy-05",
+          "text": "Acceptable use"
+        },
+        {
+          "href": "#policy-06",
+          "text": "Administrator review"
+        },
+        {
+          "href": "#policy-07",
+          "text": "Liability and changes"
+        },
+        {
+          "href": "#policy-08",
+          "text": "Contact"
+        },
+        {
+          "href": "#policy-09",
+          "text": "Business identity"
+        },
+        {
+          "href": "#policy-10",
+          "text": "Governing law"
+        },
+        {
+          "href": "#policy-11",
+          "text": "Grievance officer"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds & cancellation policy"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy & trust"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "tel:+919513064808",
+          "text": "+91 95130 64808"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "tel:+919513064808",
+          "text": "+91 95130 64808"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "abaec9cd8bd954defa96b3572338293d767e6180094f15885700d942309c259c",
+      "imageHash": "a575d702305b4c23586e2dd563f66955a969095fd010e4e5c331cbc2f73a20a8",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/refunds",
+      "width": 1280,
+      "file": "refunds-1280.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Home / Refunds & Cancellation You only pay for what actually happened Know your rights. Last updated October 21, 2026 A credit is used only when a verified employee can see your request, never before. Subscriptions stop at the end of the cycle you already paid for. When something goes wrong with a payment, a person reviews it. 1. How a credit is used A referral request at a company where no verified employee is available yet waits at no cost. The moment one can see your referral request, 1 is deducted from your balance; if your balance is empty then, we hold the referral request until you add to it. The charge is refunded once if you withdraw before someone picks it up, or if it expires unclaimed 7 days after it first reached a verified employee, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. A referral request that never reaches one closes after 90 days and costs nothing. Once someone picks the referral request up, it stays charged, even if they pass. If an accepted referral request is not marked Referred in time, or the referrer steps back, the referral request reopens to other employees with its charge still on it, and the charge is refunded if it is then withdrawn or expires unclaimed, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. Once a Referrer picks your request up, the credit stays spent - whether they accept or pass: that employee invested time reviewing your request, and after a pass your request stays open for other employees at the company. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome. Free monthly credits reset each month and do not carry over. Purchased credits never expire. Delivery. skipwait.me is a digital service: there is no physical shipping. Purchased credits appear in your account immediately after the payment provider confirms payment; plan allowances activate on the first paid invoice. If credits do not appear, section 04 explains the automatic re-check. 2. One-off credit purchases Purchased credits are added only after the payment provider confirms payment. Unused purchased credits can be refunded on request within 14 days of purchase, less any credits already consumed by accepted referrals. Contact support@skipwait.me from your account email with the payment reference shown on your receipt. 3. Paid plans If you have an active paid plan, it renews at the end of the term you chose until cancelled. You can cancel renewal at any time from Plans; paid access and the plan allowance stay active until the end of the current billing cycle, and no further charges are made. New paid plans are not on sale right now; extra credits are sold as one-off packs that never expire. We do not pro-rate partially used months. If you were charged after cancelling, or charged twice, tell us and the duplicate charge is refunded in full. Prices are shown before checkout in INR (Razorpay) or USD (PayPal) via Chargebee, including applicable taxes where the provider collects them. 4. Failed or unconfirmed payments If your bank shows a charge but credits did not appear, the payment is held for administrator review rather than lost. When you return from checkout, Buy credits re-checks the payment with the provider automatically and tells you whether it was credited or needs review. If it stays unresolved, email us with the payment reference. Duplicate or unfulfillable charges are refunded to the original payment method. 5. How refunds are processed Refunds are approved by a skipwait.me administrator and recorded in an auditable log; the matching credits are removed from your balance at the same time. Refunds go back to the original payment method. Provider processing usually takes 5–10 business days after approval. We may decline refunds for credits obtained or used in breach of the Terms of Service. 6. Refund timeline at a glance Refund requests for unused purchased credits: within 14 days of purchase. We reply to every refund or cancellation request within 2 business days. Approved refunds reach the original payment method within 5–10 business days. Subscription cancellations take effect at the end of the current billing cycle. See the Cancellation policy. 7. Referrers Reviewing, accepting, and declining referral requests is free for Referrers. No Referrer credits are ever charged for a decision, including when another employee accepts the same request first. 8. Contact skipwait.me is operated by a sole proprietorship based in India, D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India. Phone +91 95130 64808 (Mon–Fri, IST business hours). Refund and cancellation requests: support@skipwait.me. Statutory consumer rights in your country apply in addition to this policy and are not limited by it. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/premium",
+          "text": "Buy credits"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms of Service"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellation policy"
+        },
+        {
+          "href": "tel:+919513064808",
+          "text": "+91 95130 64808"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "3622614c24f51295bd2cc9a8ca978cabf8640eab943336ed4bee4b6674eecdd6",
+      "imageHash": "591824d83a4bdb39cbd858aa969cd696f443b9f71dffd2602fd9326a096f14e4",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/refunds",
+      "width": 390,
+      "file": "refunds-390.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Home / Refunds & Cancellation You only pay for what actually happened Know your rights. Last updated October 21, 2026 A credit is used only when a verified employee can see your request, never before. Subscriptions stop at the end of the cycle you already paid for. When something goes wrong with a payment, a person reviews it. 1. How a credit is used A referral request at a company where no verified employee is available yet waits at no cost. The moment one can see your referral request, 1 is deducted from your balance; if your balance is empty then, we hold the referral request until you add to it. The charge is refunded once if you withdraw before someone picks it up, or if it expires unclaimed 7 days after it first reached a verified employee, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. A referral request that never reaches one closes after 90 days and costs nothing. Once someone picks the referral request up, it stays charged, even if they pass. If an accepted referral request is not marked Referred in time, or the referrer steps back, the referral request reopens to other employees with its charge still on it, and the charge is refunded if it is then withdrawn or expires unclaimed, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. Once a Referrer picks your request up, the credit stays spent - whether they accept or pass: that employee invested time reviewing your request, and after a pass your request stays open for other employees at the company. Acceptance is an introduction; it does not guarantee an interview or an offer, and no refund is due for a hiring outcome. Free monthly credits reset each month and do not carry over. Purchased credits never expire. Delivery. skipwait.me is a digital service: there is no physical shipping. Purchased credits appear in your account immediately after the payment provider confirms payment; plan allowances activate on the first paid invoice. If credits do not appear, section 04 explains the automatic re-check. 2. One-off credit purchases Purchased credits are added only after the payment provider confirms payment. Unused purchased credits can be refunded on request within 14 days of purchase, less any credits already consumed by accepted referrals. Contact support@skipwait.me from your account email with the payment reference shown on your receipt. 3. Paid plans If you have an active paid plan, it renews at the end of the term you chose until cancelled. You can cancel renewal at any time from Plans; paid access and the plan allowance stay active until the end of the current billing cycle, and no further charges are made. New paid plans are not on sale right now; extra credits are sold as one-off packs that never expire. We do not pro-rate partially used months. If you were charged after cancelling, or charged twice, tell us and the duplicate charge is refunded in full. Prices are shown before checkout in INR (Razorpay) or USD (PayPal) via Chargebee, including applicable taxes where the provider collects them. 4. Failed or unconfirmed payments If your bank shows a charge but credits did not appear, the payment is held for administrator review rather than lost. When you return from checkout, Buy credits re-checks the payment with the provider automatically and tells you whether it was credited or needs review. If it stays unresolved, email us with the payment reference. Duplicate or unfulfillable charges are refunded to the original payment method. 5. How refunds are processed Refunds are approved by a skipwait.me administrator and recorded in an auditable log; the matching credits are removed from your balance at the same time. Refunds go back to the original payment method. Provider processing usually takes 5–10 business days after approval. We may decline refunds for credits obtained or used in breach of the Terms of Service. 6. Refund timeline at a glance Refund requests for unused purchased credits: within 14 days of purchase. We reply to every refund or cancellation request within 2 business days. Approved refunds reach the original payment method within 5–10 business days. Subscription cancellations take effect at the end of the current billing cycle. See the Cancellation policy. 7. Referrers Reviewing, accepting, and declining referral requests is free for Referrers. No Referrer credits are ever charged for a decision, including when another employee accepts the same request first. 8. Contact skipwait.me is operated by a sole proprietorship based in India, D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India. Phone +91 95130 64808 (Mon–Fri, IST business hours). Refund and cancellation requests: support@skipwait.me. Statutory consumer rights in your country apply in addition to this policy and are not limited by it. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/premium",
+          "text": "Buy credits"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms of Service"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellation policy"
+        },
+        {
+          "href": "tel:+919513064808",
+          "text": "+91 95130 64808"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "baa5d366275acd84d86f3065c5e04c5a92ee99504b595d435ca7cfecc1e3e98b",
+      "imageHash": "5268489a77ad5cd30d0b05d72c2f5be55c7b9a7c01fad24eb46114b11bb0dd60",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/shipping",
+      "width": 1280,
+      "file": "shipping-1280.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Home / Shipping & Delivery Everything is digital. Nothing ships Know your rights. Last updated September 23, 2026 skipwait.me sells referral credits and plan subscriptions. They are delivered to your account online, usually within seconds of payment. 1. What you receive Credits and paid plans are digital services. No physical goods are shipped, so there are no shipping charges, carriers, or delivery addresses. Delivery works the same for buyers in every country. 2. When it arrives Purchased credits and plan access are added to your account instantly once the payment provider confirms the payment, usually within seconds. You get a confirmation on screen when you return from checkout, and your balance updates on Buy credits. 3. If something doesn't arrive If you paid and don't see your credits or plan, open Buy credits to re-check the payment, or email support@skipwait.me with the payment reference. Refunds follow our Refunds & cancellation policy. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/premium",
+          "text": "Buy credits"
+        },
+        {
+          "href": "/premium",
+          "text": "Buy credits"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds & cancellation"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "56eac13a404940a4d7971718b552dd22f9447d4a64383ad5515c04155b253ad9",
+      "imageHash": "e2b70ca118dc920b2fc275c91d3e2fd5744e281cbc066461b93e4a56d62b845c",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/shipping",
+      "width": 390,
+      "file": "shipping-390.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Home / Shipping & Delivery Everything is digital. Nothing ships Know your rights. Last updated September 23, 2026 skipwait.me sells referral credits and plan subscriptions. They are delivered to your account online, usually within seconds of payment. 1. What you receive Credits and paid plans are digital services. No physical goods are shipped, so there are no shipping charges, carriers, or delivery addresses. Delivery works the same for buyers in every country. 2. When it arrives Purchased credits and plan access are added to your account instantly once the payment provider confirms the payment, usually within seconds. You get a confirmation on screen when you return from checkout, and your balance updates on Buy credits. 3. If something doesn't arrive If you paid and don't see your credits or plan, open Buy credits to re-check the payment, or email support@skipwait.me with the payment reference. Refunds follow our Refunds & cancellation policy. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/premium",
+          "text": "Buy credits"
+        },
+        {
+          "href": "/premium",
+          "text": "Buy credits"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds & cancellation"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "cbb7c2881232a8d6ac81daef6ac8ccf7ea1974fd506c6c02f2d95ab2a411ef1f",
+      "imageHash": "dce80435df6758d18969f4b60238b44dcf4ed6df0010a11cef20f0686e6b5f6b",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/cancellations",
+      "width": 1280,
+      "file": "cancellations-1280.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Home / Cancellation Policy Understand your cancellation options Know your rights. Last updated 16 Nov 2026 When you can withdraw a referral request, stop an existing plan renewal, or request a purchase refund. 1. Cancelling a referral request You can cancel (withdraw) a referral request from My requests at any time before a verified employee claims it. If your request has used referral balance, withdrawal before pickup returns it once, only if its original balance or allowance is still valid and has room for the return. A free monthly referral from a month that has already ended cannot be returned. A request that has not used any balance has nothing to return. You cannot withdraw while a verified employee holds the request. After a claimed request is declined, the request reopens to other employees at the company. If a claimed request reopens after an employee declines, you can withdraw it, but the referral stays used. 2. Cancelling a paid plan New paid plans are not on sale right now. These cancellation rights continue to apply to existing renewing plans. Cancel renewal at any time from Plans, or email support@skipwait.me from your account email. The cancellation takes effect at the end of the current billing cycle. Your plan and its allowance stay active until then and no further charges are made. Partly used months are not pro-rated. If you are charged after cancelling, that charge is refunded in full. 3. Cancelling a credit purchase Legacy referral packs are paused. The rights below still apply to eligible existing purchases. You can cancel a one-off credit purchase and get a refund for unused purchased credits within 14 days of purchase. Credits already used on accepted referrals are not refundable. To cancel, email support@skipwait.me from your account email with the payment reference from your receipt. 4. Refund timeline We reply to cancellation and refund requests within 2 business days. Approved refunds are issued to the original payment method and usually reach you within 5–10 business days, depending on your bank or card provider. Full details are in the Refunds policy. 5. Contact skipwait.me is operated by a sole proprietorship based in India, D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India. Phone +91 95130 64808 (Mon–Fri, IST business hours). Email support@skipwait.me. Statutory consumer rights in your country apply in addition to this policy and are not limited by it. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/requests",
+          "text": "My requests"
+        },
+        {
+          "href": "/plans",
+          "text": "Plans"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds policy"
+        },
+        {
+          "href": "tel:+919513064808",
+          "text": "+91 95130 64808"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "df77ca77b0b43eae7688e30c816e2fcb1f208ec96b7aacceebe6c1854e1addd4",
+      "imageHash": "f9c0cbc3fdd6631bfd024a762e83d84a20aa6979e137162026c40bdf07fd2795",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/cancellations",
+      "width": 390,
+      "file": "cancellations-390.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Home / Cancellation Policy Understand your cancellation options Know your rights. Last updated 16 Nov 2026 When you can withdraw a referral request, stop an existing plan renewal, or request a purchase refund. 1. Cancelling a referral request You can cancel (withdraw) a referral request from My requests at any time before a verified employee claims it. If your request has used referral balance, withdrawal before pickup returns it once, only if its original balance or allowance is still valid and has room for the return. A free monthly referral from a month that has already ended cannot be returned. A request that has not used any balance has nothing to return. You cannot withdraw while a verified employee holds the request. After a claimed request is declined, the request reopens to other employees at the company. If a claimed request reopens after an employee declines, you can withdraw it, but the referral stays used. 2. Cancelling a paid plan New paid plans are not on sale right now. These cancellation rights continue to apply to existing renewing plans. Cancel renewal at any time from Plans, or email support@skipwait.me from your account email. The cancellation takes effect at the end of the current billing cycle. Your plan and its allowance stay active until then and no further charges are made. Partly used months are not pro-rated. If you are charged after cancelling, that charge is refunded in full. 3. Cancelling a credit purchase Legacy referral packs are paused. The rights below still apply to eligible existing purchases. You can cancel a one-off credit purchase and get a refund for unused purchased credits within 14 days of purchase. Credits already used on accepted referrals are not refundable. To cancel, email support@skipwait.me from your account email with the payment reference from your receipt. 4. Refund timeline We reply to cancellation and refund requests within 2 business days. Approved refunds are issued to the original payment method and usually reach you within 5–10 business days, depending on your bank or card provider. Full details are in the Refunds policy. 5. Contact skipwait.me is operated by a sole proprietorship based in India, D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India. Phone +91 95130 64808 (Mon–Fri, IST business hours). Email support@skipwait.me. Statutory consumer rights in your country apply in addition to this policy and are not limited by it. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/requests",
+          "text": "My requests"
+        },
+        {
+          "href": "/plans",
+          "text": "Plans"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds policy"
+        },
+        {
+          "href": "tel:+919513064808",
+          "text": "+91 95130 64808"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "d618ea0a42165077fec860919fcbe835e69c8cdf2a2a28b279cbab20adcbe59e",
+      "imageHash": "d1f7f55e57f0e1c1f347a73f2740444b28118a2ce0405ecc5832b8466e1013c2",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/about",
+      "width": 1280,
+      "file": "about-1280.png",
+      "status": 200,
+      "heading": "Know who runs skipwait.me.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Home / About skipwait.me Private job referrals, made simpler Know who runs skipwait.me. Last updated October 18, 2026 skipwait.me connects job seekers with verified employees who can refer them for a specific role at their company. 1. What we do A job seeker pastes the link to a role and sends a referral request with their resume. Only employees who have verified their company email at that employer can see and review the request. If a Referrer accepts, the two can message each other privately. 2. What we sell Job seekers get 3 free referrals a month; extra referrals are included with monthly plans (one-off credit packs are currently paused). Referrers are never paid and never ask you for money. Everything we sell is digital and is added to your account once the payment provider confirms the payment. See Pricing. 3. Who runs skipwait.me skipwait.me is owned and operated by a sole proprietorship based in India. Reach us at support@skipwait.me or see Contact us. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact us"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "da4a5668288dab163b6b1234d5e61c54f545815a49a5685b56f1295b6ce3ad92",
+      "imageHash": "55f5951b8244815132304fe96397970dfdf4dddfc2464feb778930607cd20355",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/about",
+      "width": 390,
+      "file": "about-390.png",
+      "status": 200,
+      "heading": "Know who runs skipwait.me.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Home / About skipwait.me Private job referrals, made simpler Know who runs skipwait.me. Last updated October 18, 2026 skipwait.me connects job seekers with verified employees who can refer them for a specific role at their company. 1. What we do A job seeker pastes the link to a role and sends a referral request with their resume. Only employees who have verified their company email at that employer can see and review the request. If a Referrer accepts, the two can message each other privately. 2. What we sell Job seekers get 3 free referrals a month; extra referrals are included with monthly plans (one-off credit packs are currently paused). Referrers are never paid and never ask you for money. Everything we sell is digital and is added to your account once the payment provider confirms the payment. See Pricing. 3. Who runs skipwait.me skipwait.me is owned and operated by a sole proprietorship based in India. Reach us at support@skipwait.me or see Contact us. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact us"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "dec20daf3c0649c003ff8f6ba9c1dd321f7fc29d6d283bf4bd162894b284c8ce",
+      "imageHash": "821a1367badfe30315c0d855b60e9c1ef5678c9d9b81065a3b3d704a37020960",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/contact",
+      "width": 1280,
+      "file": "contact-1280.png",
+      "status": 200,
+      "heading": "Talk to a human.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Home / Contact skipwait.me Talk to a person Talk to a human. Last updated September 23, 2026 Questions about a payment, a referral request, or your account? Email us and a person will reply. 1. Business details Operated by: A sole proprietorship based in India Brand: skipwait.me Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India Country: India Phone: +91 95130 64808 (Mon–Fri, IST business hours) Email: support@skipwait.me 2. Response time We reply to emails within 2 business days. For payment problems, include your payment reference so we can find it quickly. 3. Helpful links See Support for self-serve help, Refunds & cancellation, and Pricing. Hiring for a company? Start at Hire on skipwait.me. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "tel:+919513064808",
+          "text": "+91 95130 64808"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds & cancellation"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/employer",
+          "text": "Hire on skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "f485103927f0f3ffeaeb68c7b104c0f335ce39aad90920b3d4fc33d99a752de3",
+      "imageHash": "5591d9e54362f37f664c7f795babddc6d2931b55de8a094d8720011732f00a53",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/contact",
+      "width": 390,
+      "file": "contact-390.png",
+      "status": 200,
+      "heading": "Talk to a human.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Home / Contact skipwait.me Talk to a person Talk to a human. Last updated September 23, 2026 Questions about a payment, a referral request, or your account? Email us and a person will reply. 1. Business details Operated by: A sole proprietorship based in India Brand: skipwait.me Address: D-No. 14-440, Laxmi Nagar, Gopalapatnam, Visakhapatnam, Andhra Pradesh 530027, India Country: India Phone: +91 95130 64808 (Mon–Fri, IST business hours) Email: support@skipwait.me 2. Response time We reply to emails within 2 business days. For payment problems, include your payment reference so we can find it quickly. 3. Helpful links See Support for self-serve help, Refunds & cancellation, and Pricing. Hiring for a company? Start at Hire on skipwait.me. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "tel:+919513064808",
+          "text": "+91 95130 64808"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds & cancellation"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/employer",
+          "text": "Hire on skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "74a633a28abee3ff78d19aa0b8f940ba14069d3ca7af06500d31c0e837d3e67d",
+      "imageHash": "1220e046d5bcc40984bab1f3848b3811bd4ba10bfc21d0bc04caea014bd8facb",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/guidelines",
+      "width": 1280,
+      "file": "guidelines-1280.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Guidelines Know your rights. Last updated 18 Oct 2026 The short version Never pay a referrer, and never ask a seeker for money. Ask for one specific role, honestly. Passing is always okay. Pressure is never okay. Report anything that feels off — it's confidential. Referrers are never paid For seekers For referrers Respect Scams and impersonation What happens if rules are broken 1. Referrers are never paid 3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. No money, gifts, or favours — before or after. Seekers: if anyone asks for payment, report it. Referrers: a thank-you note is the only acceptable reward. 2. For seekers Link the official job posting. Write a short, specific note. Be truthful about experience and work authorization. Don't send identical asks in bulk or follow up more than once if there's no reply. 3. For referrers Refer only through your employer's official process and only people you're comfortable recommending. Don't promise outcomes, interview slots, or 'pushing' a profile. Keep your verification current. 4. Respect No harassment, discrimination, sexual content, or contacting people off-platform without their agreement. 5. Scams and impersonation Fake jobs, requests for fees or ID documents, and pretending to work somewhere lead to immediate removal. 6. What happens if rules are broken Depending on severity: a warning, a temporary restriction, or a ban. Every decision is reviewed by a person and can be appealed within 14 days. Questions? Write to support@skipwait.me. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "#policy-01",
+          "text": "Referrers are never paid"
+        },
+        {
+          "href": "#policy-02",
+          "text": "For seekers"
+        },
+        {
+          "href": "#policy-03",
+          "text": "For referrers"
+        },
+        {
+          "href": "#policy-04",
+          "text": "Respect"
+        },
+        {
+          "href": "#policy-05",
+          "text": "Scams and impersonation"
+        },
+        {
+          "href": "#policy-06",
+          "text": "What happens if rules are broken"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "4803b0060c778b4f8b4a95cc60420260c43b79d289603f0d90fa48fa782c0a3b",
+      "imageHash": "5cef60f365a56728f4421f8453e865e01e5dcb48d831967997ed15b7d4f576b3",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/guidelines",
+      "width": 390,
+      "file": "guidelines-390.png",
+      "status": 200,
+      "heading": "Know your rights.",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Guidelines Know your rights. Last updated 18 Oct 2026 The short version Never pay a referrer, and never ask a seeker for money. Ask for one specific role, honestly. Passing is always okay. Pressure is never okay. Report anything that feels off — it's confidential. 1. Referrers are never paid 3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. No money, gifts, or favours — before or after. Seekers: if anyone asks for payment, report it. Referrers: a thank-you note is the only acceptable reward. 2. For seekers Link the official job posting. Write a short, specific note. Be truthful about experience and work authorization. Don't send identical asks in bulk or follow up more than once if there's no reply. 3. For referrers Refer only through your employer's official process and only people you're comfortable recommending. Don't promise outcomes, interview slots, or 'pushing' a profile. Keep your verification current. 4. Respect No harassment, discrimination, sexual content, or contacting people off-platform without their agreement. 5. Scams and impersonation Fake jobs, requests for fees or ID documents, and pretending to work somewhere lead to immediate removal. 6. What happens if rules are broken Depending on severity: a warning, a temporary restriction, or a ban. Every decision is reviewed by a person and can be appealed within 14 days. Questions? Write to support@skipwait.me. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "#policy-01",
+          "text": "Referrers are never paid"
+        },
+        {
+          "href": "#policy-02",
+          "text": "For seekers"
+        },
+        {
+          "href": "#policy-03",
+          "text": "For referrers"
+        },
+        {
+          "href": "#policy-04",
+          "text": "Respect"
+        },
+        {
+          "href": "#policy-05",
+          "text": "Scams and impersonation"
+        },
+        {
+          "href": "#policy-06",
+          "text": "What happens if rules are broken"
+        },
+        {
+          "href": "mailto:support@skipwait.me",
+          "text": "support@skipwait.me"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "9d85412f6606b1eba936fe3bbfbc51e9c4fad3fc0d339798003f29417026a0dd",
+      "imageHash": "c52679afc3a9c8ebd42d4da8e8ecba89f903157ff107a588eeac5aa19f9fff25",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/job-referral-platforms",
+      "width": 1280,
+      "file": "job-referral-platforms-1280.png",
+      "status": 200,
+      "heading": "Job referral platforms",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Home / Job referral platforms Job referral platforms A job referral platform puts your application in front of someone who already works at the employer. That person decides whether to pass it on. This page explains the models that exist, what each one costs, and what a referral actually changes about your chances. The short definition A job board shows you openings and takes your application. A referral platform does something different: it finds the people who already work at the company you want and gives one of them a way to vouch for you, privately, with your full application attached. The distinction matters because the two products fail differently. A job board fails when nobody reads your application. A referral platform fails when the person who would have vouched for you never worked there in the first place. Three models you will run into Every service in this category does one of three things. They look similar from the outside and differ on the single question that matters most: who sees your application, and when. Direct submission. You apply normally, and the platform adds your name to a referral list inside the company. Your identity is usually visible to the employer immediately. This is fast and blunt: it works when the employee is genuinely willing to be associated with you, and it does nothing when they are not. Employee-mediated review. The employer does not see your application at all until an employee at that company chooses to forward it. Your identity is withheld unless they accept. This is the model that matters when you are not comfortable being one more name in an inbox, and it is the model where the platform's verification quality determines whether the whole thing works. Private talent pools. An employer hires from a pool of candidates who opted in, sometimes after a paid assessment. There is no referral from a specific person, so you are competing on a profile rather than on someone's judgement. This is a hiring pipeline rather than an introduction. What every model needs in order to work Strip away the features and three things have to be present. A service that is missing any of them is a listing site with a marketing budget. A reviewer who provably works at the employer. Not claims a stranger made, not a profile picture, not a job title. Something tied to the company's email domain. A complete application. The employee needs the role, your resume, and enough context to judge fit. A name and a link is not a referral; it is an interruption. A human decision. Somebody has to choose to help. Any model that removes the choice and calls it a match has removed the only part that was valuable. How these services usually charge Four pricing shapes are common, and you can usually tell which one you are in from where the charge happens rather than how much it is. Free allowance for seekers, with a cap. Usually a handful of referral requests a month, and no charge at all for the employee reviewing one. Per-referral credit. A referral request is used only when a verified employee can see it. It comes back if you withdraw before anyone picks it up or the request expires unclaimed, and stays used once someone has picked it up, even if they pass. If a service keeps the charge when nobody ever picks up your request, that is the single most important thing to notice. Subscription for recurring volume. A monthly fee that includes a set number of credits, for people applying to many roles a month. Employer sponsorship. Companies pay to promote roles into seeker feeds. This costs a job seeker nothing, which is why it is the healthiest of the four from the seeker's side. What a referral can and cannot do A referral changes one thing: your application reaches a person who reads it, and that person has a reason to read it carefully. It does not change the job requirements, it does not shorten a process the employer runs on a schedule, and it does not create a role that is not budgeted. Treat any service that promises an interview as selling something it cannot deliver. The strongest available claim is that a referral materially improves the odds that a human reads your application, and that a careful, relevant application from someone who already knows the company beats a mass application with no introduction. Questions worth asking before you sign up for anything If a service cannot answer these clearly and in public, that is the answer. Who reviews my request, and how do you know they work there? Exactly what does the reviewer see, and what do they not see? Does my employer find out I applied? When am I charged, and what happens to the money if nobody accepts? Can I withdraw a request nobody has claimed, and delete my resume? Who operates this, and where are they based? Questions people ask What is a job referral platform? It is a service that connects a job seeker to an employee at the employer they are applying to, so that employee can pass the application on privately with their name on it. Is a job referral platform the same as a job board? No. A job board lists openings and takes your application. A referral platform routes that application to a specific person who already works at the company and lets them decide whether to pass it on. Does a referral guarantee an interview? No. The employee chooses whether to help, and the employer still runs its own process. A referral improves the chance that a human actually reads your application; it does not bypass the employer's requirements. What does a job referral platform cost a job seeker? Most offer a free monthly allowance. Where there is a charge, it is usually per referral request, and the important detail is whether it is consumed when you send the request or only once an employee picks it up. Related reading Choosing a job referral platform Four checks, five red flags, and a shortlist template to fill in for each service. How employees refer candidates What the reviewer reads, how they decide, and what the employer and candidate end up with. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/choosing-a-job-referral-platform",
+          "text": "Choosing a job referral platform"
+        },
+        {
+          "href": "/how-employees-refer-candidates",
+          "text": "How employees refer candidates"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "dac839e3b9e878de134c47f08a4ad4d56dabb66c412b9779c393c4a41b91eae0",
+      "imageHash": "ab0a07e6cc2849ace0e87038077038c136991c0fe2d8761e316487659507812c",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/job-referral-platforms",
+      "width": 390,
+      "file": "job-referral-platforms-390.png",
+      "status": 200,
+      "heading": "Job referral platforms",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Home / Job referral platforms Job referral platforms A job referral platform puts your application in front of someone who already works at the employer. That person decides whether to pass it on. This page explains the models that exist, what each one costs, and what a referral actually changes about your chances. The short definition A job board shows you openings and takes your application. A referral platform does something different: it finds the people who already work at the company you want and gives one of them a way to vouch for you, privately, with your full application attached. The distinction matters because the two products fail differently. A job board fails when nobody reads your application. A referral platform fails when the person who would have vouched for you never worked there in the first place. Three models you will run into Every service in this category does one of three things. They look similar from the outside and differ on the single question that matters most: who sees your application, and when. Direct submission. You apply normally, and the platform adds your name to a referral list inside the company. Your identity is usually visible to the employer immediately. This is fast and blunt: it works when the employee is genuinely willing to be associated with you, and it does nothing when they are not. Employee-mediated review. The employer does not see your application at all until an employee at that company chooses to forward it. Your identity is withheld unless they accept. This is the model that matters when you are not comfortable being one more name in an inbox, and it is the model where the platform's verification quality determines whether the whole thing works. Private talent pools. An employer hires from a pool of candidates who opted in, sometimes after a paid assessment. There is no referral from a specific person, so you are competing on a profile rather than on someone's judgement. This is a hiring pipeline rather than an introduction. What every model needs in order to work Strip away the features and three things have to be present. A service that is missing any of them is a listing site with a marketing budget. A reviewer who provably works at the employer. Not claims a stranger made, not a profile picture, not a job title. Something tied to the company's email domain. A complete application. The employee needs the role, your resume, and enough context to judge fit. A name and a link is not a referral; it is an interruption. A human decision. Somebody has to choose to help. Any model that removes the choice and calls it a match has removed the only part that was valuable. How these services usually charge Four pricing shapes are common, and you can usually tell which one you are in from where the charge happens rather than how much it is. Free allowance for seekers, with a cap. Usually a handful of referral requests a month, and no charge at all for the employee reviewing one. Per-referral credit. A referral request is used only when a verified employee can see it. It comes back if you withdraw before anyone picks it up or the request expires unclaimed, and stays used once someone has picked it up, even if they pass. If a service keeps the charge when nobody ever picks up your request, that is the single most important thing to notice. Subscription for recurring volume. A monthly fee that includes a set number of credits, for people applying to many roles a month. Employer sponsorship. Companies pay to promote roles into seeker feeds. This costs a job seeker nothing, which is why it is the healthiest of the four from the seeker's side. What a referral can and cannot do A referral changes one thing: your application reaches a person who reads it, and that person has a reason to read it carefully. It does not change the job requirements, it does not shorten a process the employer runs on a schedule, and it does not create a role that is not budgeted. Treat any service that promises an interview as selling something it cannot deliver. The strongest available claim is that a referral materially improves the odds that a human reads your application, and that a careful, relevant application from someone who already knows the company beats a mass application with no introduction. Questions worth asking before you sign up for anything If a service cannot answer these clearly and in public, that is the answer. Who reviews my request, and how do you know they work there? Exactly what does the reviewer see, and what do they not see? Does my employer find out I applied? When am I charged, and what happens to the money if nobody accepts? Can I withdraw a request nobody has claimed, and delete my resume? Who operates this, and where are they based? Questions people ask What is a job referral platform? It is a service that connects a job seeker to an employee at the employer they are applying to, so that employee can pass the application on privately with their name on it. Is a job referral platform the same as a job board? No. A job board lists openings and takes your application. A referral platform routes that application to a specific person who already works at the company and lets them decide whether to pass it on. Does a referral guarantee an interview? No. The employee chooses whether to help, and the employer still runs its own process. A referral improves the chance that a human actually reads your application; it does not bypass the employer's requirements. What does a job referral platform cost a job seeker? Most offer a free monthly allowance. Where there is a charge, it is usually per referral request, and the important detail is whether it is consumed when you send the request or only once an employee picks it up. Related reading Choosing a job referral platform Four checks, five red flags, and a shortlist template to fill in for each service. How employees refer candidates What the reviewer reads, how they decide, and what the employer and candidate end up with. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/choosing-a-job-referral-platform",
+          "text": "Choosing a job referral platform"
+        },
+        {
+          "href": "/how-employees-refer-candidates",
+          "text": "How employees refer candidates"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "d6f5b56621c00a6c1dbd7d9bf885b65da4d7fc16f578c4a55d3d2effc9a383c2",
+      "imageHash": "c53eeb90d9fc567446fccd7768c9613dfed5b7edbfbb560d7619d7cc18eebb8c",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/choosing-a-job-referral-platform",
+      "width": 1280,
+      "file": "choosing-a-job-referral-platform-1280.png",
+      "status": 200,
+      "heading": "Choosing a job referral platform",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Home / Choosing a job referral platform Choosing a job referral platform The differences between these services are not usually in the pricing page. They are in four things you can check yourself in about ten minutes, without sending anyone your resume. Check 1: is the reviewer provably at the company? This is the check that decides whether the product works at all. If the people reviewing your request are not tied to the employer's domain, then nobody is vouching for you and you have paid for a job board with extra steps. Three common approaches, in descending order of what they actually prove: a one-time code sent to a company email address, which ties a person to a domain; a LinkedIn connection, which proves a person once held a job somewhere and can be faked or stale; a self-declared employer and job title, which proves only that someone typed it. Check 2: what is visible, and to whom? The same product can either show your employer that you applied the moment you send it, or show them nothing until a reviewer accepts. Find out which one you are signing up for before you upload a resume. Three things to establish. Does your employer see your name and resume at submission, or only if a reviewer accepts? Does the reviewer see your email address and phone number, or only the work you have attached? And can other employees at that company browse requests meant for one specific team? Check 3: when does money actually move? Most of these services do not charge the same way, and the difference is entirely about timing. A credit reserved on submission and spent only once an employee picks your request up behaves very differently from one spent on submission. If nobody ever picks up your requests, the second model has taken your money and given you nothing in return. Find out which one you are in, then check the refund window in writing, and check whether unused credits expire. Check 4: can you take it back? Before you upload a resume, find out what happens to it. Can you withdraw a request that nobody has claimed yet? Can you delete the document after sending it? Can you get a copy of what the service holds about you? A service that cannot delete your resume on request is telling you something about how it treats it after you leave. Red flags These are the patterns that show up in services that are not really doing the thing they describe. A guaranteed interview, or a stated success rate for an individual application. Nobody can promise either. “Our employee will submit your application for you” with no company domain named anywhere. A price that is hard to find until you are already inside a checkout. No operator, no address, and no named person behind the company page. A model where your employer is told you applied, sold as a privacy feature. A shortlist you can fill in Write these five answers down for every service you are considering, side by side. The service with the clearest answers is almost always the one to try first, regardless of what it charges. How is a reviewer tied to the employer? Does my employer see my application before someone accepts it? What exactly does a reviewer see? When is a credit consumed, and what is the refund window? Can I withdraw an unclaimed request and delete my resume? Questions people ask What should I check before signing up for a job referral platform? Four things: how a reviewer is tied to the employer, whether the employer sees your application before someone accepts it, when a credit is actually consumed and what the refund window is, and whether you can withdraw an unclaimed request and delete your resume. How do I tell if a referral service actually has employees at the company? Look for verification tied to the employer's email domain, such as a one-time code sent to a work address. A LinkedIn connection or a self-declared job title does not prove the person currently works there. Is it normal for a referral service to charge per request? Yes. The detail that matters is timing: a credit that costs nothing until a verified employee can see your request, comes back if you withdraw before pickup, and stays spent only once an employee picks it up is a different product from one spent at submission. Check the refund window before you start sending requests. Related reading Job referral platforms What the category is, the three models behind it, and what a referral actually changes. How employees refer candidates What the reviewer reads, how they decide, and what the employer and candidate end up with. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/job-referral-platforms",
+          "text": "Job referral platforms"
+        },
+        {
+          "href": "/how-employees-refer-candidates",
+          "text": "How employees refer candidates"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "e08ba2234c7fa129c27f185dc17cac239ea09d7d3346edd86d2f76c0e19c5517",
+      "imageHash": "0a480d8a75c261b7845a35b4cc58caf21e57a0e9bf702528777975007f7598a7",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/choosing-a-job-referral-platform",
+      "width": 390,
+      "file": "choosing-a-job-referral-platform-390.png",
+      "status": 200,
+      "heading": "Choosing a job referral platform",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Home / Choosing a job referral platform Choosing a job referral platform The differences between these services are not usually in the pricing page. They are in four things you can check yourself in about ten minutes, without sending anyone your resume. Check 1: is the reviewer provably at the company? This is the check that decides whether the product works at all. If the people reviewing your request are not tied to the employer's domain, then nobody is vouching for you and you have paid for a job board with extra steps. Three common approaches, in descending order of what they actually prove: a one-time code sent to a company email address, which ties a person to a domain; a LinkedIn connection, which proves a person once held a job somewhere and can be faked or stale; a self-declared employer and job title, which proves only that someone typed it. Check 2: what is visible, and to whom? The same product can either show your employer that you applied the moment you send it, or show them nothing until a reviewer accepts. Find out which one you are signing up for before you upload a resume. Three things to establish. Does your employer see your name and resume at submission, or only if a reviewer accepts? Does the reviewer see your email address and phone number, or only the work you have attached? And can other employees at that company browse requests meant for one specific team? Check 3: when does money actually move? Most of these services do not charge the same way, and the difference is entirely about timing. A credit reserved on submission and spent only once an employee picks your request up behaves very differently from one spent on submission. If nobody ever picks up your requests, the second model has taken your money and given you nothing in return. Find out which one you are in, then check the refund window in writing, and check whether unused credits expire. Check 4: can you take it back? Before you upload a resume, find out what happens to it. Can you withdraw a request that nobody has claimed yet? Can you delete the document after sending it? Can you get a copy of what the service holds about you? A service that cannot delete your resume on request is telling you something about how it treats it after you leave. Red flags These are the patterns that show up in services that are not really doing the thing they describe. A guaranteed interview, or a stated success rate for an individual application. Nobody can promise either. “Our employee will submit your application for you” with no company domain named anywhere. A price that is hard to find until you are already inside a checkout. No operator, no address, and no named person behind the company page. A model where your employer is told you applied, sold as a privacy feature. A shortlist you can fill in Write these five answers down for every service you are considering, side by side. The service with the clearest answers is almost always the one to try first, regardless of what it charges. How is a reviewer tied to the employer? Does my employer see my application before someone accepts it? What exactly does a reviewer see? When is a credit consumed, and what is the refund window? Can I withdraw an unclaimed request and delete my resume? Questions people ask What should I check before signing up for a job referral platform? Four things: how a reviewer is tied to the employer, whether the employer sees your application before someone accepts it, when a credit is actually consumed and what the refund window is, and whether you can withdraw an unclaimed request and delete your resume. How do I tell if a referral service actually has employees at the company? Look for verification tied to the employer's email domain, such as a one-time code sent to a work address. A LinkedIn connection or a self-declared job title does not prove the person currently works there. Is it normal for a referral service to charge per request? Yes. The detail that matters is timing: a credit that costs nothing until a verified employee can see your request, comes back if you withdraw before pickup, and stays spent only once an employee picks it up is a different product from one spent at submission. Check the refund window before you start sending requests. Related reading Job referral platforms What the category is, the three models behind it, and what a referral actually changes. How employees refer candidates What the reviewer reads, how they decide, and what the employer and candidate end up with. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/job-referral-platforms",
+          "text": "Job referral platforms"
+        },
+        {
+          "href": "/how-employees-refer-candidates",
+          "text": "How employees refer candidates"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "22f90f01ac88cba9bd72ffc8ac08326dbb34a47ef4873a751cdef4cd78bfcb9b",
+      "imageHash": "1e87f4204d41ab0e7b6655202d5eafa1d30d71c5e0d6ec9ad8fbc1957bc8329e",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/how-employees-refer-candidates",
+      "width": 1280,
+      "file": "how-employees-refer-candidates-1280.png",
+      "status": 200,
+      "heading": "How employees refer candidates",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing For companies Sign in Home / How employees refer candidates How employees refer candidates The employee side is the part most of these platforms never explain. Here is what happens between a person deciding to help and the candidate hearing anything back. Why an employee does this at all Nobody refers a stranger out of duty. The motivations are ordinary and worth knowing, because the quality of the referral tracks the motivation almost exactly. They have seen the work. The most reliable referrers are people who reviewed your resume, worked with you, or read something you wrote and could judge it themselves. They want to help a specific person. A colleague, a former mentee, someone whose interview they sat in on. This is the strongest reason and the hardest to buy. Someone is hiring on their team and they want good people in it. This is the most common reason in practice, and it is fine: a hiring manager still reviews the application and can still decline. It carries a small reward or is simply visible to be seen as helpful. This is the weakest reason, and it is the reason most referral incentives exist to address. What the employee actually reads Usually three things: the role, the resume, and a short note from you. That is it. Nobody is reading a cover letter, and nobody is going to reconstruct your career for you. This is worth internalising, because it changes what is worth writing. The note that works is short and specific about why you are applying for this role at this company. The note that gets ignored is a paragraph of adjectives with no claim in it. If you can say in two sentences what you have actually done and why it is relevant here, that is the whole job. The decision itself The reviewer has three options, and in practice they take all three over time: accept and pass your application on, ask you one question, or pass. A pass is not a judgement about your worth and is usually not about your resume. Most passes are about timing, band, location, or the fact that the team is not hiring that role this quarter. It is also the outcome that makes these systems honest: because passing is free and normal, the acceptances mean something. What the employer sees This varies by service and it is the detail to check before you apply. In some models the employer sees your name and resume the moment you submit. In others it sees nothing at all until an employee forwards it, and in others it sees an anonymised profile with the role attached. Employee-mediated review is the most private of the three and also the slowest, because a referral only moves when a person acts. If a role is urgent, the slower path is the wrong path, and no service will tell you that. What comes back to the candidate Usually an accept or a pass, and then the employer's own process, at the employer's pace. Acceptance is not an interview. It means someone put your name in front of a hiring manager, which is more than most applications achieve and less than a job offer. Silence is normal and usually structural: requests expire, teams stop hiring mid-quarter, and people forget. If the status does not change for a long time, treat it as a decline rather than a rejection of you as a person. If you are the employee thinking about it The time cost is a few minutes of reading and one message, not an ongoing duty. You are agreeing to pass a name along, not to advocate for the outcome or to follow up on their behalf. You can decline without giving a reason. In every honest version of this, declining is cheaper than being the person who forwards something they do not believe in, and services that measure referral volume instead of referral accuracy are not measuring the thing that helps a candidate. Questions people ask What does an employee see when someone sends them a referral request? Usually three things: the role, the applicant's resume, and a short note about why they are applying. Not a cover letter, and not their contact details unless the employee chooses to share them. Does my employer find out that I sent a referral request? It depends on the service. In an employee-mediated model the employer sees nothing until an employee forwards the application. In a direct-submission model the employer sees it immediately. Check which one you are using before you upload a resume. What happens if the employee passes on my request? On skipwait.me the credit stays spent, because an employee still gave your request their time, and the request stays open for other employees at the company. Services that spend a credit only on acceptance charge nothing for a pass. A pass is usually about timing, band, location, or whether the team is hiring that role at all, rather than about the quality of your application. How long does a referral take? It depends on a person acting. Employee-mediated review is slower than applying directly because a human has to choose to pass it on, and most of the wait is the employer's own hiring schedule rather than the platform. Related reading Job referral platforms What the category is, the three models behind it, and what a referral actually changes. Choosing a job referral platform Four checks, five red flags, and a shortlist template to fill in for each service. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/job-referral-platforms",
+          "text": "Job referral platforms"
+        },
+        {
+          "href": "/choosing-a-job-referral-platform",
+          "text": "Choosing a job referral platform"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "b62bf03b21f2e1974056ef5f06f7889c980f7d6059bb98456cf4a0d76ec32af4",
+      "imageHash": "edc4a76631ec7d096725c5725b3becae99f53e1bda3cd176f8b4a8fc18c47a8a",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    },
+    {
+      "route": "/how-employees-refer-candidates",
+      "width": 390,
+      "file": "how-employees-refer-candidates-390.png",
+      "status": 200,
+      "heading": "How employees refer candidates",
+      "h1Count": 1,
+      "goalCount": 1,
+      "text": "Explore companies Pricing Sign in Home / How employees refer candidates How employees refer candidates The employee side is the part most of these platforms never explain. Here is what happens between a person deciding to help and the candidate hearing anything back. Why an employee does this at all Nobody refers a stranger out of duty. The motivations are ordinary and worth knowing, because the quality of the referral tracks the motivation almost exactly. They have seen the work. The most reliable referrers are people who reviewed your resume, worked with you, or read something you wrote and could judge it themselves. They want to help a specific person. A colleague, a former mentee, someone whose interview they sat in on. This is the strongest reason and the hardest to buy. Someone is hiring on their team and they want good people in it. This is the most common reason in practice, and it is fine: a hiring manager still reviews the application and can still decline. It carries a small reward or is simply visible to be seen as helpful. This is the weakest reason, and it is the reason most referral incentives exist to address. What the employee actually reads Usually three things: the role, the resume, and a short note from you. That is it. Nobody is reading a cover letter, and nobody is going to reconstruct your career for you. This is worth internalising, because it changes what is worth writing. The note that works is short and specific about why you are applying for this role at this company. The note that gets ignored is a paragraph of adjectives with no claim in it. If you can say in two sentences what you have actually done and why it is relevant here, that is the whole job. The decision itself The reviewer has three options, and in practice they take all three over time: accept and pass your application on, ask you one question, or pass. A pass is not a judgement about your worth and is usually not about your resume. Most passes are about timing, band, location, or the fact that the team is not hiring that role this quarter. It is also the outcome that makes these systems honest: because passing is free and normal, the acceptances mean something. What the employer sees This varies by service and it is the detail to check before you apply. In some models the employer sees your name and resume the moment you submit. In others it sees nothing at all until an employee forwards it, and in others it sees an anonymised profile with the role attached. Employee-mediated review is the most private of the three and also the slowest, because a referral only moves when a person acts. If a role is urgent, the slower path is the wrong path, and no service will tell you that. What comes back to the candidate Usually an accept or a pass, and then the employer's own process, at the employer's pace. Acceptance is not an interview. It means someone put your name in front of a hiring manager, which is more than most applications achieve and less than a job offer. Silence is normal and usually structural: requests expire, teams stop hiring mid-quarter, and people forget. If the status does not change for a long time, treat it as a decline rather than a rejection of you as a person. If you are the employee thinking about it The time cost is a few minutes of reading and one message, not an ongoing duty. You are agreeing to pass a name along, not to advocate for the outcome or to follow up on their behalf. You can decline without giving a reason. In every honest version of this, declining is cheaper than being the person who forwards something they do not believe in, and services that measure referral volume instead of referral accuracy are not measuring the thing that helps a candidate. Questions people ask What does an employee see when someone sends them a referral request? Usually three things: the role, the applicant's resume, and a short note about why they are applying. Not a cover letter, and not their contact details unless the employee chooses to share them. Does my employer find out that I sent a referral request? It depends on the service. In an employee-mediated model the employer sees nothing until an employee forwards the application. In a direct-submission model the employer sees it immediately. Check which one you are using before you upload a resume. What happens if the employee passes on my request? On skipwait.me the credit stays spent, because an employee still gave your request their time, and the request stays open for other employees at the company. Services that spend a credit only on acceptance charge nothing for a pass. A pass is usually about timing, band, location, or whether the team is hiring that role at all, rather than about the quality of your application. How long does a referral take? It depends on a person acting. Employee-mediated review is slower than applying directly because a human has to choose to pass it on, and most of the wait is the employer's own hiring schedule rather than the platform. Related reading Job referral platforms What the category is, the three models behind it, and what a referral actually changes. Choosing a job referral platform Four checks, five red flags, and a shortlist template to fill in for each service. Terms Privacy Refunds Cancellations Shipping About Contact Support Guidelines skipwait.me",
+      "links": [
+        {
+          "href": "/",
+          "text": ""
+        },
+        {
+          "href": "/explore",
+          "text": "Explore companies"
+        },
+        {
+          "href": "/pricing",
+          "text": "Pricing"
+        },
+        {
+          "href": "/for-companies",
+          "text": "For companies"
+        },
+        {
+          "href": "/sign-in",
+          "text": "Sign in"
+        },
+        {
+          "href": "/",
+          "text": "Home"
+        },
+        {
+          "href": "/job-referral-platforms",
+          "text": "Job referral platforms"
+        },
+        {
+          "href": "/choosing-a-job-referral-platform",
+          "text": "Choosing a job referral platform"
+        },
+        {
+          "href": "/terms",
+          "text": "Terms"
+        },
+        {
+          "href": "/privacy",
+          "text": "Privacy"
+        },
+        {
+          "href": "/refunds",
+          "text": "Refunds"
+        },
+        {
+          "href": "/cancellations",
+          "text": "Cancellations"
+        },
+        {
+          "href": "/shipping",
+          "text": "Shipping"
+        },
+        {
+          "href": "/about",
+          "text": "About"
+        },
+        {
+          "href": "/contact",
+          "text": "Contact"
+        },
+        {
+          "href": "/support",
+          "text": "Support"
+        },
+        {
+          "href": "/guidelines",
+          "text": "Guidelines"
+        }
+      ],
+      "missingAnchors": [],
+      "overflow": 0,
+      "buildSha": "9a00a9b53",
+      "textHash": "04e8b0fad427106da9fe963827c1d768d21c96a37eaa561ec72df0ed19195a36",
+      "imageHash": "0140d82c24f7ec5796bce90a9556efaee6b0a78907756ab49c337faa10c64c1d",
+      "apiCalls": [
+        "/api/trpc/auth.me"
+      ],
+      "externalRequests": [],
+      "preventedWrites": [],
+      "pageErrors": [],
+      "consoleErrors": [
+        "[auth] VITE_WORKOS_CLIENT_ID is not set; falling back to server-session-only auth"
+      ],
+      "unexpectedConsoleErrors": []
+    }
+  ]
+}

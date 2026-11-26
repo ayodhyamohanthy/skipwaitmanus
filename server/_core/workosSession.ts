@@ -27,7 +27,7 @@ export type WorkosLoginUser = {
 };
 export type WorkosLoginBlock = "IDENTITY_REVIEW_REQUIRED" | "ACCOUNT_NOT_ACTIVE";
 export type WorkosLoginOutcome =
-  | { readonly status: "signed_in"; readonly openId: string }
+  | { readonly status: "signed_in"; readonly openId: string; readonly userId: number }
   | { readonly status: "blocked"; readonly code: WorkosLoginBlock };
 export type ResolvedLoginAccount = Awaited<ReturnType<typeof db.resolveLoginIdentity>>;
 
@@ -60,7 +60,9 @@ function blockedCode(error: unknown): WorkosLoginBlock | null {
 export async function completeWorkosLogin(req: Request, res: Response, input: CompleteWorkosLoginInput): Promise<WorkosLoginOutcome> {
   const { user } = input;
   const openId = resolveWorkosOpenId(user.id);
-  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email.split("@")[0];
+  // S-11: never derive a name from the email (its local part next to a company rebuilds the address); null leaves the
+  // new account unnamed, as main's work-email sign-in does.
+  const name = [user.firstName, user.lastName].filter(Boolean).join(" ") || null;
   input.onStage?.("resolve");
   let account: ResolvedLoginAccount;
   try {
@@ -75,13 +77,13 @@ export async function completeWorkosLogin(req: Request, res: Response, input: Co
   if (input.sealedSession) res.cookie("workos_session", input.sealedSession, { ...getSessionCookieOptions(req), maxAge: APP_SESSION_MAX_AGE_MS });
   const hostedSid = hostedSessionIdFromAccessToken(input.accessToken);
   const { sdk } = await import("./sdk");
-  const token = await sdk.createSessionToken(account.openId, { name: account.name || name, ...(hostedSid ? { sid: hostedSid } : {}) });
+  const token = await sdk.createSessionToken(account.openId, { name: account.name || name || "", ...(hostedSid ? { sid: hostedSid } : {}), authTime: Math.floor(Date.now() / 1000) });
   res.cookie(COOKIE_NAME, token, { ...getSessionCookieOptions(req), maxAge: APP_SESSION_MAX_AGE_MS });
   // A hosted (WorkOS-hosted) session is linked so the next hosted sign-in from a
   // different typed email can end it first; fail-soft, the app session stands.
   const hostedLink = hostedSid && input.signHostedLink ? await input.signHostedLink({ uid: user.id, sid: hostedSid }).catch(() => null) : null;
   if (hostedLink) res.cookie(HOSTED_LINK_COOKIE, hostedLink, { ...getSessionCookieOptions(req), path: "/api/auth/workos", maxAge: HOSTED_LINK_MAX_AGE_MS });
-  return { status: "signed_in", openId: account.openId };
+  return { status: "signed_in", openId: account.openId, userId: account.id };
 }
 
 /**

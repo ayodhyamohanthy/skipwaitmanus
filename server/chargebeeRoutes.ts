@@ -8,10 +8,12 @@ import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { giftClaimRequestSchema } from "../shared/giftSubscriptions";
 import { PLAN_RETIRED_CODE, kitPlanCheckoutRequestSchema, packCheckoutRequestSchema } from "../shared/subscriptionManagement";
 import { isRetiredPlanId, isRetiredPlanItemPrice, resolvePlanItemPrice, type BillablePlanId, type BillingPeriod, type RetiredPlanId } from "../shared/billingCatalog";
-import { SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRetired } from "../shared/planCatalog";
+import { LEGACY_PACK_SALES_PAUSED, SINGLE_CREDIT_RETIRED_CODE, SINGLE_CREDIT_RETIRED_ERROR, singleCreditRetired } from "../shared/planCatalog";
 import { anyPackAvailableForCurrency, refusalBody, startKitPackCheckout, startKitPlanCheckout, type KitCheckoutDeps } from "./kitCheckout";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import type { RetiredPlanAlertInput } from "./errorAlerting";
+import { recordWebhookUnauthorized } from "./webhookAuthAlarm";
+import { registerBandedCheckoutRoutes, type BandedRouteDeps } from "./bandedCheckoutRoutes";
 
 export type ChargebeeIdentity = { account: { id: number; email?: string | null; name?: string | null }; primaryEmail?: { emailAddress?: string | null } | null };
 
@@ -27,6 +29,7 @@ type Deps = {
   /** Kit checkout (a 30/90-day pass, Keep warm yearly, a credit pack): availability and provider calls. */
   kitCheckout?: KitCheckoutDeps;
   applySubscriptionEvent?: (input: NonNullable<ReturnType<typeof parseSubscriptionEvent>>) => Promise<unknown>;
+  recordSubscriptionPaymentEvidence?: (input: { eventId: string; subscriptionId: string; occurredAt?: Date }) => Promise<unknown>;
   getUserSubscription?: (userId: number, role: TokenRole) => Promise<{ subscriptionId: string; status: string; currentTermEnd?: Date } | undefined>;
   markSubscriptionNonRenewing?: (userId: number, role: TokenRole, subscriptionId: string, currentTermEnd?: Date) => Promise<unknown>;
   cancelSubscription?: typeof scheduleChargebeeSubscriptionCancellation;
@@ -59,6 +62,8 @@ type Deps = {
   createCardValidationPage?: (input: { userId: number; email?: string | null; name?: string | null; origin: string }) => Promise<{ url: string }>;
   /** D-079: a failure to create that page reaches the owner at once (validation is broken until fixed). */
   alertCardValidationPageError?: (error: unknown) => Promise<unknown>;
+  /** BANDED-checkout (D-367): banded plan and extra-referral checkout, behind BANDED_SALES_ENABLED (off). */
+  banded?: Omit<BandedRouteDeps, "resolveIdentity" | "recordActivity">;
 };
 
 /** What a recipient reads when a gift (always a retired Pro/Max gift) is claimed. */
@@ -84,6 +89,8 @@ function isChargebeeNotConfigured(error: unknown): boolean {
 
 export function registerChargebeeRoutes(app: Express, deps: Deps) {
   const record = (input: Parameters<NonNullable<typeof deps.recordActivity>>[0]) => { void deps.recordActivity?.(input).catch(() => undefined); };
+  // Always registered, so a switched-off route answers 409 not_on_sale rather than falling through.
+  registerBandedCheckoutRoutes(app, { ...deps.banded, resolveIdentity: deps.resolveIdentity, recordActivity: deps.recordActivity });
   // D-055: referrers never pay (shared/referrerPurchases.ts, switched off, not deleted).
   // Answered before any availability probe, provider call or intent row.
   const refuseReferrerPurchase = (res: Response, actorUserId: number, action: "billing.credit_checkout_refused" | "billing.subscription_checkout_refused") => {
@@ -129,8 +136,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
       }
       // D-036: the per-credit checkout retires in a currency once any pack is on
       // sale in it. Pending single-credit checkouts from before the switch still
-      // recover and credit; only NEW checkouts are refused.
-      if (singleCreditRetired({ currency: pack.currency, anyPackAvailable: await anyPackAvailableForCurrency(req, pack.currency, deps.kitCheckout) })) {
+      // recover and credit; only NEW checkouts are refused. While the Oct 25 2026
+      // legacy-pricing pause holds it stays retired, answered before any provider
+      // probe, so archived packs never re-open it (PR #666 review F1).
+      const packSalesPaused = deps.kitCheckout?.packSalesPaused ?? LEGACY_PACK_SALES_PAUSED;
+      if (packSalesPaused || singleCreditRetired({ currency: pack.currency, packSalesPaused, anyPackAvailable: await anyPackAvailableForCurrency(req, pack.currency, deps.kitCheckout) })) {
         return res.status(410).json({ error: SINGLE_CREDIT_RETIRED_ERROR, code: SINGLE_CREDIT_RETIRED_CODE });
       }
       const origin = publicOutboundOrigin(req);
@@ -403,7 +413,11 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
 
   app.post("/api/chargebee/webhook", async (req, res) => {
     const secret = resolveChargebeeWebhookSecret(req.hostname);
-    if (!secret || !basicAuthMatches(req.header("authorization"), secret)) return res.status(401).send("Unauthorized");
+    if (!secret || !basicAuthMatches(req.header("authorization"), secret)) {
+      // D-212: a drifted secret refuses every refund and renewal; record it (no headers or body) and tell Sentry, throttled.
+      recordWebhookUnauthorized(deps.recordActivity);
+      return res.status(401).send("Unauthorized");
+    }
     const subscription = parseSubscriptionEvent(req.body);
     const payment = parsePaidPaymentEvent(req.body);
     const cardEvent = parsePaymentSourceEvent(req.body);
@@ -462,6 +476,27 @@ export function registerChargebeeRoutes(app: Express, deps: Deps) {
         console.error("[Chargebee] card-validation event needs review", { eventId: cardEvent.eventId, customerId: cardEvent.customerId, reason: appliedCard.reason });
         record({ action: "billing.card_validation_event", outcome: "failure", resourceType: "chargebee_payment_source", resourceId: cardEvent.paymentSourceId, metadata: { eventId: cardEvent.eventId, eventType: cardEvent.eventType, reason: appliedCard.reason ?? appliedCard.status } });
         void deps.alertCardValidationEvent?.({ eventId: cardEvent.eventId, eventType: cardEvent.eventType, customerId: cardEvent.customerId, paymentSourceId: cardEvent.paymentSourceId, reason: appliedCard.reason ?? appliedCard.status ?? "unknown" }).catch(() => undefined);
+      }
+    }
+
+    // D-155: a paid event tied to a subscription is provider-verified paid
+    // evidence for that wallet, independent of token-pack fulfillment. The
+    // parser already enforced a positive integer INR/USD amount and event id;
+    // the subscription id it returns comes from the settled invoice, never
+    // from a bare or conflicting subscription object. This arm runs for
+    // every paid event with such an id, including plan invoices whose
+    // amounts are not pack multiples.
+    if (payment?.subscriptionIdentityConflict) {
+      console.error("[Chargebee] paid event subscription identity conflict", { eventId: payment.eventId, invoiceId: payment.invoiceId });
+      record({ action: "billing.paid_evidence_identity_conflict", outcome: "failure", resourceType: "chargebee_invoice", resourceId: payment.invoiceId, metadata: { eventId: payment.eventId } });
+    }
+    if (payment?.subscriptionId && deps.recordSubscriptionPaymentEvidence) {
+      handled = true;
+      try {
+        obligations.paidEvidence = await deps.recordSubscriptionPaymentEvidence({ eventId: payment.eventId, subscriptionId: payment.subscriptionId, occurredAt: payment.occurredAt });
+      } catch (error) {
+        console.error("[Chargebee] paid-evidence error", error);
+        return res.status(500).json({ error: "Paid evidence synchronization retry required" });
       }
     }
 

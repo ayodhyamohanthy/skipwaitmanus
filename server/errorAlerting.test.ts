@@ -19,7 +19,9 @@ describe("material API error escalation", () => {
     const escalate = createMaterialErrorEscalator({ fetchImpl, recordActivity, now: () => 1_000 });
 
     await expect(escalate({ method: "POST", path: "/api/company-referrals?resume=private.pdf&otp=123456", statusCode: 500, durationMs: 48.6 })).resolves.toEqual({ alerted: true, reason: "sent" });
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    // The founder primary plus two best-effort copies (the owner mailbox and, since D-400, the administrator mailbox).
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
+    expect(fetchImpl.mock.calls.map(call => JSON.parse(String(call[1]?.body)).to[0])).toEqual(["ayodhya@skipwait.me", "ayodhya@mail.instinct.com", "admin@skipwait.me"]);
     const [url, request] = fetchImpl.mock.calls[0] ?? [];
     expect(url).toBe("https://api.resend.com/emails");
     expect(request?.headers).toMatchObject({ Authorization: "Bearer re_test" });
@@ -29,6 +31,37 @@ describe("material API error escalation", () => {
     expect(payload.text).not.toContain("private.pdf");
     expect(payload.text).not.toContain("123456");
     expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ action: "system.error_alert_sent", outcome: "success", resourceId: "/api/company-referrals" }));
+  });
+
+  it("redacts bearer tokens from material error emails and activity paths", async () => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    const token = "a".repeat(43);
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const escalate = createMaterialErrorEscalator({ fetchImpl, recordActivity, now: () => 1_000 });
+
+    await expect(escalate({ method: "POST", path: `/api/ask-invites/${token}/claim`, statusCode: 500, durationMs: 12 })).resolves.toEqual({ alerted: true, reason: "sent" });
+    const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(payload.text).toContain("POST /api/ask-invites/:token/claim");
+    expect(payload.text).not.toContain(token);
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ resourceId: "/api/ask-invites/:token/claim" }));
+  });
+
+  it("never puts a single-use token in the alert, the activity record or the dedupe key (FND-4)", async () => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.ERROR_ALERT_FROM_EMAIL = "noreply@skipwait.me";
+    const fetchImpl = vi.fn(async () => new Response("{}", { status: 200 }));
+    const recordActivity = vi.fn(async () => undefined);
+    const escalate = createMaterialErrorEscalator({ fetchImpl, recordActivity, now: () => 1_000 });
+
+    await expect(escalate({ method: "POST", path: "/api/referrer-review-links/tokA1/decision?x=1", statusCode: 500, durationMs: 5 })).resolves.toEqual({ alerted: true, reason: "sent" });
+    await expect(escalate({ method: "POST", path: "/api/referrer-review-links/tokB2/decision", statusCode: 500, durationMs: 5 })).resolves.toEqual({ alerted: false, reason: "deduplicated" });
+    const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
+    expect(payload.text).toContain("POST /api/referrer-review-links/:token/decision");
+    expect(JSON.stringify(fetchImpl.mock.calls)).not.toContain("tokA1");
+    expect(JSON.stringify(recordActivity.mock.calls)).not.toContain("tokA1");
+    expect(recordActivity).toHaveBeenCalledWith(expect.objectContaining({ resourceId: "/api/referrer-review-links/:token/decision" }));
   });
 
   it("sends payment alerts through ZeptoMail when it is configured and Resend is not", async () => {
@@ -62,7 +95,7 @@ describe("material API error escalation", () => {
     await expect(escalate({ method: "GET", path: "/api/private-request", statusCode: 503, durationMs: 12 })).resolves.toEqual({ alerted: false, reason: "deduplicated" });
     await expect(escalate({ method: "GET", path: "/api/private-request", statusCode: 400, durationMs: 12 })).resolves.toEqual({ alerted: false, reason: "not_material" });
     await expect(escalate({ method: "GET", path: "/start", statusCode: 500, durationMs: 12 })).resolves.toEqual({ alerted: false, reason: "not_material" });
-    expect(fetchImpl).toHaveBeenCalledTimes(2);
+    expect(fetchImpl).toHaveBeenCalledTimes(3);
   });
 
   it("records a delivery failure without interrupting the original application response", async () => {
@@ -94,7 +127,7 @@ describe("retired-plan event alert", () => {
     const input = { eventId: "ev_max_renewal", eventType: "subscription_renewed", reason: "plan_retired" as const, subscriptionId: "sub_max_legacy", itemPriceId: "skipwait_max_monthly-USD" };
     await expect(alert(input)).resolves.toEqual({ alerted: true });
     await expect(alert(input)).resolves.toEqual({ alerted: true });
-    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(fetchImpl).toHaveBeenCalledTimes(6);
     const payload = JSON.parse(String(fetchImpl.mock.calls[0]?.[1]?.body));
     expect(payload).toMatchObject({ to: ["ayodhya@skipwait.me"], subject: "skipwait.me retired plan event needs review · sub_max_legacy" });
     expect(payload.text).toContain("Nothing was granted");

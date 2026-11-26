@@ -1,0 +1,17 @@
+{
+  "signedIn": {
+    "id": 1,
+    "role": "admin"
+  },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "body": { "notifications": [] } },
+    { "method": "GET", "path": "/api/credits/summary", "body": { "summary": { "totalAvailable": 0 } } },
+    { "method": "GET", "path": "/api/account/preferences", "body": { "preferences": {} } },
+    { "method": "GET", "path": "/api/admin/money-check/status", "body": { "latestOutcome": null, "latestAt": null, "lastSuccessAt": null, "failuresLast7Days": 0, "ownerNotReached": false } },
+    { "method": "POST", "path": "/api/admin/money-check/close-abandoned", "body": { "cutoff": "2026-11-13T08:00:00.000Z", "candidates": 3, "accounts": 2, "oldest": "2026-11-01T08:00:00.000Z", "newest": "2026-11-12T08:00:00.000Z", "byCurrency": [{ "currency": "INR", "count": 2 }, { "currency": "USD", "count": 1 }], "applied": false, "closed": 0 } }
+  ],
+  "actions": [
+    { "click": "text=Preview what would close" },
+    { "waitFor": "text=Close these 3 pages" }
+  ]
+}

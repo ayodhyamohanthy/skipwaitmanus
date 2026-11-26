@@ -16,6 +16,13 @@
  * them. Titles, descriptions, and canonical URLs stay in @shared/publicRoutes.
  */
 
+import {
+  EMPLOYER_RULES_LEAD,
+  EMPLOYER_RULES_POINTS,
+  EMPLOYER_RULES_QUESTION,
+  EMPLOYER_RULES_VERIFICATION_NOTE,
+} from "@shared/employerRulesCopy";
+
 export type GuideSection = {
   readonly heading: string;
   readonly paragraphs: readonly string[];
@@ -77,7 +84,7 @@ const JOB_REFERRAL_PLATFORMS: Guide = {
       ],
       points: [
         "Free allowance for seekers, with a cap. Usually a handful of referral requests a month, and no charge at all for the employee reviewing one.",
-        "Per-referral credit, kept only once an employee picks up your request. The credit leaves your balance when you send a request, comes back if you withdraw before anyone picks it up or the request expires unclaimed, and stays spent once someone has picked it up, even if they pass. If a service keeps the credit when nobody ever picks up your request, that is the single most important thing to notice.",
+        "Per-referral credit. A referral request is used only when a verified employee can see it. It comes back if you withdraw before anyone picks it up or the request expires unclaimed, and stays used once someone has picked it up, even if they pass. If a service keeps the charge when nobody ever picks up your request, that is the single most important thing to notice.",
         "Subscription for recurring volume. A monthly fee that includes a set number of credits, for people applying to many roles a month.",
         "Employer sponsorship. Companies pay to promote roles into seeker feeds. This costs a job seeker nothing, which is why it is the healthiest of the four from the seeker's side.",
       ],
@@ -211,6 +218,14 @@ const HOW_EMPLOYEES_REFER_CANDIDATES: Guide = {
         "The reviewer has three options, and in practice they take all three over time: accept and pass your application on, ask you one question, or pass.",
         "A pass is not a judgement about your worth and is usually not about your resume. Most passes are about timing, band, location, or the fact that the team is not hiring that role this quarter. It is also the outcome that makes these systems honest: because passing is free and normal, the acceptances mean something.",
       ],
+    },
+    {
+      heading: EMPLOYER_RULES_QUESTION,
+      paragraphs: [
+        EMPLOYER_RULES_LEAD,
+        EMPLOYER_RULES_VERIFICATION_NOTE,
+      ],
+      points: EMPLOYER_RULES_POINTS.map(point => `${point.title} ${point.body}`),
     },
     {
       heading: "What the employer sees",

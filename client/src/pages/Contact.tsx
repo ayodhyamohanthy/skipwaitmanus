@@ -16,7 +16,7 @@ export default function Contact() {
   >
     <PolicySection number="01" title="Business details">
       <ul>
-        <li><strong>Operated by:</strong> {BUSINESS.operator}</li>
+        <li><strong>Operated by:</strong> {BUSINESS.operator.charAt(0).toUpperCase() + BUSINESS.operator.slice(1)}</li>
         <li><strong>Brand:</strong> {BUSINESS.brand}</li>
         {BUSINESS.address ? <li><strong>Address:</strong> {BUSINESS.address}</li> : null}
         <li><strong>Country:</strong> {BUSINESS.country}</li>

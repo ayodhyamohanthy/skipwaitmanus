@@ -18,10 +18,15 @@ describe("skipwait.me metadata and route loading", () => {
   it("shows the kit loading skeleton while dashboard-heavy screens are imported on demand", () => {
     expect(app).toContain('lazy(() => import("./pages/MyRequests")');
     expect(app).toContain('lazy(() => import("./pages/MyCompanyInbox")');
-    expect(app).toContain('<Suspense fallback={<LoadingScreen/>}>');
+    expect(app).toContain('<Suspense fallback={<LoadingScreen />}>');
     expect(app).toContain('RouteErrorBoundary');
     expect(app).toContain('<ErrorScreen screen="route-error"');
     // The raw error message goes to Sentry, never onto the screen.
     expect(app).not.toContain("this.state.error.message");
+  });
+
+  it("lazy-loads the private BYOR token landing route", () => {
+    expect(app).toContain('lazy(() => import("./pages/AskInviteLink")');
+    expect(app).toContain('<Route path="/r/:token" component={AskInviteLink} />');
   });
 });

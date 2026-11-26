@@ -1,0 +1,77 @@
+{
+  "signedIn": {
+    "id": 4106,
+    "name": "Asha Rao",
+    "email": "asha@acme.com",
+    "role": "user"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/ask-invites/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "invite": {
+          "state": "open",
+          "companyName": "Acme",
+          "roleTitle": "Product Designer",
+          "jobFunction": "Design",
+          "workMode": "Hybrid",
+          "location": "Mumbai",
+          "note": null,
+          "lockedFileCount": 0
+        }
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/api/ask-invites/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/claim",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "outcome": "held"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/account/preferences",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "preferences": {
+          "timeZone": "Asia/Kolkata",
+          "dateFormat": "dmy"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": false,
+        "workEmailDomain": null,
+        "companyName": null,
+        "companyInitials": null
+      }
+    }
+  ],
+  "actionsWeb": [
+    {
+      "click": "button:has-text(\"Take this referral request\")"
+    },
+    {
+      "wait": 500
+    }
+  ],
+  "actionsMobile": [
+    {
+      "click": "button:has-text(\"Take this referral request\")"
+    },
+    {
+      "wait": 500
+    }
+  ]
+}

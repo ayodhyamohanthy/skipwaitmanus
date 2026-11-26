@@ -1,0 +1,18 @@
+{
+  "signedIn": {
+    "id": 1,
+    "role": "admin"
+  },
+  "routes": [
+    { "method": "GET", "path": "/api/notifications", "body": { "notifications": [] } },
+    { "method": "GET", "path": "/api/credits/summary", "body": { "summary": { "totalAvailable": 0 } } },
+    { "method": "GET", "path": "/api/account/preferences", "body": { "preferences": {} } },
+    { "method": "GET", "path": "/api/admin/money-check/status", "maxCalls": 1, "body": { "latestOutcome": "success", "latestAt": "2026-11-20T08:00:00.000Z", "lastSuccessAt": "2026-11-20T08:00:00.000Z", "failuresLast7Days": 0, "ownerNotReached": false } },
+    { "method": "POST", "path": "/api/admin/money-check/run", "body": { "ranAt": "2026-11-20T08:05:00.000Z", "findingsFound": true, "emailSent": false, "subject": "daily money check · 1 finding", "findings": "Synthetic ledger mismatch. No customer data." } },
+    { "method": "GET", "path": "/api/admin/money-check/status", "body": { "latestOutcome": "failure", "latestAt": "2026-11-20T08:05:00.000Z", "lastSuccessAt": "2026-11-18T08:05:00.000Z", "failuresLast7Days": 1, "ownerNotReached": true } }
+  ],
+  "actions": [
+    { "click": "text=Run money check now" },
+    { "waitFor": "text=Synthetic ledger mismatch. No customer data." }
+  ]
+}

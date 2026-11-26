@@ -1,0 +1,1815 @@
+{
+  "task": "D-048-K-system",
+  "phase": "before",
+  "source": "1612c6689db99b3553a2805ca1bf2a164fea62b4",
+  "sourceHashes": {
+    "client/src/pages/NotFound.tsx": "af5607398382253610d1d3083bb8cb9069164db7b63802ad56c8326fec5271e4",
+    "client/src/pages/Offline.tsx": "e68a6693ee2cc675a6035a91006561cbce47373dd26eb1aa1320d3bbb5008228",
+    "client/src/pages/Emails.tsx": "c257b218034b6a318071f5f17f3d487f7acd88c5d1e92af1998c9a93bc6257f9",
+    "client/src/pages/AppStates.tsx": "eba80c8d0538b8170a2dbaea561a1963df16dbc32846a406d5c6e817510d5737",
+    "client/src/pages/goal/system/GoalNotFound.tsx": "c4ecd33f2145062b8f951c79b766960bcda2618f150f5544329238f93725467b",
+    "client/src/pages/goal/system/GoalOffline.tsx": "32126b0a7dc615c4bf3d2b24b361782d14f81b80ecb1f706adf6a2e03d33dec2",
+    "client/src/pages/goal/system/GoalEmails.tsx": "a6d2b8a835f46f3fa76f5fe2cedc163822b7d413b0259ca64969a48a12cfb216",
+    "client/src/pages/goal/system/GoalAppStates.tsx": "f52bc857f0f3df978522f3feeaccf792848514237019d810f393c45e1037ce24"
+  },
+  "runtime": "Owned local Vite preview with system released goal UI; browser APIs mocked and all network fixtures local",
+  "synthetic": true,
+  "productionRequests": 0,
+  "realInstallOrPermission": false,
+  "results": [
+    {
+      "name": "android",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall appNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "android-1280.png",
+      "sha256": "9941eb3ea4978d83a4bea1f2235f230ab1f09ec3901203bf4469850616a06326"
+    },
+    {
+      "name": "gallery-install-iphone-",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAdd skipwait.me to your Home Screen\n1\nTap\nShare in Safari\n2\nChoose “Add to Home Screen”\nGot it\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-install-iphone--1280.png",
+      "sha256": "93f5e4a0928449a224d644856f4b0c0c28136ed7daee831a23015f58bcb2d27e"
+    },
+    {
+      "name": "gallery-push-permission",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-push-permission-1280.png",
+      "sha256": "a5bb2d43917ba8ddf16b54114f2e533d39adc524cbd922f803a07cee349d1e4c"
+    },
+    {
+      "name": "gallery-offline",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nYou're offline. Showing saved info.\nNo connection.\n\nYour drafts are saved on this device. Send them when you're back online.\n\nTry again\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-offline-1280.png",
+      "sha256": "489f948c8409ce210453dc0953d04df243afa294a213cf9bcb6ded273d99181c"
+    },
+    {
+      "name": "gallery-slow-connection",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nSlow connection — pages may take a moment.\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-slow-connection-1280.png",
+      "sha256": "1192c81a4d2edc1bb27a95099ccd18540670dc30c01243f67a55acbe892c7c32"
+    },
+    {
+      "name": "gallery-not-found",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nThis door doesn't lead anywhere.\n\nThe page may have moved, or the link was mistyped.\n\nExplore companies\nGo home\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-not-found-1280.png",
+      "sha256": "cdfc2cdc259eab6e83dc8261d2f6e9c46b31948b90b1dd85ee6deabc675b67c2"
+    },
+    {
+      "name": "gallery-something-went-wrong",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nSomething went wrong on our side.\n\nNothing you did. Your asks and messages are safe.\n\nTry again\nContact support\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-something-went-wrong-1280.png",
+      "sha256": "80ec616aa0c09157f076ef1813547bac623436fd92ebec03d1b0990e72949612"
+    },
+    {
+      "name": "gallery-payment-failed",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nPayment didn't go through.\n\nYour card was declined by your bank. You haven't been charged, and your plan hasn't changed.\n\nTry another card\nContact support\nSome banks block international payments — check your card settings.\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-payment-failed-1280.png",
+      "sha256": "9df1d028649eced2ad7bdef90ee8c2a693f963a676aa0dba876a378056201ca8"
+    },
+    {
+      "name": "gallery-loading",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\n\nLoading\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-loading-1280.png",
+      "sha256": "31c1cbdc44f41293f161721a03a33f5c257efaf6bf47864c8d1fe1045adee800"
+    },
+    {
+      "name": "android-dismiss",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\n\nInstall dismissed.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "android-dismiss-1280.png",
+      "sha256": "d9bc988d5d3b8339e6c6fb9845a3dee68ca35e4318b8fb5b8193272ca2fa107a"
+    },
+    {
+      "name": "android-reopen",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall appNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "android-reopen-1280.png",
+      "sha256": "9941eb3ea4978d83a4bea1f2235f230ab1f09ec3901203bf4469850616a06326"
+    },
+    {
+      "name": "iphone-dismiss",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\n\nInstall instructions dismissed.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "iphone-dismiss-1280.png",
+      "sha256": "54647edf7d67f5ddbd54877ec49cb76b49380f1f403ee185a6b5ca4a5c7c931a"
+    },
+    {
+      "name": "iphone-reopen",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAdd skipwait.me to your Home Screen\n1\nTap\nShare in Safari\n2\nChoose “Add to Home Screen”\nGot it\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "iphone-reopen-1280.png",
+      "sha256": "93f5e4a0928449a224d644856f4b0c0c28136ed7daee831a23015f58bcb2d27e"
+    },
+    {
+      "name": "install-unavailable",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall app\n\nYour browser hasn't offered install here. Use its menu: Install app, or Add to Home screen.\n\nNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "install-unavailable-1280.png",
+      "sha256": "41ecc251153cf9b4ae32b632d679e9c4b48a8a99b3be048c0213818cbc8129ff"
+    },
+    {
+      "name": "install-accepted",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 1,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall app\n\nInstalling skipwait.me on this device.\n\nNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "install-accepted-1280.png",
+      "sha256": "531720d753022f704abf43d871e74356174203c5621df3d762ede34ba83e6e8e"
+    },
+    {
+      "name": "install-dismissed",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 1,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall app\n\nInstall dismissed. You can install later from the browser menu.\n\nNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "install-dismissed-1280.png",
+      "sha256": "58eed5bd1fba1a5b88d9621372f0a5238f36ffaeef62d23ab3d91948637732cd"
+    },
+    {
+      "name": "install-error",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 1,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall app\n\nThe install prompt didn't open. Use the browser menu instead.\n\nNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "install-error-1280.png",
+      "sha256": "0cc58cf228c4a730eba98b897583799a5dc6522e97d81691983638265eb23f60"
+    },
+    {
+      "name": "push-granted",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 1,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nNotifications are allowed in this browser.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-granted-1280.png",
+      "sha256": "58e6a8d1768fd4cd03e1cda0a1887a14c87b8f03281c400ebc3172fb834c90d0"
+    },
+    {
+      "name": "push-denied",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 1,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nNotifications are blocked. Allow them in your browser settings to change that.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-denied-1280.png",
+      "sha256": "fbe87275322dad6d2ab1e99bac68320994c91cdffe3f013fcd5294c7c6b4f5ef"
+    },
+    {
+      "name": "push-default",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 1,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nNotifications stay off until you allow them.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-default-1280.png",
+      "sha256": "356af23f9b35d833253575e377f2a5b57de1236a1edeb224544075f89efad25f"
+    },
+    {
+      "name": "push-error",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 1,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nThe browser didn't show the permission prompt. Try again from your browser settings.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-error-1280.png",
+      "sha256": "467086a850c0b1f6dda9c22f08f32dcba23e161e4c424476db302374dad731a6"
+    },
+    {
+      "name": "push-absent",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nThis browser doesn't support notifications.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-absent-1280.png",
+      "sha256": "0d45dc0a8ff1792a7cb430ce951ce42a4b555f18aca3411f5660d8441803aadd"
+    },
+    {
+      "name": "push-later",
+      "path": "/app-states",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nNotifications stay off until you allow them.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-later-1280.png",
+      "sha256": "356af23f9b35d833253575e377f2a5b57de1236a1edeb224544075f89efad25f"
+    },
+    {
+      "name": "offline",
+      "path": "/offline",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "You're offline. Showing saved info.\nYou're offline.\n\nYour drafts are saved on this device. Send them when you're back online.\n\nYour next step\n\nReconnect, then retry.\n\nTry again",
+      "screenshot": "offline-1280.png",
+      "sha256": "1b0115961c469d49eab19eac95799cf68a4247af74923e3a7e7ab82a65b13d06"
+    },
+    {
+      "name": "offline-draft",
+      "path": "/offline",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "You're offline. Showing saved info.\nYou're offline.\n\nYour drafts are saved on this device. Send them when you're back online.\n\nhttps://careers.synthetic.example/jobs/long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-123\n\nYour next step\n\nReconnect, then retry.\n\nTry again",
+      "screenshot": "offline-draft-1280.png",
+      "sha256": "26e5152b1031189f97b870a3f01874659d4e9398cac4dcfe287262ec4c1c099e"
+    },
+    {
+      "name": "not-found",
+      "path": "/not-a-real-system-route",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "404\n\nThis page isn't here.\n\nThe page may have moved, or the link was mistyped.\n\nYour next step\n\nPick the door that gets you back on track.\n\nGo home\nExplore companies",
+      "screenshot": "not-found-1280.png",
+      "sha256": "e08f03eb63a2919f5c598748647bf258798f0f9839bd49508e63d71f9271a5fa"
+    },
+    {
+      "name": "email-work-email-code",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nYour skipwait.me verification code\n\nYour skipwait.me verification code is ⟨6-digit code⟩. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email - nothing changes.\n\nFired when: a referrer requests a one-time code. 6 digits, 10-minute expiry, 5 attempts.\n\nSent by: Email\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-work-email-code-1280.png",
+      "sha256": "fb7020801d218127395d3d56120f9c1f8e274fdef1d31ed02bbbfd51bb8ed458"
+    },
+    {
+      "name": "email-password-reset",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nReset your skipwait.me password\n\nYou asked to reset your skipwait.me password. This link works for 1 hour, once: ⟨reset link⟩\n\nIf you did not ask for this, ignore this email — nothing changes. Passwords are managed through secure sign-in; you can also continue with email from the sign-in page.\n\nFired when: someone asks to reset a password. Neutral reply: always “check your email”, whether the account exists or not. 1-hour single-use link.\n\nSent by: Email\n\nReset link (in the email body)\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-password-reset-1280.png",
+      "sha256": "012277590038bdcda2b5f0d648d253800f6aaf8b976684d75dc791f649cbe9c3"
+    },
+    {
+      "name": "email-welcome",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nWelcome\n\nSent after first sign-in with the honest next step for the account type.\n\nSent by: Email\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-welcome-1280.png",
+      "sha256": "924ba4fd0b6056d190cc8ec519af6e025864da4b0b669d1a75ca77f075704140"
+    },
+    {
+      "name": "email-request-claimed",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nYour referral request was claimed — ⟨company⟩\n\nA verified employee at ⟨company⟩ claimed your private referral request.\n\nFired when: A verified employee claims a pending referral request. Seeker sees company domain only.\n\nSent by: Email + in-app\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-request-claimed-1280.png",
+      "sha256": "a116dccda0ecf58d55f8dac938ccc448ce1cc5bf119d733fa44eea8585fd7271"
+    },
+    {
+      "name": "email-referral-accepted",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nYour referral was accepted — ⟨company⟩\n\nA verified employee at ⟨company⟩ accepted your private referral request.\n\nFired when: A referrer accepts. Messaging opens; identities follow the accept rules.\n\nSent by: Email + in-app\n\nOpen conversation\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-referral-accepted-1280.png",
+      "sha256": "ad613c58dd502adfad89271746100ddd85f619cb1a8bba4bbbb2b61099a2bf6e"
+    },
+    {
+      "name": "email-referral-passed",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nUpdate on your referral request — ⟨company⟩\n\nYour request at ⟨company⟩ remains visible to other verified employees.\n\nFired when: A referrer passes. The referral request stays active for other employees; the slot is not freed.\n\nSent by: Email + in-app\n\nFind another referrer\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-referral-passed-1280.png",
+      "sha256": "fe18c6a33f8e0c5fe2196f35a85b221a7e905adaee5aa76fa35df6d54a2b04d5"
+    },
+    {
+      "name": "email-new-message",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nIn-app: skipwait.me notifications\n\nNew message\n\nA private message arrives in an accepted conversation.\n\nSent by: In-app\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-new-message-1280.png",
+      "sha256": "42abcc85509d85df30cd292deaf51dcfa11dc8759281cfa23741fb5b72299815"
+    },
+    {
+      "name": "email-waiting-for-coverage",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nIn-app: skipwait.me notifications\n\nWaiting for coverage\n\nA referral request has no verified employees available yet at the company.\n\nSent by: In-app\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-waiting-for-coverage-1280.png",
+      "sha256": "38279de5566e08db5d7c3e5e56528d3a83a45641ba2ac9b0cd97cb0ec245f6f7"
+    },
+    {
+      "name": "email-slot-opened",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nPrivate referral review available at ⟨company⟩\n\nA referral review is now available at ⟨company⟩\n\nA verified employee opened review capacity for your private request. This does not guarantee an introduction, interview, or hiring outcome.\n\nFired when: A referrer opens capacity and waiting referral requests become reviewable.\n\nSent by: Email\n\nView private request\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-slot-opened-1280.png",
+      "sha256": "fe40173ea902e6339659ebc96e148484eb36ca17a0db1e428674e9d6d4a70a94"
+    },
+    {
+      "name": "email-review-ready",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nPrivate referral review at ⟨company⟩\n\nA private review is ready at ⟨company⟩\n\nReviewing is optional and never costs you anything. Sign in with your verified company email before any decision is recorded.\n\nOpening this link never records a decision. Review and confirm on skipwait.me.\n\nFired when: A private review link is prepared for a verified employee. Never includes candidate content.\n\nSent by: Email + Slack\n\nOpen private review\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-review-ready-1280.png",
+      "sha256": "f6e2c51d9fb296b1aaacb9d3ee4c81ddd4b5b699849a967652ea84460ec08719"
+    },
+    {
+      "name": "email-re-verify-reminder",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nRe-verify reminder\n\nA work-email verification approaches its re-check window.\n\nSent by: Email\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-re-verify-reminder-1280.png",
+      "sha256": "639f80a81994ddd1313a357dc31841faa324819da4a4e23af402eb409d1e77ee"
+    },
+    {
+      "name": "email-report-outcome",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\nS\nSKIPWAIT.ME · now\n\nUpdate on your report\n\nIn-app: skipwait.me notifications\n\nReport outcome\n\nOur safety team reviewed your report and took action. Thank you for flagging it.\n\nFired when: A safety report the user filed reaches resolved or dismissed.\n\nSent by: In-app\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-report-outcome-1280.png",
+      "sha256": "0252f044eca9fed8864476af08268e3caa4a30a3984dd9c9ad7b9b254425769a"
+    },
+    {
+      "name": "email-payment-receipt-failed",
+      "path": "/emails",
+      "width": 1280,
+      "height": 900,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nPayment receipt / failed\n\nA purchase or subscription event confirms — or a payment fails with next steps.\n\nSent by: Email\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-payment-receipt-failed-1280.png",
+      "sha256": "616e454463299004debcbd253f2df61c3e8db10550d9df543d965016812d78ba"
+    },
+    {
+      "name": "android",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall appNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "android-390.png",
+      "sha256": "51e406659d8edda8c7aa137cee7d0f53eddebb52c641638a2c6e2bd002a3d89a"
+    },
+    {
+      "name": "gallery-install-iphone-",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAdd skipwait.me to your Home Screen\n1\nTap\nShare in Safari\n2\nChoose “Add to Home Screen”\nGot it\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-install-iphone--390.png",
+      "sha256": "b3e686b211e2563427069b2ac1b293c52083986d8bc423e3571acf0a37cbda64"
+    },
+    {
+      "name": "gallery-push-permission",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-push-permission-390.png",
+      "sha256": "c66d9baf3959b944a3ed09984971fa0c871e2baba53daac2740ee022f9a79c29"
+    },
+    {
+      "name": "gallery-offline",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nYou're offline. Showing saved info.\nNo connection.\n\nYour drafts are saved on this device. Send them when you're back online.\n\nTry again\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-offline-390.png",
+      "sha256": "c9e51a8e3616a2fdedb60b2578de503e8346c95a5e4fda091d2af9a6cbde8868"
+    },
+    {
+      "name": "gallery-slow-connection",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nSlow connection — pages may take a moment.\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-slow-connection-390.png",
+      "sha256": "4d7d4813bc53ec63f09327569f88c46e4e15035ef2c1c278cef68c79541e6d38"
+    },
+    {
+      "name": "gallery-not-found",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nThis door doesn't lead anywhere.\n\nThe page may have moved, or the link was mistyped.\n\nExplore companies\nGo home\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-not-found-390.png",
+      "sha256": "7de921376ea5ccc867f0fc63cba447fb4eec8f5e4813c94fb75412068045e224"
+    },
+    {
+      "name": "gallery-something-went-wrong",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nSomething went wrong on our side.\n\nNothing you did. Your asks and messages are safe.\n\nTry again\nContact support\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-something-went-wrong-390.png",
+      "sha256": "f1343698ddb997d6598e1431cf0a3e5515a1fc8b34c7949813b984f8a3997027"
+    },
+    {
+      "name": "gallery-payment-failed",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nPayment didn't go through.\n\nYour card was declined by your bank. You haven't been charged, and your plan hasn't changed.\n\nTry another card\nContact support\nSome banks block international payments — check your card settings.\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-payment-failed-390.png",
+      "sha256": "615d37142dd2f8cf84abc60ed05db2456ee9fc460e31d4697df82d5d2e06b2e4"
+    },
+    {
+      "name": "gallery-loading",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\n\nLoading\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "gallery-loading-390.png",
+      "sha256": "4237f7eab8ae7dc9fb31f851e1df0fc29ee638e3f12bfb86b60b3f2c2d21aa26"
+    },
+    {
+      "name": "android-dismiss",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\n\nInstall dismissed.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "android-dismiss-390.png",
+      "sha256": "b45799d674b66bb2d5004fa9bb62ec87cb29545a0c11d085d261e228005c3a7f"
+    },
+    {
+      "name": "android-reopen",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall appNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "android-reopen-390.png",
+      "sha256": "51e406659d8edda8c7aa137cee7d0f53eddebb52c641638a2c6e2bd002a3d89a"
+    },
+    {
+      "name": "iphone-dismiss",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\n\nInstall instructions dismissed.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "iphone-dismiss-390.png",
+      "sha256": "975fae5a0192f56ef5d200e4b9351b45d9a0644b74c499971a3c7b12ff2e44d7"
+    },
+    {
+      "name": "iphone-reopen",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAdd skipwait.me to your Home Screen\n1\nTap\nShare in Safari\n2\nChoose “Add to Home Screen”\nGot it\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "iphone-reopen-390.png",
+      "sha256": "b3e686b211e2563427069b2ac1b293c52083986d8bc423e3571acf0a37cbda64"
+    },
+    {
+      "name": "install-unavailable",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall app\n\nYour browser hasn't offered install here. Use its menu: Install app, or Add to Home screen.\n\nNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "install-unavailable-390.png",
+      "sha256": "015fa74318ca88af00c31e72bb1dceb7bfe23c82a72ae42bacb77c127e2d3ca8"
+    },
+    {
+      "name": "install-accepted",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 1,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall app\n\nInstalling skipwait.me on this device.\n\nNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "install-accepted-390.png",
+      "sha256": "dfdacfdf79173a17c0d045b352175186324c90432cb3fdb752bb9290e6fde032"
+    },
+    {
+      "name": "install-dismissed",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 1,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall app\n\nInstall dismissed. You can install later from the browser menu.\n\nNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "install-dismissed-390.png",
+      "sha256": "15ab8339730605037a6473e578beddf8529ec3fd74c208756a5dddf21cbac9fc"
+    },
+    {
+      "name": "install-error",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 1,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nS.\nInstall skipwait.me\nOne tap from your home screen\nInstall app\n\nThe install prompt didn't open. Use the browser menu instead.\n\nNot now\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "install-error-390.png",
+      "sha256": "aae2310746b373fd1785053e02ec66500de7eb46f0eaf47e123a4c69ba6717b0"
+    },
+    {
+      "name": "push-granted",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 1,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nNotifications are allowed in this browser.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-granted-390.png",
+      "sha256": "948b4589a8472040d25ad88798e1dbf1843eb932e0e4775995d211cad77079f9"
+    },
+    {
+      "name": "push-denied",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 1,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nNotifications are blocked. Allow them in your browser settings to change that.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-denied-390.png",
+      "sha256": "114e43c8966166669343b74ae68de432381c5d0079f611d6b3532fd923678344"
+    },
+    {
+      "name": "push-default",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 1,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nNotifications stay off until you allow them.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-default-390.png",
+      "sha256": "23c66e06478cc1a72047e5aa88008a7a7de159ec5824c8574dd5346f3f854bec"
+    },
+    {
+      "name": "push-error",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 1,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nThe browser didn't show the permission prompt. Try again from your browser settings.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-error-390.png",
+      "sha256": "25957e075f3d1727b5c4d11c18d58124a80213fec159bf7206030a3f1c153f5a"
+    },
+    {
+      "name": "push-absent",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nThis browser doesn't support notifications.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-absent-390.png",
+      "sha256": "b7ff2a8a04fdd0be6e99d26101d83dbbc9a6dc720fe233668b71ba16872afbab"
+    },
+    {
+      "name": "push-later",
+      "path": "/app-states",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "See how skipwait.me behaves when things go wrong.\n\nHow skipwait.me behaves when installing, asking permission, or when something goes wrong.\n\nScreen:\nInstall (Android)\nInstall (iPhone)\nPush permission\nOffline\nSlow connection\nNot found\nSomething went wrong\nPayment failed\nLoading\nAllow notifications?\n\nskipwait.me sends no device push today. This screen only sets the browser permission.\n\nAllowMaybe later\n\nNotifications stay off until you allow them.\n\nYour next step\n\nReference gallery of edge states.\n\nGo home",
+      "screenshot": "push-later-390.png",
+      "sha256": "23c66e06478cc1a72047e5aa88008a7a7de159ec5824c8574dd5346f3f854bec"
+    },
+    {
+      "name": "offline",
+      "path": "/offline",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "You're offline. Showing saved info.\nYou're offline.\n\nYour drafts are saved on this device. Send them when you're back online.\n\nYour next step\n\nReconnect, then retry.\n\nTry again",
+      "screenshot": "offline-390.png",
+      "sha256": "a96221cf2041ffdedc25bb2608faca577ef1bc36605407c13dd19d614a8c887b"
+    },
+    {
+      "name": "offline-draft",
+      "path": "/offline",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "You're offline. Showing saved info.\nYou're offline.\n\nYour drafts are saved on this device. Send them when you're back online.\n\nhttps://careers.synthetic.example/jobs/long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-long-123\n\nYour next step\n\nReconnect, then retry.\n\nTry again",
+      "screenshot": "offline-draft-390.png",
+      "sha256": "f359109f0ea5a393a2679cbc8581f560522d693be2d6d5744e618629904de437"
+    },
+    {
+      "name": "not-found",
+      "path": "/not-a-real-system-route",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "404\n\nThis page isn't here.\n\nThe page may have moved, or the link was mistyped.\n\nYour next step\n\nPick the door that gets you back on track.\n\nGo home\nExplore companies",
+      "screenshot": "not-found-390.png",
+      "sha256": "f8729c73f80fc07e6f40c10c25a4effd190d4742f47e3d5b6f567dcd26b133d2"
+    },
+    {
+      "name": "email-work-email-code",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nYour skipwait.me verification code\n\nYour skipwait.me verification code is ⟨6-digit code⟩. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email - nothing changes.\n\nFired when: a referrer requests a one-time code. 6 digits, 10-minute expiry, 5 attempts.\n\nSent by: Email\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-work-email-code-390.png",
+      "sha256": "f3468780ef5a0c8ebd4025ea2a5190c9210e38235e558881dfc433bb70bb6b64"
+    },
+    {
+      "name": "email-password-reset",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nReset your skipwait.me password\n\nYou asked to reset your skipwait.me password. This link works for 1 hour, once: ⟨reset link⟩\n\nIf you did not ask for this, ignore this email — nothing changes. Passwords are managed through secure sign-in; you can also continue with email from the sign-in page.\n\nFired when: someone asks to reset a password. Neutral reply: always “check your email”, whether the account exists or not. 1-hour single-use link.\n\nSent by: Email\n\nReset link (in the email body)\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-password-reset-390.png",
+      "sha256": "c42ae2be2a52e1bece0d25556268d7285895c9670e0ca34fb3606bf72c5544b5"
+    },
+    {
+      "name": "email-welcome",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nWelcome\n\nSent after first sign-in with the honest next step for the account type.\n\nSent by: Email\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-welcome-390.png",
+      "sha256": "7272fb82ec0b8c05ee969ea1b54bea036b293f52e8b553b2a0b7399575b12eb5"
+    },
+    {
+      "name": "email-request-claimed",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nYour referral request was claimed — ⟨company⟩\n\nA verified employee at ⟨company⟩ claimed your private referral request.\n\nFired when: A verified employee claims a pending referral request. Seeker sees company domain only.\n\nSent by: Email + in-app\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-request-claimed-390.png",
+      "sha256": "c04ccd23bc1d96c8bc92641a378363262709b87faf20e16489295b4ff910f10f"
+    },
+    {
+      "name": "email-referral-accepted",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nYour referral was accepted — ⟨company⟩\n\nA verified employee at ⟨company⟩ accepted your private referral request.\n\nFired when: A referrer accepts. Messaging opens; identities follow the accept rules.\n\nSent by: Email + in-app\n\nOpen conversation\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-referral-accepted-390.png",
+      "sha256": "b76641fa9d496634f548653d97f0c6cb65451c1a6e8a671f6ca825cab4cc0c48"
+    },
+    {
+      "name": "email-referral-passed",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nUpdate on your referral request — ⟨company⟩\n\nYour request at ⟨company⟩ remains visible to other verified employees.\n\nFired when: A referrer passes. The referral request stays active for other employees; the slot is not freed.\n\nSent by: Email + in-app\n\nFind another referrer\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-referral-passed-390.png",
+      "sha256": "6a3bebc23ae3f4f6189e345bb842a7d8da8c02c33a9174013970691a6540f1d5"
+    },
+    {
+      "name": "email-new-message",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nIn-app: skipwait.me notifications\n\nNew message\n\nA private message arrives in an accepted conversation.\n\nSent by: In-app\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-new-message-390.png",
+      "sha256": "8a684a1c32ec3b7b56e3abb63a019d4f32c826fba9ac143f19698894ac1af203"
+    },
+    {
+      "name": "email-waiting-for-coverage",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nIn-app: skipwait.me notifications\n\nWaiting for coverage\n\nA referral request has no verified employees available yet at the company.\n\nSent by: In-app\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-waiting-for-coverage-390.png",
+      "sha256": "c6f91e9f03db3216b9dc3d13321b0b9dda600861066ff4f946592c0fa44350a5"
+    },
+    {
+      "name": "email-slot-opened",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nPrivate referral review available at ⟨company⟩\n\nA referral review is now available at ⟨company⟩\n\nA verified employee opened review capacity for your private request. This does not guarantee an introduction, interview, or hiring outcome.\n\nFired when: A referrer opens capacity and waiting referral requests become reviewable.\n\nSent by: Email\n\nView private request\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-slot-opened-390.png",
+      "sha256": "34b2ab008df4425a3f81d8e59dac69e181133467547df0336ed1a27b6ecebd92"
+    },
+    {
+      "name": "email-review-ready",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nPrivate referral review at ⟨company⟩\n\nA private review is ready at ⟨company⟩\n\nReviewing is optional and never costs you anything. Sign in with your verified company email before any decision is recorded.\n\nOpening this link never records a decision. Review and confirm on skipwait.me.\n\nFired when: A private review link is prepared for a verified employee. Never includes candidate content.\n\nSent by: Email + Slack\n\nOpen private review\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-review-ready-390.png",
+      "sha256": "bdc67051d23b7c9fcf90a383b9225e9f6c21d5e4effdc86e1c51de8a6beec61b"
+    },
+    {
+      "name": "email-re-verify-reminder",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nRe-verify reminder\n\nA work-email verification approaches its re-check window.\n\nSent by: Email\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-re-verify-reminder-390.png",
+      "sha256": "f7212411115a216ff769f9594cf6a7c1f1c450b6b0622bb01fb5ac4aa04c1fe3"
+    },
+    {
+      "name": "email-report-outcome",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\nS\nSKIPWAIT.ME · now\n\nUpdate on your report\n\nIn-app: skipwait.me notifications\n\nReport outcome\n\nOur safety team reviewed your report and took action. Thank you for flagging it.\n\nFired when: A safety report the user filed reaches resolved or dismissed.\n\nSent by: In-app\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-report-outcome-390.png",
+      "sha256": "4194739a36612b92685b2a561ed2407d46b84a84524bea8fc86ee41691ec7f63"
+    },
+    {
+      "name": "email-payment-receipt-failed",
+      "path": "/emails",
+      "width": 390,
+      "height": 844,
+      "synthetic": true,
+      "roots": 1,
+      "overflow": 0,
+      "permissionCalls": 0,
+      "installCalls": 0,
+      "calls": [
+        {
+          "method": "GET",
+          "path": "/api/trpc/auth.me",
+          "body": null
+        }
+      ],
+      "pageErrors": [],
+      "unmatched": [],
+      "visibleText": "EMAIL & IN-APP TEMPLATES\nSee every message skipwait.me sends.\nWork-email code\nPassword reset\nWelcome\nRequest claimed\nReferral accepted\nReferral passed\nNew message\nWaiting for coverage\nSlot opened\nReview ready\nRe-verify reminder\nReport outcome\nPayment receipt / failed\n\nFrom: skipwait.me <noreply@skipwait.me>\n\nPayment receipt / failed\n\nA purchase or subscription event confirms — or a payment fails with next steps.\n\nSent by: Email\n\n3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money. skipwait.me never asks for your password by email.\n\nYour next step\n\nReference page: these are the messages skipwait.me sends.\n\nGo home",
+      "screenshot": "email-payment-receipt-failed-390.png",
+      "sha256": "4ab634a20e47d96bd25f86aab9b51a62c34150d003a45352ff708d76c54815b4"
+    }
+  ]
+}

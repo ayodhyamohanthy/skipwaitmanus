@@ -1,11 +1,14 @@
 import { runBillingReviewOutbox } from "./billingReviewOutbox";
+import { createJobCatalogSync } from "./jobSources/sync";
 // The scheduled jobs the Worker cron runs (contract: shared/scheduledJobs.ts).
 // Each window runs at most once (server/scheduledJobRunner.ts); a job's window
 // is a whole number of cron periods so every period lands in exactly one.
 import { ASK_TTL_DAYS } from "../shared/referral";
 import { createAskExpirySweep } from "./askExpirySweep";
+import { createAskInviteSweep } from "./askInviteSweep";
 import { createCoverageDeliverySweep } from "./coverageDeliverySweep";
 import { createDailyMoneyCheck } from "./dailyMoneyCheck";
+import { createDailyOpsCheck } from "./dailyOpsCheck";
 import { createFirstLookRelease } from "./firstLookRelease";
 import { createPlanCreditCycleJob } from "./planCreditCycleJob";
 import { createReferralTimers } from "./referralTimers";
@@ -13,6 +16,10 @@ import { createChargebeePendingReconcile, createSubscriptionPendingReconcile } f
 import { createDataExportSweep } from "./dataExport";
 import { createWorkEmailReverifySweep } from "./workEmailReverifySweep";
 import { createWorkEmailOtpPurgeJob } from "./workEmailOtpPurge";
+import { createAuthActivityRetention } from "./authActivityRetention";
+import { createReviewDeliveryRetry } from "./reviewDeliveryRetry";
+import { createAgentAutoSendDigest } from "./agentAutoSendDigest";
+import { createPoolReviewEmail } from "./poolReviewEmail";
 import type { ScheduledJobDefinition } from "./scheduledJobRunner";
 
 const MINUTE = 60_000;
@@ -24,6 +31,13 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     windowMs: 60 * MINUTE,
     leaseMs: 5 * MINUTE,
     run: createAskExpirySweep(),
+  },
+  {
+    name: "ask-invite-expiry",
+    description: "Expires BYOR links and reservations, releases waiting asks, and sends one-time notices",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createAskInviteSweep(),
   },
   {
     name: "first-look-release",
@@ -98,5 +112,55 @@ export const SCHEDULED_JOBS: readonly ScheduledJobDefinition[] = [
     leaseMs: 15 * MINUTE,
     run: createDailyMoneyCheck(),
   },
+  {
+    name: "daily-ops-check",
+    description: "Read-only daily audit of stuck review email, request drought, exhausted jobs and unused work-email codes; emails only counts and row ids, with a Monday all-clear",
+    windowMs: 24 * 60 * MINUTE,
+    leaseMs: 15 * MINUTE,
+    run: createDailyOpsCheck(),
+  },
   { name: "billing-review-retry", description: "Retries durable billing review notifications; expired ambiguous submissions need operator reconciliation", windowMs: 60 * MINUTE, leaseMs: 5 * MINUTE, run: () => runBillingReviewOutbox() },
+  {
+    // D-174-job-catalog (packet section 5.5): daily refresh of catalog rows
+    // from verified boards. Does nothing while JOB_CATALOG_ENABLED is false.
+    name: "job-catalog-sync",
+    description: "Refreshes catalog jobs from verified company boards: upserts the full fetch, closes jobs missing from it, marks a failed source failing without touching jobs",
+    windowMs: 24 * 60 * MINUTE,
+    leaseMs: 15 * MINUTE,
+    run: createJobCatalogSync(),
+  },
+  {
+    // REL-review-email-retry (D-212): resends referrer review emails left failed,
+    // pending or mid-send, up to 5 attempts, then emails the owner once.
+    name: "review-delivery-retry",
+    description: "Resends referrer review emails that failed, never left pending or died mid-send, with each referrer's existing link, up to 5 attempts; the fifth failure emails the owner",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createReviewDeliveryRetry(),
+  },
+  {
+    // SKIPPY-7 (D-201 (4), D-060): daily digest of auto-sent referral requests.
+    name: "agent-auto-send-digest",
+    description: "Emails seekers a daily digest of referral requests auto-sent by their assistants, bounded to 100 users per run and keyed by date",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createAgentAutoSendDigest(),
+  },
+  {
+    // D-174-pool-nudges part 2 (D-384): the review email for a request delivered from the waiting pool, through
+    // the existing claim, at most one per referrer per UTC day (D-060). Does nothing while POOL_NUDGES_ENABLED is false.
+    name: "pool-review-email",
+    description: "Sends the review email for requests delivered from the waiting pool, oldest first, at most one per referrer per day; failures fall to review-delivery-retry",
+    windowMs: 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createPoolReviewEmail(),
+  },
+  {
+    // ADMIN-activity-log (D-393): sign-in rows in the admin activity log are kept 90 days.
+    name: "auth-activity-retention",
+    description: "Deletes sign-in rows (auth.* events) from the admin activity log once they are older than 90 days, in bounded batches",
+    windowMs: 24 * 60 * MINUTE,
+    leaseMs: 5 * MINUTE,
+    run: createAuthActivityRetention(),
+  },
 ];

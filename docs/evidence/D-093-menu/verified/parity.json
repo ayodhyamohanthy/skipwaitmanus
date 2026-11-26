@@ -1,0 +1,21 @@
+{
+  "task": "D-093.menu",
+  "normalProductionRegistryUnchanged": true,
+  "englishOnlyPairs": [
+    {
+      "width": 1280,
+      "before": "before-menu-1280.png",
+      "after": "after-menu-1280.png",
+      "englishOnlyPixelIdentical": true,
+      "textAndRequestMultisetsIdentical": true
+    },
+    {
+      "width": 390,
+      "before": "before-menu-390.png",
+      "after": "after-menu-390.png",
+      "englishOnlyPixelIdentical": true,
+      "textAndRequestMultisetsIdentical": true
+    }
+  ],
+  "fixtureScreens": 8
+}

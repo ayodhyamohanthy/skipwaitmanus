@@ -10,6 +10,45 @@ import { setDisplayPrefs, useDisplayPrefs, type DisplayPrefs } from "@/lib/displ
 import { Link } from "wouter";
 import { Panel, field } from "@/components/kit/preview-kit";
 import { browserPaymentRoute, type PaymentRoute } from "@/lib/paymentRoute";
+import { visibleLanguages } from "../../../../shared/languages";
+import { setLanguage, useLanguage } from "@/lib/i18n";
+
+/**
+ * D-093.picker (packet §5.4, C5): the footnote is conditional, and this kit panel keeps its own copy of the rule
+ * because the goal twins may not import it and a kit panel may not import goal modules (goalBoundary tests).
+ * Twin: the `regionFootnote` helper the goal Region section keeps in its language picker module — keep both wordings identical.
+ */
+export function regionFootnote(languageCount: number): string {
+  if (languageCount >= 2) return "Language follows your choice. Currency follows this device. Dates and times in your requests and alerts use your time zone and date format.";
+  return "English is the language available today. Currency follows this device. Dates and times in your requests and alerts use your time zone and date format.";
+}
+
+/** D-093.picker: the panel's own language select. The packet allows this instead of the goal component, and the
+ * the boundary tests forbid a kit panel importing goal modules. Behaviour matches the goal picker. */
+function RegionLanguageField({ fallback }: { fallback: string }) {
+  const active = useLanguage();
+  const { isSignedIn, getToken } = useAuth();
+  const languages = visibleLanguages();
+  if (languages.length < 2) return <RegionField label="Language" value={fallback} />;
+  return (
+    <label className="text-sm font-medium">Language
+      <select aria-label="Language" className={field} value={active} onChange={event => {
+        const code = languages.find(entry => entry.code === event.target.value)?.code;
+        if (!code) return;
+        setLanguage(code);
+        if (!isSignedIn) return;
+        void (async () => {
+          try {
+            const token = await getToken();
+            await fetch("/api/account/preferences", { method: "PUT", credentials: "include", headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ language: code }) });
+          } catch { /* the device keeps the choice */ }
+        })();
+      }}>
+        {languages.map(entry => <option key={entry.code} value={entry.code} lang={entry.code} dir={entry.dir}>{entry.endonym}</option>)}
+      </select>
+    </label>
+  );
+}
 
 export type RegionValues = { language: string; timeZone: string; currency: PaymentRoute; dateSample: string };
 
@@ -77,7 +116,7 @@ export function RegionPanel({ values = deviceRegion() }: { values?: RegionValues
     <Globe2 className="mb-2 size-5" aria-hidden="true" />
     <h2 className="text-lg font-semibold">Language &amp; region</h2>
     <div className="mt-4 grid gap-4 sm:grid-cols-2">
-      <RegionField label="Language" value={values.language} />
+      <div className="text-sm font-medium"><RegionLanguageField fallback={values.language} /></div>
       <label className="text-sm font-medium">Time zone
         <select className={field} aria-describedby="region-footnote" value={prefs.timeZone ?? ""} onChange={event => { const timeZone = event.target.value || null; void save({ ...prefs, timeZone }, { timeZone }); }}>
           <option value="">{deviceZone} · this device</option>
@@ -94,6 +133,6 @@ export function RegionPanel({ values = deviceRegion() }: { values?: RegionValues
     </div>
     {error ? <p role="alert" className="mt-3 text-sm text-destructive">{error}</p> : null}
     <p className="mt-4 rounded-xl bg-muted p-3 text-sm">Plans and credits are priced in <strong>{values.currency}</strong> on this device. Billing from another country? Switch it on <Link href="/plans" className="font-semibold underline underline-offset-4">Plans</Link>.</p>
-    <p id="region-footnote" className="mt-2 text-xs text-muted-foreground">Language and currency follow this device. Dates and times in your requests and alerts use your time zone and date format.</p>
+    <p id="region-footnote" className="mt-2 text-xs text-muted-foreground">{regionFootnote(visibleLanguages().length)}</p>
   </Panel>;
 }

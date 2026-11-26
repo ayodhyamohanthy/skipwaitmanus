@@ -2,7 +2,7 @@ import { getTableColumns } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import type { MySqlTable } from "drizzle-orm/mysql-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { canonicalPeople, jobs, notifications, operationalActivityLogs, planCreditGrants, profiles, promoCreditGrants, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions, userBlocks, users } from "../drizzle/schema";
+import { askInviteLinks, canonicalPeople, jobs, notifications, operationalActivityLogs, planCreditGrants, profiles, promoCreditGrants, referralAvailabilitySlots, referralDocumentAccessGrants, referralRequestPasses, referralRequests, referralTransitionEvents, tokenBalances, tokenTransactions, userBlocks, users } from "../drizzle/schema";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { createInMemoryDrizzle, type Row } from "./inMemoryDrizzle.testkit";
 import { claimCompanyReferralRequest, deliverWaitingAsksToReferrer, expireStalePendingReferralRequest, oneClickReviewReferralRequest, tryDeliverWaitingAsk, withdrawCompanyReferralRequest } from "./db";
@@ -278,5 +278,25 @@ describe("an ask delivered to a referrer who never picked it up", () => {
     expect(askById(REQUEST_ID)?.status).toBe("approved");
     expect(await expire(VISIBLE + 8 * DAY_MS)).toMatchObject({ expired: false, status: "approved" });
     expect(reversalsOf(spendId)).toEqual([]);
+  });
+});
+
+describe("ordinary delivery with BYOR disabled", () => {
+  it("hands off a waiting request without reading or locking invite rows", async () => {
+    seed();
+    vi.stubEnv("BYOR_LINK_ENABLED", "false");
+    store.failReads(askInviteLinks);
+
+    expect(await deliverWaitingAsksToReferrer(REFERRER, "acme.com", NOW.getTime())).toEqual({ delivered: 1, held: 0, skipped: 0 });
+    expect(askById(REQUEST_ID)).toMatchObject({ referrerId: REFERRER, waitingForCoverage: false });
+  });
+
+  it("retries a waiting request without reading or locking invite rows", async () => {
+    seed();
+    vi.stubEnv("BYOR_LINK_ENABLED", "false");
+    store.failReads(askInviteLinks);
+
+    expect(await tryDeliverWaitingAsk(REQUEST_ID, NOW.getTime())).toMatchObject({ outcome: "delivered", referrerId: REFERRER });
+    expect(askById(REQUEST_ID)).toMatchObject({ referrerId: REFERRER, waitingForCoverage: false });
   });
 });

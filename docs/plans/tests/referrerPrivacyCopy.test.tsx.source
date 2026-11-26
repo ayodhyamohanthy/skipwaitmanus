@@ -1,0 +1,731 @@
+// @vitest-environment jsdom
+/**
+ * Referrer privacy-copy regression, red-first, revision 6.
+ * Packet: docs/plans/UI-referrer-privacy-copy-tests.md
+ *
+ * Final collected path: client/src/components/referrerPrivacyCopy.test.tsx
+ * Source of record:     docs/plans/tests/referrerPrivacyCopy.test.tsx.source
+ *
+ * Scope: pre-choice copy only. The three shipped components are rendered as they
+ * are (no target mocks, no handler edits, no config edits, no network). Every
+ * case proves that a static pre-choice render sends no request and never reaches
+ * an OTP step: no button is clicked and no code is entered anywhere in this file.
+ *
+ * Expected RED on unchanged product (dc6492 copy): all three paths still render
+ * "See the role, resume, and forwardable note before you choose." That promises
+ * resume visibility before the choice, while the privacy controls hide the name
+ * and resume until acceptance, and file access after acceptance also requires
+ * active document access. The truthful boundary sentence and the conditional
+ * access sentence are not authored yet, so the positive cases are RED too.
+ *
+ * How the copy is judged (three bounded checks, no clause grammar, no prose engine):
+ *  - Promise check: a resume visibility claim is exempt only when an
+ *    acceptance-anchored marker ends before the claim verb, or when the marker
+ *    sits in the claim's own comma segment AND the sentence carries no undenied
+ *    pre-choice marker AND no immediacy word ("now", "immediately", "right
+ *    away", "today", "already") is detached from that marker. A pre-choice
+ *    marker being present and undenied therefore always keeps the claim a
+ *    promise, whatever post marker shares the segment.
+ *  - Boundary check: name, resume, concealment and a pre-choice marker must all
+ *    appear in ONE sentence, in the first or third person.
+ *  - Access check: inside one comma segment, document-qualified access must carry
+ *    a live link with a positive active state, or the bounded "until ... ends"
+ *    form, and the same segment must bind a file noun outside the access phrase
+ *    to a visibility verb that does not sit after the access phrase. Negated or
+ *    ended states, unqualified access nouns, a later file verb, or a permanence
+ *    word in the same sentence fail.
+ *
+ * Stated limits, so the header is not read as more than it is:
+ *  - Closed marker classes only. No paraphrase generality and no claim to parse
+ *    arbitrary English. Prose that expresses the same meaning outside these
+ *    classes is not covered.
+ *  - Comma segments are the only locality model. Punctuation therefore matters:
+ *    a condition placed in a different comma segment from the file claim does not
+ *    count.
+ *  - A FRONTED condition ("While your document access is active, you can open the
+ *    file after you accept") is deliberately NOT covered, and neither is a file
+ *    claim split from its condition by other clauses. Future repair copy is
+ *    constrained to: file claim first, condition after, same comma segment.
+ *  - Access must be document-qualified ("document access", "access to the
+ *    files"); bare "your access" is deliberately not accepted.
+ *  - Cross-sentence conditionality is refused on purpose, because accepting it is
+ *    what produced the earlier stitching defect.
+ *  - Absence alone never passes: all three positive assertions are required.
+ *  - Nothing here speaks to backend authorization, document endpoints, OTP
+ *    delivery, login acceptance or data leakage. The no-network proof is a fetch
+ *    stub for these three components only.
+ *  - One intentional wording pin: the preserved promise keeps "nothing ... sent"
+ *    and "your account" because the packet names that released promise.
+ */
+import React from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+
+import { ReferrerOtpSignIn } from "./ReferrerOtpSignIn";
+import { WorkEmailSignIn } from "./WorkEmailSignIn";
+import { GoalOtpSignIn } from "@/pages/goal/referrer/GoalOtpSignIn";
+
+const fetchMock = vi.fn();
+
+/* ------------------------------------------------------------------ *
+ * Copy extraction
+ * ------------------------------------------------------------------ */
+
+function normalize(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Leaf marketing-copy blocks. Form labels and sr-only text are excluded so a
+ * future field label such as "Your name" cannot satisfy a copy assertion.
+ */
+function copyBlocks(container: HTMLElement): string[] {
+  const blocks: string[] = [];
+  container.querySelectorAll("p, li, span, label, h1, h2, h3, h4, h5, h6, div").forEach(element => {
+    if (element.children.length > 0) return;
+    if (element.closest("label") !== null) return;
+    if (/\bsr-only\b/.test(element.className)) return;
+    const text = normalize(element.textContent ?? "");
+    if (text !== "") blocks.push(text);
+  });
+  return blocks;
+}
+
+function splitSentences(text: string): string[] {
+  return text.split(/(?<=[.!?])\s+/).map(normalize).filter(sentence => sentence !== "");
+}
+
+function copySentences(container: HTMLElement): string[] {
+  return copyBlocks(container).flatMap(splitSentences);
+}
+
+function copyText(container: HTMLElement): string {
+  return copyBlocks(container).join(" ");
+}
+
+type Match = { index: number; end: number; text: string };
+
+/** All matches with offsets, without leaking lastIndex state between calls. */
+function matchesOf(text: string, pattern: RegExp): Match[] {
+  const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+  const scan = new RegExp(pattern.source, flags);
+  const found: Match[] = [];
+  let match = scan.exec(text);
+  while (match !== null) {
+    found.push({ index: match.index, end: match.index + match[0].length, text: match[0] });
+    if (match.index === scan.lastIndex) scan.lastIndex += 1;
+    match = scan.exec(text);
+  }
+  return found;
+}
+
+function indicesOf(text: string, pattern: RegExp): number[] {
+  return matchesOf(text, pattern).map(match => match.index);
+}
+
+type Segment = { text: string; start: number; end: number };
+
+/** Comma segments only. This is the whole locality model. */
+function commaSegments(sentence: string): Segment[] {
+  const segments: Segment[] = [];
+  let start = 0;
+  for (let cursor = 0; cursor <= sentence.length; cursor += 1) {
+    if (cursor === sentence.length || sentence[cursor] === ",") {
+      const text = sentence.slice(start, cursor).trim();
+      if (text !== "") segments.push({ text, start, end: cursor });
+      start = cursor + 1;
+    }
+  }
+  return segments;
+}
+
+function segmentOf(sentence: string, index: number): Segment | null {
+  const segments = commaSegments(sentence);
+  return segments.find(segment => index >= segment.start && index < segment.end) ?? segments[0] ?? null;
+}
+
+/* ------------------------------------------------------------------ *
+ * Closed marker classes
+ * ------------------------------------------------------------------ */
+
+/** Pre-choice markers accept first and third person, because the packet does too. */
+const PRE_ACCEPTANCE =
+  /\b(?:before (?:you |the referrer |they )?(?:choose|chooses|choosing|accept|accepts|accepting|decide|deciding)|until (?:you |the referrer |they )?(?:accept|accepts|choose|chooses)|prior to (?:acceptance|accepting|choosing)|pre-acceptance|before acceptance)\b/i;
+
+/** Post markers must be anchored to acceptance or claiming, never to any other time. */
+const POST_ACCEPTANCE =
+  /\bpost-acceptance\b|\b(?:after|once|when|on|following|upon)\b(?:\s+[\w']+){0,3}\s(?:accept(?:s|ed|ing)?|acceptance|claim(?:s|ed|ing)?|approv(?:e|ed|es|al))\b/i;
+
+const CONCEALMENT =
+  /\b(?:hidden|hide|hides|private|locked|withheld|not (?:shown|visible|shared|revealed|sent)|never (?:shown|shared|revealed)|isn't (?:shown|visible|shared)|stays? (?:hidden|private)|remain(?:s)? (?:hidden|private)|only after)\b/i;
+
+const FILE_NOUN = /\b(?:file|files|document|documents|resume|résumé|attachment|attachments)\b/i;
+
+const RESUME_NOUN = /\b(?:resume|résumé|cv)\b/gi;
+
+const VISIBILITY_VERB =
+  /\b(?:see|sees|seeing|view|views|preview|previews|read|reads|open|opens|inspect|inspects|browse|browses|access|accesses|get|gets|receive|receives|review|reviews|download|downloads|examine|examines)\b/gi;
+
+const NEGATOR =
+  /\b(?:not|never|no|cannot|can't|won't|wouldn't|shouldn't|isn't|aren't|don't|doesn't|didn't|unable|nothing)\b|n't\b/i;
+
+/** "not your resume", "never the resume": the noun itself is denied. */
+const NOUN_NEGATION = /\b(?:not|never|no)\b(?:\s+\w+){0,2}\s*$/i;
+
+/** Immediacy words make a claim current, so they cannot be paired with a later condition. */
+const IMMEDIACY = /\b(?:now|immediately|right away|today|already)\b/gi;
+
+/* ------------------------------------------------------------------ *
+ * Promise check: negation scope, comma-segment locality, immediacy and
+ * undenied pre-choice markers
+ * ------------------------------------------------------------------ */
+
+function negatedVerb(sentence: string, verbIndex: number): boolean {
+  const prefix = sentence.slice(Math.max(0, verbIndex - 48), verbIndex);
+  const lastBreak = Math.max(prefix.lastIndexOf(","), prefix.lastIndexOf(";"), prefix.lastIndexOf("."));
+  return NEGATOR.test(prefix.slice(lastBreak + 1));
+}
+
+function negatedNoun(sentence: string, nounIndex: number): boolean {
+  return NOUN_NEGATION.test(sentence.slice(Math.max(0, nounIndex - 32), nounIndex));
+}
+
+/** A verb and a noun may sit in one comma list, but never across a sentence break. */
+function noSentenceBreak(sentence: string, left: number, right: number): boolean {
+  return !/[.;]/.test(sentence.slice(Math.min(left, right), Math.max(left, right)));
+}
+
+type ResumeClaim = { verbIndex: number; nounIndex: number };
+
+/** Unnegated visibility claims about the resume inside one sentence. */
+function resumeVisibilityClaims(sentence: string): ResumeClaim[] {
+  const verbs = indicesOf(sentence, VISIBILITY_VERB);
+  const nouns = indicesOf(sentence, RESUME_NOUN);
+  const claims: ResumeClaim[] = [];
+  nouns.forEach(nounIndex => {
+    verbs.forEach(verbIndex => {
+      if (Math.abs(verbIndex - nounIndex) > 80) return;
+      if (!noSentenceBreak(sentence, verbIndex, nounIndex)) return;
+      if (negatedVerb(sentence, verbIndex)) return;
+      if (negatedNoun(sentence, nounIndex)) return;
+      claims.push({ verbIndex, nounIndex });
+    });
+  });
+  return claims;
+}
+
+/**
+ * An immediacy word inside the claim segment blocks the same-segment exemption
+ * unless it is attached to the post marker itself ("immediately after you
+ * accept"). This closes the comma-free coordination leak.
+ */
+function immediacyBlocksPostfixScope(sentence: string, segment: Segment, verbIndex: number): boolean {
+  const attached = new RegExp(`^(?:${POST_ACCEPTANCE.source})`, POST_ACCEPTANCE.flags);
+  return matchesOf(sentence, IMMEDIACY).some(word => {
+    if (word.index < segment.start || word.index >= segment.end) return false;
+    if (word.end <= verbIndex) return false;
+    return !attached.test(sentence.slice(word.end).trimStart());
+  });
+}
+
+/** A pre-choice marker that is itself denied ("but not before you choose"). */
+function negationBefore(sentence: string, index: number): boolean {
+  const prefix = sentence.slice(0, index);
+  const lastBreak = Math.max(prefix.lastIndexOf(","), prefix.lastIndexOf(";"));
+  return NEGATOR.test(prefix.slice(lastBreak + 1).slice(-16));
+}
+
+function preMarkersAllDenied(sentence: string): boolean {
+  const markers = matchesOf(sentence, PRE_ACCEPTANCE);
+  return markers.length > 0 && markers.every(marker => negationBefore(sentence, marker.index));
+}
+
+/** Any pre-choice marker that is not itself denied keeps the claim a promise. */
+function hasUndeniedPreMarker(sentence: string): boolean {
+  return matchesOf(sentence, PRE_ACCEPTANCE).some(marker => !negationBefore(sentence, marker.index));
+}
+
+/**
+ * A claim is post-acceptance scoped when an acceptance-anchored marker ends
+ * before the claim verb. The weaker same-segment exemption applies only when the
+ * sentence carries no undenied pre-choice marker and no detached immediacy word,
+ * so an explicit "before you choose" in the same sentence always wins.
+ */
+function claimIsPostScoped(sentence: string, verbIndex: number): boolean {
+  const posts = matchesOf(sentence, POST_ACCEPTANCE);
+  if (posts.some(marker => marker.end <= verbIndex)) return true;
+  const segment = segmentOf(sentence, verbIndex);
+  if (segment === null) return false;
+  const sameSegment = posts.some(marker => marker.index >= segment.start && marker.index < segment.end);
+  if (!sameSegment) return false;
+  if (hasUndeniedPreMarker(sentence)) return false;
+  return !immediacyBlocksPostfixScope(sentence, segment, verbIndex);
+}
+
+/**
+ * The released promise: an unnegated visibility claim about the resume that no
+ * acceptance-anchored marker scopes, and that no denied pre-choice marker
+ * converts into a denial.
+ */
+function promisesResumeBeforeChoice(sentence: string): boolean {
+  const claims = resumeVisibilityClaims(sentence);
+  if (claims.length === 0) return false;
+  if (preMarkersAllDenied(sentence)) return false;
+  return claims.some(claim => !claimIsPostScoped(sentence, claim.verbIndex));
+}
+
+/* ------------------------------------------------------------------ *
+ * Boundary check: one sentence, first or third person
+ * ------------------------------------------------------------------ */
+
+/** Name and resume must both be stated as hidden at or before acceptance. */
+function findHiddenUntilAcceptance(sentences: string[]): string | null {
+  return (
+    sentences.find(
+      sentence =>
+        /\bname\b/i.test(sentence) &&
+        /\b(?:resume|résumé|cv)\b/i.test(sentence) &&
+        CONCEALMENT.test(sentence) &&
+        PRE_ACCEPTANCE.test(sentence),
+    ) ?? null
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Access check: object-bound file noun, signed polarity, one guard
+ * ------------------------------------------------------------------ */
+
+const DOC_ACCESS =
+  /\b(?:document|file|attachment|resume|résumé)\s+access\b|\baccess\s+to\s+(?:the\s+|your\s+)?(?:documents?|files?|attachments?|resume|résumés?|cv)\b/gi;
+
+const LIVE_LINK =
+  /\b(?:while|as long as|for as long as|so long as|only while|only if|only when|if|when|subject to|provided that|provided)\b/i;
+const LIMIT_LINK = /\b(?:until|till)\b/i;
+const ACTIVE_STATE = /\bactive\b/i;
+const ENDED_STATE = /\b(?:ended|ends?|expired|expires?)\b/i;
+const NEGATED_ACTIVE = /\b(?:not|never|isn't|aren't|no longer)\b(?:\s+\w+){0,2}\s+active\b/i;
+
+/** Acceptance alone never guarantees permanent or unconditional access. */
+const PERMANENCE = /\b(?:always|permanent(?:ly)?|forever|for good|no matter what|regardless|unconditionally)\b/i;
+
+/**
+ * The segment must bind a file noun that is NOT part of the access phrase to a
+ * visibility verb, and no visibility verb may follow the access phrase. That is
+ * what stops a condition attached to a different object from satisfying the
+ * check, and it is also why a fronted condition is not covered.
+ */
+function hasObjectBoundFileClaim(segment: string, accesses: Match[]): boolean {
+  const fileNouns = matchesOf(segment, FILE_NOUN);
+  const verbs = matchesOf(segment, VISIBILITY_VERB);
+  const lastAccessEnd = Math.max(...accesses.map(access => access.end));
+  return fileNouns.some(file => {
+    const insideAccessPhrase = accesses.some(access => file.index >= access.index && file.index < access.end);
+    if (insideAccessPhrase) return false;
+    const boundToVerb = verbs.some(verb => Math.abs(verb.index - file.index) <= 40);
+    if (!boundToVerb) return false;
+    return !verbs.some(verb => verb.index >= lastAccessEnd);
+  });
+}
+
+/**
+ * True when one comma segment holds document-qualified access with a
+ * polarity-consistent condition and an object-bound file claim: a live link with
+ * a positive active state, or the bounded "until ... ends" form.
+ */
+function hasConditionalDocumentAccess(sentence: string): boolean {
+  return commaSegments(sentence).some(segment => {
+    const accesses = matchesOf(segment.text, DOC_ACCESS);
+    if (accesses.length === 0) return false;
+    if (NEGATED_ACTIVE.test(segment.text)) return false;
+    const bounded = LIMIT_LINK.test(segment.text) && ENDED_STATE.test(segment.text);
+    const live = LIVE_LINK.test(segment.text) && ACTIVE_STATE.test(segment.text) && !ENDED_STATE.test(segment.text);
+    if (!bounded && !live) return false;
+    return hasObjectBoundFileClaim(segment.text, accesses);
+  });
+}
+
+/**
+ * Post-acceptance file access must be conditional on active document access
+ * inside one sentence, with no permanence claim in that sentence. It does not
+ * require any claim that a document always exists.
+ */
+function findConditionalFileAccess(sentences: string[]): string | null {
+  return (
+    sentences.find(
+      sentence =>
+        POST_ACCEPTANCE.test(sentence) &&
+        !PERMANENCE.test(sentence) &&
+        hasConditionalDocumentAccess(sentence),
+    ) ?? null
+  );
+}
+
+/* ------------------------------------------------------------------ *
+ * Container assertions
+ * ------------------------------------------------------------------ */
+
+/** RED driver: no pre-choice sentence may promise resume visibility. */
+function expectNoPreChoiceResumePromise(container: HTMLElement): void {
+  const offending = copySentences(container).filter(promisesResumeBeforeChoice);
+  expect(
+    offending,
+    `pre-choice copy still promises resume visibility before the choice; offending sentences: ${JSON.stringify(offending)}`,
+  ).toEqual([]);
+}
+
+/** RED driver: the copy must positively state the hidden-until-acceptance boundary. */
+function expectHiddenUntilAcceptanceBoundary(container: HTMLElement): void {
+  const sentences = copySentences(container);
+  expect(
+    findHiddenUntilAcceptance(sentences),
+    `pre-choice copy must state in one sentence that the seeker's name and resume stay hidden until the referrer accepts; rendered sentences: ${JSON.stringify(sentences)}`,
+  ).not.toBeNull();
+}
+
+/** RED driver: post-acceptance file access must be conditional on active access. */
+function expectConditionalFileAccess(container: HTMLElement): void {
+  const sentences = copySentences(container);
+  expect(
+    findConditionalFileAccess(sentences),
+    `post-acceptance file access must be described as conditional on active document access in one sentence; rendered sentences: ${JSON.stringify(sentences)}`,
+  ).not.toBeNull();
+}
+
+/** Guards the promises that must survive the copy repair. */
+function expectPreservedPromises(container: HTMLElement): void {
+  const text = copyText(container);
+  expect(text, "the pre-choice copy must still offer declining").toMatch(/\bdecline\b/i);
+  expect(text, "the pre-choice copy must still offer asking for context").toMatch(/\bcontext\b/i);
+  expect(
+    text,
+    "the pre-choice copy must still promise that nothing is sent from the seeker's account",
+  ).toMatch(/\bnothing\b[^.!?]{0,80}\bsent\b/i);
+  expect(text, "the no-send promise must still name the seeker's account").toMatch(/\byour account\b/i);
+}
+
+/* ------------------------------------------------------------------ *
+ * Render harness
+ * ------------------------------------------------------------------ */
+
+/**
+ * Renders the real pre-choice stage and proves two things before any copy check:
+ * the render sent no request, and the OTP step was never reached (the email
+ * control is rendered and the six-digit step is not). No click happens here.
+ */
+function renderPreChoice(element: React.ReactElement): HTMLElement {
+  const view = render(element);
+  expect(fetchMock, "a static pre-choice render must not send any network request").not.toHaveBeenCalled();
+  const container = view.container;
+  expect(
+    container.querySelector("input[placeholder='you@company.com']"),
+    "the pre-choice company-email control must be rendered",
+  ).not.toBeNull();
+  expect(
+    container.querySelector("input[placeholder='123456']"),
+    "the six-digit OTP step must not be rendered: this file never sends or enters a code",
+  ).toBeNull();
+  expect(
+    screen.queryByRole("button", { name: /verify/i }),
+    "no verify control may exist before a code is requested",
+  ).toBeNull();
+  return container;
+}
+
+beforeEach(() => {
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+  fetchMock.mockReset();
+  vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+});
+
+/* ------------------------------------------------------------------ *
+ * Sanity controls: pure string checks, independent of the product
+ * ------------------------------------------------------------------ */
+
+describe("sanity: pre-choice resume-promise detector", () => {
+  it("flags the released promise and other pre-choice visibility claims", () => {
+    expect(promisesResumeBeforeChoice("See the role, resume, and forwardable note before you choose.")).toBe(true);
+    expect(promisesResumeBeforeChoice("Access the resume before you choose.")).toBe(true);
+    expect(promisesResumeBeforeChoice("You can open the resume.")).toBe(true);
+    expect(promisesResumeBeforeChoice("You'll get their resume before you decide.")).toBe(true);
+  });
+
+  it("does not exempt a claim just because some other time word appears", () => {
+    expect(promisesResumeBeforeChoice("Read the resume, then decide.")).toBe(true);
+    expect(promisesResumeBeforeChoice("You can read the resume when you choose.")).toBe(true);
+    expect(promisesResumeBeforeChoice("You can preview the resume after signing in.")).toBe(true);
+    expect(promisesResumeBeforeChoice("When you sign in, you can open the resume.")).toBe(true);
+  });
+
+  it("does not let a later condition exempt a current claim without a comma", () => {
+    expect(promisesResumeBeforeChoice("You can read the resume now and after you accept you can message them.")).toBe(
+      true,
+    );
+    expect(
+      promisesResumeBeforeChoice("You can read the resume right away and after you accept you can message them."),
+    ).toBe(true);
+  });
+
+  it("does not let a later condition outrank an explicit pre-choice marker", () => {
+    expect(
+      promisesResumeBeforeChoice("You can open the resume before you choose and after you accept you can message them."),
+    ).toBe(true);
+    expect(
+      promisesResumeBeforeChoice(
+        "You can see the role and resume before you choose and after you accept you can message them.",
+      ),
+    ).toBe(true);
+    expect(
+      promisesResumeBeforeChoice("You can see the role and resume before you choose and message them after you accept."),
+    ).toBe(true);
+    expect(
+      promisesResumeBeforeChoice("See the role and resume before you choose and message them once you accept."),
+    ).toBe(true);
+  });
+
+  it("still flags a real promise when an unrelated negation sits in the window", () => {
+    expect(promisesResumeBeforeChoice("See the role, not a summary, and the resume before you choose.")).toBe(true);
+  });
+
+  it("does not flag cannot, won't or will not phrasing", () => {
+    expect(promisesResumeBeforeChoice("You won't see the resume until you accept.")).toBe(false);
+    expect(promisesResumeBeforeChoice("You cannot open the resume before you accept.")).toBe(false);
+    expect(promisesResumeBeforeChoice("You will not be able to open the resume until you accept.")).toBe(false);
+  });
+
+  it("does not flag a noun-level denial", () => {
+    expect(promisesResumeBeforeChoice("See the role and note, not your resume, before you choose.")).toBe(false);
+  });
+
+  it("does not flag truthful post-acceptance copy", () => {
+    expect(
+      promisesResumeBeforeChoice("After you accept, you can open the resume while your document access is active."),
+    ).toBe(false);
+    expect(promisesResumeBeforeChoice("You can open the resume after you accept.")).toBe(false);
+    expect(promisesResumeBeforeChoice("You can open the resume immediately after you accept.")).toBe(false);
+    expect(promisesResumeBeforeChoice("Once you accept you can read the resume.")).toBe(false);
+  });
+
+  it("does not flag a denial of pre-choice access", () => {
+    expect(promisesResumeBeforeChoice("You can see the role and resume, but not before you choose.")).toBe(false);
+  });
+
+  it("does not flag the boundary sentence or the preserved no-send promise", () => {
+    expect(promisesResumeBeforeChoice("Your name and resume stay hidden until you accept.")).toBe(false);
+    expect(promisesResumeBeforeChoice("Decline or ask for context.")).toBe(false);
+    expect(promisesResumeBeforeChoice("Nothing is sent from your account.")).toBe(false);
+  });
+
+  it("keeps the prohibition consistent with the required access assertion", () => {
+    const truthful = ["After you accept, you can open the resume while your document access is active."];
+    expect(truthful.filter(promisesResumeBeforeChoice)).toEqual([]);
+    expect(findConditionalFileAccess(truthful)).not.toBeNull();
+  });
+});
+
+describe("sanity: hidden-until-acceptance boundary", () => {
+  it("accepts natural truthful phrasings in the first and third person", () => {
+    expect(findHiddenUntilAcceptance(["Your name and resume stay hidden until you accept."])).not.toBeNull();
+    expect(findHiddenUntilAcceptance(["We hide your name and resume before you accept."])).not.toBeNull();
+    expect(findHiddenUntilAcceptance(["Before you choose, your name and resume are private."])).not.toBeNull();
+    expect(findHiddenUntilAcceptance(["Your name and resume stay hidden until the referrer accepts."])).not.toBeNull();
+  });
+
+  it("rejects the released sentence and partial statements", () => {
+    expect(findHiddenUntilAcceptance(["See the role, resume, and forwardable note before you choose."])).toBeNull();
+    expect(findHiddenUntilAcceptance(["Your resume stays private until you accept."])).toBeNull();
+    expect(findHiddenUntilAcceptance(["Your name and resume stay private."])).toBeNull();
+  });
+
+  it("rejects a timing marker borrowed from an unrelated sentence", () => {
+    expect(findHiddenUntilAcceptance(["Your name and resume stay hidden.", "Ask for context before you choose."])).toBeNull();
+    expect(findHiddenUntilAcceptance(["Your name and resume stay hidden.", "Decline before you choose."])).toBeNull();
+  });
+});
+
+describe("sanity: conditional file access", () => {
+  it("accepts live document access after acceptance", () => {
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the resume while your document access is active."]),
+    ).not.toBeNull();
+    expect(
+      findConditionalFileAccess(["Once you accept, files open for as long as your document access stays active."]),
+    ).not.toBeNull();
+  });
+
+  it("accepts the bounded form where document access ends", () => {
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the file until your document access ends."]),
+    ).not.toBeNull();
+  });
+
+  it("rejects inverted polarity", () => {
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the file while your document access has ended."]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess(["After you accept, the file opens when your document access expires."]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the file while your document access is not active."]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess([
+        "After you accept, you can open the file if your document access is no longer active.",
+      ]),
+    ).toBeNull();
+  });
+
+  it("rejects unrelated access nouns and unrelated conditionals", () => {
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the file while your internet access is active."]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the file if your company access is active."]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess(["After you accept, you can open the file while you review the role."]),
+    ).toBeNull();
+    expect(findConditionalFileAccess(["After you accept, the file requires a click to open."])).toBeNull();
+    expect(findConditionalFileAccess(["After you accept, you can open the file."])).toBeNull();
+  });
+
+  it("rejects a condition attached to a different object than the file claim", () => {
+    expect(
+      findConditionalFileAccess([
+        "After you accept, the file opens, and while your document access is active you can read the note.",
+      ]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess([
+        "After you accept, you can open the file, and while your document access is active you can read the note.",
+      ]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess([
+        "After you accept, the file opens and while your document access is active you can read the note.",
+      ]),
+    ).toBeNull();
+  });
+
+  it("rejects a permanence claim even when a conditional clause is present", () => {
+    expect(
+      findConditionalFileAccess([
+        "After you accept, the file opens for good, and while your document access is active you can read the note.",
+      ]),
+    ).toBeNull();
+    expect(
+      findConditionalFileAccess([
+        "After you accept, you can open the file forever while your document access is active.",
+      ]),
+    ).toBeNull();
+  });
+
+  it("rejects unrelated sentences stitched together and conditions with no acceptance timing", () => {
+    expect(
+      findConditionalFileAccess([
+        "Files may be attached to a request.",
+        "Open the inbox to read the note.",
+        "After that, while supplies last, nothing else changes.",
+      ]),
+    ).toBeNull();
+    expect(findConditionalFileAccess(["Your document access stays active while you review."])).toBeNull();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Path 1: kit ReferrerOtpSignIn
+ * ------------------------------------------------------------------ */
+
+describe("ReferrerOtpSignIn pre-choice privacy copy", () => {
+  it("does not promise the resume before the referrer chooses", () => {
+    const container = renderPreChoice(<ReferrerOtpSignIn />);
+    expectNoPreChoiceResumePromise(container);
+  });
+
+  it("states that the name and resume stay hidden until acceptance", () => {
+    const container = renderPreChoice(<ReferrerOtpSignIn />);
+    expectHiddenUntilAcceptanceBoundary(container);
+  });
+
+  it("makes post-acceptance file access conditional on active access", () => {
+    const container = renderPreChoice(<ReferrerOtpSignIn />);
+    expectConditionalFileAccess(container);
+  });
+
+  it("keeps the work-email control, the decline/context/no-send promises and sends nothing", () => {
+    const container = renderPreChoice(<ReferrerOtpSignIn />);
+    const emailControl = container.querySelector("#otp-referrer-email");
+    expect(emailControl, "the company-email control must keep its stable id").not.toBeNull();
+    expect(emailControl?.getAttribute("type")).toBe("email");
+    expectPreservedPromises(container);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Path 2: kit WorkEmailSignIn, noncompact (compact renders no copy at all,
+ * so the preserved-promise case below also proves the noncompact path)
+ * ------------------------------------------------------------------ */
+
+describe("WorkEmailSignIn (noncompact) pre-choice privacy copy", () => {
+  it("does not promise the resume before the referrer chooses", () => {
+    const container = renderPreChoice(<WorkEmailSignIn />);
+    expectNoPreChoiceResumePromise(container);
+  });
+
+  it("states that the name and resume stay hidden until acceptance", () => {
+    const container = renderPreChoice(<WorkEmailSignIn />);
+    expectHiddenUntilAcceptanceBoundary(container);
+  });
+
+  it("makes post-acceptance file access conditional on active access", () => {
+    const container = renderPreChoice(<WorkEmailSignIn />);
+    expectConditionalFileAccess(container);
+  });
+
+  it("keeps the work-email control, the decline/context/no-send promises and sends nothing", () => {
+    const container = renderPreChoice(<WorkEmailSignIn />);
+    const emailControl = screen.getByLabelText("Company email for secure employee sign in");
+    expect((emailControl as HTMLInputElement).type).toBe("email");
+    expectPreservedPromises(container);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Path 3: goal twin GoalOtpSignIn
+ * ------------------------------------------------------------------ */
+
+describe("GoalOtpSignIn pre-choice privacy copy", () => {
+  it("does not promise the resume before the referrer chooses", () => {
+    const container = renderPreChoice(<GoalOtpSignIn />);
+    expectNoPreChoiceResumePromise(container);
+  });
+
+  it("states that the name and resume stay hidden until acceptance", () => {
+    const container = renderPreChoice(<GoalOtpSignIn />);
+    expectHiddenUntilAcceptanceBoundary(container);
+  });
+
+  it("makes post-acceptance file access conditional on active access", () => {
+    const container = renderPreChoice(<GoalOtpSignIn />);
+    expectConditionalFileAccess(container);
+  });
+
+  it("keeps the work-email control, the decline/context/no-send promises and sends nothing", () => {
+    const container = renderPreChoice(<GoalOtpSignIn />);
+    const emailControl = container.querySelector("#goal-otp-referrer-email");
+    expect(emailControl, "the goal company-email control must keep its stable id").not.toBeNull();
+    expect(emailControl?.getAttribute("type")).toBe("email");
+    expectPreservedPromises(container);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});

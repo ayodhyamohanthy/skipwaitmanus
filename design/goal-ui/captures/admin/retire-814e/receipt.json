@@ -1,0 +1,1100 @@
+{
+  "task": "D-048-K-admin",
+  "baseline": "45258e7a158fd66d8063883a0a91d6f923994b8f",
+  "runtimeHashes": {
+    "client/src/pages/AdminOverview.tsx": "5e84d7e801e063ed9b1a36926bfa1e675fffef2a2e93d7d53a6e9da4e70ba67d",
+    "client/src/pages/AdminReview.tsx": "6ec7689eb38f88538bb875c0303afaf505894a219449321bdd8ec2c7418b2f21"
+  },
+  "synthetic": true,
+  "productionBundles": true,
+  "surfaceOverrides": false,
+  "limits": "Local fixture identities/API only; no production admin access, business decision, email or money operation.",
+  "results": [
+    {
+      "phase": "before",
+      "name": "admin-guest-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "b726280c473aa074d22477c32c82d98a94c1c8dd7a3bf40ef0e597eed6e27eb3",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-guest-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "deac28c453eb777e1e666193d855637b90262368d8e219e5acf55505c4d97edb",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-ready-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "a39261149c70ba309da7864797804a7a5b0a8a0ba7ca608fa357d7001ebfd9db",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-ready-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "b9d541944990c7a8c5ee97fc5a5b2dbec73e3fd8f2288be1127b8976311da1b8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-empty-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "a655a5a1f4c6ad1585a425664fb01e877d0670e736bcfa73d8e1585014388cf0",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-empty-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "e25b3d68802d99b519c90d8c0414f9c4d1cced3ac483b6184c7102f37fa2c6de",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-error-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "d747327d4601c120734f7de122a3ab36326d6224871340ea2561e21bd2d7d7f8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-error-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "c14d175c7ac445f1638d003b6b3cd2544e0596ecb80356a56eaf284c252164d9",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-denied-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "645940864d2807b3245eeb744ee2664ccb6c7377cedd93aa59054f1dd52d9d0e",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-denied-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "ed0a0da9c60c59aa16399e745154658117bfda918bb5c68322b2153e1863b015",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-guest-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "2f431457e427f01b9824457360ddc21fc171df36ad32ddbd7f5e88db12e7a0b2",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-guest-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "cd2798f8d1350ee3a7cb0a2a85f9556615fd4fc03ca22991153025e20cc13d7d",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-ready-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "c9eac096f2ac7f6a733339306c3d18c9b381a1a5ac9dcd65495adf2090b29148",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-ready-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "3fd34cd56d6a8ba2a2bc1a9dfa71d268357559f12bb32b7f4c032d179449ead8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-company-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "9b2ae22f7508852117b39aef097b09ec161fa54f7159f27ab5b6e10492eaf211",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-company-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "e9a20ecf55df0857a5a39120611017ac5c45c7507f2f4bde44785893f979f11c",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-verification-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "2536525c6e11441a98f39bb8345e772220adc89e418410d49a0462cc4f7cbf80",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-verification-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "a9ac7d7d7f722cce8140527a4728c11983a03eb17ba636df792cb365567382ae",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-empty-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "6d8868de6a07aec6c09d7f8f5767de1d7a146378b5a113cce581039ee46505a9",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-empty-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "0be80e3110bac9332e8107d6d0eec49d71d6949fb624c95526ebc6cca4a1111a",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-denied-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "cf68f1c2c0158be412606aec9633682b248652b2a8522da3353e3e2f0eec1d81",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-denied-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "3bf1517802d389eb4ef9caad29c44fc68fd3008076922e292848436d759e1285",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-refused-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "84bc89c987c6615b900e593f6a3de3030cc5e0ce5adf543da8805c1d454cf3c5",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/admin/safety-reports/48/decision"
+      ],
+      "mutations": [
+        {
+          "path": "/api/admin/safety-reports/48/decision",
+          "body": {
+            "status": "resolved",
+            "note": "Synthetic reviewed evidence."
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "before",
+      "name": "admin-review-refused-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "ce38d8325a549fb9b824c61019f8adb4320e5b7f8188ca1eb85b925783d27a39",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/admin/safety-reports/48/decision"
+      ],
+      "mutations": [
+        {
+          "path": "/api/admin/safety-reports/48/decision",
+          "body": {
+            "status": "resolved",
+            "note": "Synthetic reviewed evidence."
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-guest-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "b726280c473aa074d22477c32c82d98a94c1c8dd7a3bf40ef0e597eed6e27eb3",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-guest-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "deac28c453eb777e1e666193d855637b90262368d8e219e5acf55505c4d97edb",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-ready-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "a39261149c70ba309da7864797804a7a5b0a8a0ba7ca608fa357d7001ebfd9db",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-ready-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "b9d541944990c7a8c5ee97fc5a5b2dbec73e3fd8f2288be1127b8976311da1b8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-empty-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "a655a5a1f4c6ad1585a425664fb01e877d0670e736bcfa73d8e1585014388cf0",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-empty-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "e25b3d68802d99b519c90d8c0414f9c4d1cced3ac483b6184c7102f37fa2c6de",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-error-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "d747327d4601c120734f7de122a3ab36326d6224871340ea2561e21bd2d7d7f8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-error-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "c14d175c7ac445f1638d003b6b3cd2544e0596ecb80356a56eaf284c252164d9",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-denied-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "645940864d2807b3245eeb744ee2664ccb6c7377cedd93aa59054f1dd52d9d0e",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-denied-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "ed0a0da9c60c59aa16399e745154658117bfda918bb5c68322b2153e1863b015",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-demand/unlisted",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/flow-health",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-guest-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "2f431457e427f01b9824457360ddc21fc171df36ad32ddbd7f5e88db12e7a0b2",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-guest-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "cd2798f8d1350ee3a7cb0a2a85f9556615fd4fc03ca22991153025e20cc13d7d",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-ready-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "c9eac096f2ac7f6a733339306c3d18c9b381a1a5ac9dcd65495adf2090b29148",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-ready-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "3fd34cd56d6a8ba2a2bc1a9dfa71d268357559f12bb32b7f4c032d179449ead8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-company-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "9b2ae22f7508852117b39aef097b09ec161fa54f7159f27ab5b6e10492eaf211",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-company-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "e9a20ecf55df0857a5a39120611017ac5c45c7507f2f4bde44785893f979f11c",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-verification-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "2536525c6e11441a98f39bb8345e772220adc89e418410d49a0462cc4f7cbf80",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-verification-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "a9ac7d7d7f722cce8140527a4728c11983a03eb17ba636df792cb365567382ae",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-empty-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "6d8868de6a07aec6c09d7f8f5767de1d7a146378b5a113cce581039ee46505a9",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-empty-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "0be80e3110bac9332e8107d6d0eec49d71d6949fb624c95526ebc6cca4a1111a",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-denied-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "cf68f1c2c0158be412606aec9633682b248652b2a8522da3353e3e2f0eec1d81",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-denied-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "3bf1517802d389eb4ef9caad29c44fc68fd3008076922e292848436d759e1285",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ],
+      "mutations": [],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-refused-1280.png",
+      "width": 1280,
+      "height": 900,
+      "sha256": "84bc89c987c6615b900e593f6a3de3030cc5e0ce5adf543da8805c1d454cf3c5",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/admin/safety-reports/48/decision"
+      ],
+      "mutations": [
+        {
+          "path": "/api/admin/safety-reports/48/decision",
+          "body": {
+            "status": "resolved",
+            "note": "Synthetic reviewed evidence."
+          }
+        }
+      ],
+      "overflow": 0
+    },
+    {
+      "phase": "after",
+      "name": "admin-review-refused-390.png",
+      "width": 390,
+      "height": 844,
+      "sha256": "ce38d8325a549fb9b824c61019f8adb4320e5b7f8188ca1eb85b925783d27a39",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/account/preferences",
+        "GET /api/admin/approval-queue",
+        "GET /api/admin/company-suggestions",
+        "GET /api/admin/safety-reports",
+        "GET /api/admin/safety-reports",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language",
+        "POST /api/admin/safety-reports/48/decision"
+      ],
+      "mutations": [
+        {
+          "path": "/api/admin/safety-reports/48/decision",
+          "body": {
+            "status": "resolved",
+            "note": "Synthetic reviewed evidence."
+          }
+        }
+      ],
+      "overflow": 0
+    }
+  ],
+  "comparisons": [
+    {
+      "name": "admin-guest-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "b726280c473aa074d22477c32c82d98a94c1c8dd7a3bf40ef0e597eed6e27eb3",
+      "afterSha256": "b726280c473aa074d22477c32c82d98a94c1c8dd7a3bf40ef0e597eed6e27eb3",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-guest-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "deac28c453eb777e1e666193d855637b90262368d8e219e5acf55505c4d97edb",
+      "afterSha256": "deac28c453eb777e1e666193d855637b90262368d8e219e5acf55505c4d97edb",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-ready-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "a39261149c70ba309da7864797804a7a5b0a8a0ba7ca608fa357d7001ebfd9db",
+      "afterSha256": "a39261149c70ba309da7864797804a7a5b0a8a0ba7ca608fa357d7001ebfd9db",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-ready-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "b9d541944990c7a8c5ee97fc5a5b2dbec73e3fd8f2288be1127b8976311da1b8",
+      "afterSha256": "b9d541944990c7a8c5ee97fc5a5b2dbec73e3fd8f2288be1127b8976311da1b8",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-empty-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "a655a5a1f4c6ad1585a425664fb01e877d0670e736bcfa73d8e1585014388cf0",
+      "afterSha256": "a655a5a1f4c6ad1585a425664fb01e877d0670e736bcfa73d8e1585014388cf0",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-empty-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "e25b3d68802d99b519c90d8c0414f9c4d1cced3ac483b6184c7102f37fa2c6de",
+      "afterSha256": "e25b3d68802d99b519c90d8c0414f9c4d1cced3ac483b6184c7102f37fa2c6de",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-error-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "d747327d4601c120734f7de122a3ab36326d6224871340ea2561e21bd2d7d7f8",
+      "afterSha256": "d747327d4601c120734f7de122a3ab36326d6224871340ea2561e21bd2d7d7f8",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-error-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "c14d175c7ac445f1638d003b6b3cd2544e0596ecb80356a56eaf284c252164d9",
+      "afterSha256": "c14d175c7ac445f1638d003b6b3cd2544e0596ecb80356a56eaf284c252164d9",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-denied-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "645940864d2807b3245eeb744ee2664ccb6c7377cedd93aa59054f1dd52d9d0e",
+      "afterSha256": "645940864d2807b3245eeb744ee2664ccb6c7377cedd93aa59054f1dd52d9d0e",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-denied-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "ed0a0da9c60c59aa16399e745154658117bfda918bb5c68322b2153e1863b015",
+      "afterSha256": "ed0a0da9c60c59aa16399e745154658117bfda918bb5c68322b2153e1863b015",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-guest-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "2f431457e427f01b9824457360ddc21fc171df36ad32ddbd7f5e88db12e7a0b2",
+      "afterSha256": "2f431457e427f01b9824457360ddc21fc171df36ad32ddbd7f5e88db12e7a0b2",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-guest-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "cd2798f8d1350ee3a7cb0a2a85f9556615fd4fc03ca22991153025e20cc13d7d",
+      "afterSha256": "cd2798f8d1350ee3a7cb0a2a85f9556615fd4fc03ca22991153025e20cc13d7d",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-ready-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "c9eac096f2ac7f6a733339306c3d18c9b381a1a5ac9dcd65495adf2090b29148",
+      "afterSha256": "c9eac096f2ac7f6a733339306c3d18c9b381a1a5ac9dcd65495adf2090b29148",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-ready-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "3fd34cd56d6a8ba2a2bc1a9dfa71d268357559f12bb32b7f4c032d179449ead8",
+      "afterSha256": "3fd34cd56d6a8ba2a2bc1a9dfa71d268357559f12bb32b7f4c032d179449ead8",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-company-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "9b2ae22f7508852117b39aef097b09ec161fa54f7159f27ab5b6e10492eaf211",
+      "afterSha256": "9b2ae22f7508852117b39aef097b09ec161fa54f7159f27ab5b6e10492eaf211",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-company-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "e9a20ecf55df0857a5a39120611017ac5c45c7507f2f4bde44785893f979f11c",
+      "afterSha256": "e9a20ecf55df0857a5a39120611017ac5c45c7507f2f4bde44785893f979f11c",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-verification-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "2536525c6e11441a98f39bb8345e772220adc89e418410d49a0462cc4f7cbf80",
+      "afterSha256": "2536525c6e11441a98f39bb8345e772220adc89e418410d49a0462cc4f7cbf80",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-verification-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "a9ac7d7d7f722cce8140527a4728c11983a03eb17ba636df792cb365567382ae",
+      "afterSha256": "a9ac7d7d7f722cce8140527a4728c11983a03eb17ba636df792cb365567382ae",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-empty-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "6d8868de6a07aec6c09d7f8f5767de1d7a146378b5a113cce581039ee46505a9",
+      "afterSha256": "6d8868de6a07aec6c09d7f8f5767de1d7a146378b5a113cce581039ee46505a9",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-empty-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "0be80e3110bac9332e8107d6d0eec49d71d6949fb624c95526ebc6cca4a1111a",
+      "afterSha256": "0be80e3110bac9332e8107d6d0eec49d71d6949fb624c95526ebc6cca4a1111a",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-denied-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "cf68f1c2c0158be412606aec9633682b248652b2a8522da3353e3e2f0eec1d81",
+      "afterSha256": "cf68f1c2c0158be412606aec9633682b248652b2a8522da3353e3e2f0eec1d81",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-denied-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "3bf1517802d389eb4ef9caad29c44fc68fd3008076922e292848436d759e1285",
+      "afterSha256": "3bf1517802d389eb4ef9caad29c44fc68fd3008076922e292848436d759e1285",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-refused-1280.png",
+      "differentPixels": 0,
+      "beforeSha256": "84bc89c987c6615b900e593f6a3de3030cc5e0ce5adf543da8805c1d454cf3c5",
+      "afterSha256": "84bc89c987c6615b900e593f6a3de3030cc5e0ce5adf543da8805c1d454cf3c5",
+      "sameRequests": true,
+      "sameMutations": true
+    },
+    {
+      "name": "admin-review-refused-390.png",
+      "differentPixels": 0,
+      "beforeSha256": "ce38d8325a549fb9b824c61019f8adb4320e5b7f8188ca1eb85b925783d27a39",
+      "afterSha256": "ce38d8325a549fb9b824c61019f8adb4320e5b7f8188ca1eb85b925783d27a39",
+      "sameRequests": true,
+      "sameMutations": true
+    }
+  ]
+}

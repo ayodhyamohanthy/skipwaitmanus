@@ -1,0 +1,61 @@
+{
+  "signedIn": {
+    "id": "9",
+    "name": "Rohit Menon",
+    "email": "rohit.menon@example.com",
+    "role": "user"
+  },
+  "route": "/conversation/601",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/access",
+      "status": 200,
+      "body": {
+        "verifiedCompanyAccess": true,
+        "workEmailDomain": "alderbeam.com",
+        "companyName": "Alderbeam Labs",
+        "companyInitials": "AB"
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/mine",
+      "status": 200,
+      "body": {
+        "requests": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/company-referrals/601/preview",
+      "status": 200,
+      "body": {
+        "request": {
+          "id": 601,
+          "title": "Senior Backend Engineer, Payments",
+          "targetRoleUrl": "https://careers.alderbeam.com/jobs/1",
+          "companyDomain": "alderbeam.com",
+          "companyName": "Alderbeam Labs",
+          "companyInitials": "AB",
+          "jobFunction": "Engineering",
+          "candidateName": "Asha Rao",
+          "candidateMessage": "Built the payouts reconciliation service; settlement mismatches fell from 1.2% to 0.3% in 6 months.\nRan on-call for 14 Go services that move 40 crore rupees a day.",
+          "status": "pending",
+          "attachments": [
+            {
+              "mimeType": "application/pdf",
+              "fileSize": 120000,
+              "availability": "after_claim"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "actions": [
+    {
+      "wait": 6000
+    }
+  ]
+}

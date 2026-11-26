@@ -1,0 +1,85 @@
+{
+  "signedIn": {
+    "id": "7",
+    "name": "Asha Rao",
+    "email": "asha.rao@example.com",
+    "role": "user"
+  },
+  "route": "/explore/wipro",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/companies/wipro",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "company": {
+          "slug": "wipro",
+          "name": "Wipro",
+          "initials": "W",
+          "industry": "Technology services",
+          "location": "Global",
+          "functions": [
+            "Engineering",
+            "Data",
+            "Operations"
+          ],
+          "blurb": "Explore roles across technology, consulting, and business operations.",
+          "domains": [
+            "wipro.com"
+          ],
+          "openToReferrals": true
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/wipro/opportunities",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "opportunities": []
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/credits/summary",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "summary": {
+          "totalAvailable": 4
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/profile/setup",
+      "match": "exact",
+      "status": 200,
+      "body": {
+        "goal": "Actively looking",
+        "roles": [],
+        "level": "",
+        "links": [],
+        "city": "",
+        "countries": "",
+        "remote": true,
+        "visa": "No sponsorship needed",
+        "resume": {
+          "id": 77,
+          "fileName": "asha-resume.pdf"
+        }
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/wipro/response-signal",
+      "match": "prefix",
+      "status": 200,
+      "body": {
+        "state": "insufficient"
+      }
+    }
+  ]
+}

@@ -5,11 +5,26 @@
 import { and, eq, gt, isNotNull, isNull, or, type SQL } from "drizzle-orm";
 import { referralRequests } from "../drizzle/schema";
 import { ASSISTANT_PLAN_REQUIRED_MESSAGE } from "../shared/assistant";
-import { COMPANY_CAP_REACHED, SLOT_CAP_REACHED, companyCapCopy, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
+import { COMPANY_CAP_REACHED, COMPANY_COVERAGE_CHANGED, SLOT_CAP_REACHED, companyCapCopy, slotsFullCopy, type OpenAskSlots } from "../shared/openAskSlots";
 import { SHOWCASE_HARD_CAP, type PlanEntitlements } from "../shared/planEntitlements";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
+import { ASK_NO_EXPIRY_ENABLED } from "../shared/askNoExpiry";
 import { ASK_TTL_MS } from "../shared/referral";
 import { assignedAskNotHeldCondition } from "./heldAsk";
+import type { AcceptedAskCost } from "../shared/acceptedAskCost";
+
+export class AskPriceChangedError extends Error {
+  readonly code = "ask_price_changed";
+  constructor(readonly currentCost: AcceptedAskCost) {
+    super("Your referral balance changed. Nothing was sent or charged. Review the current cost and confirm again.");
+    this.name = "AskPriceChangedError";
+  }
+}
+
+export class ReferralPricingUnavailableError extends Error {
+  readonly code = "not_on_sale";
+  constructor() { super("Referral pricing is unavailable. Nothing was sent or charged. Refresh before trying again."); this.name = "ReferralPricingUnavailableError"; }
+}
 
 /**
  * The caller's open asks: pending and unexpired. Mirrors the expiry rules (D-061):
@@ -30,8 +45,12 @@ export function openAskCondition(userId: number, nowMs: number): SQL {
     eq(referralRequests.waitingForCoverage, false),
     or(
       and(isNotNull(referralRequests.referrerId), assignedAskNotHeldCondition()),
-      and(isNotNull(referralRequests.coverageVisibleAt), gt(referralRequests.coverageVisibleAt, cutoff)),
-      and(isNull(referralRequests.coverageVisibleAt), gt(referralRequests.createdAt, cutoff)),
+      // D-174: with the ask clocks off an unclaimed visible ask keeps its slot until it is claimed
+      // or withdrawn, so the age windows drop out and the ask stays counted.
+      ...(ASK_NO_EXPIRY_ENABLED ? [] : [
+        and(isNotNull(referralRequests.coverageVisibleAt), gt(referralRequests.coverageVisibleAt, cutoff)),
+        and(isNull(referralRequests.coverageVisibleAt), gt(referralRequests.createdAt, cutoff)),
+      ]),
     ),
   );
   if (!condition) throw new Error("Open-ask condition could not be built");
@@ -49,6 +68,17 @@ export class CompanyCapReachedError extends Error {
     this.name = "CompanyCapReachedError";
     this.companyDomain = companyDomain;
     this.open = open;
+  }
+}
+
+/** Thrown before any side effect when an ask composed as free-waiting meets a company that has since opened up: committing it would charge immediately after a no-spend representation. */
+export class CoverageOpenedUpError extends Error {
+  readonly code = COMPANY_COVERAGE_CHANGED;
+  readonly companyDomain: string;
+  constructor(companyDomain: string) {
+    super("This company just opened up to referrals, so sending now uses its cost in credits. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
+    this.name = "CoverageOpenedUpError";
+    this.companyDomain = companyDomain;
   }
 }
 

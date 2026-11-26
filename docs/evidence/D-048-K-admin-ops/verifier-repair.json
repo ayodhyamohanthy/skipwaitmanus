@@ -1,0 +1,12 @@
+{
+  "initialAcceptance": "failed before any successful case: blocked CSP-report POSTs were counted as business writes",
+  "diagnostic": "One public signed-out activity page; status 200; no uncaught page errors; all writes blocked",
+  "observedReportOnlySources": [
+    "script-src-elem: cloudflare-beacon",
+    "script-src: eval",
+    "connect-src: sentry-ingest"
+  ],
+  "sourceCheck": "functions/_middleware.ts and server/cspReport.ts unchanged by retirement merge",
+  "verifierRepair": "Only POST /api/csp-report with expected report-only disposition, route, content type and those exact source classes is recorded separately and aborted. Every other same-origin write and private read still fails.",
+  "productionChanges": "none; external verifier only"
+}

@@ -9,6 +9,8 @@ import { cleanup, fireEvent, render as rtlRender, screen, within } from "@testin
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { CreditsLedger } from "@shared/creditLedger";
 import { FREE_ASKS_CHIP } from "@shared/moneyCopy";
+import { planCatalogResponse } from "@shared/billingCatalog";
+import { creditFrom } from "@/components/plans/planCatalog";
 import Plans from "./Plans";
 
 // GO-LIVE-1: /plans reads the live catalog through React Query, so tests wrap a client.
@@ -81,6 +83,27 @@ describe("Plans on live data", () => {
     expect(screen.queryByText("Upgrade moments")).toBeNull();
     // Signed out reads only the public catalog (no prices of its own, no account data).
     expect(fetchMock.mock.calls.every(([url]) => String(url).startsWith("/api/plans/catalog"))).toBe(true);
+  });
+
+  // POSTMERGE-oct22 P2 (#478): the page must render the live catalog's per-credit range. The tests above
+  // only pin the no-catalog fallback ("Credits" / "Packs"), so a missing or wrong live price passed them.
+  it("renders the live catalog's per-credit range for USD and INR, never the fallback", async () => {
+    for (const region of ["INTL", "IN"] as const) {
+      authState.isSignedIn = false;
+      const catalog = planCatalogResponse({ region, available: () => true, usdRecurringConfirmed: true, sessionsStaffed: true, indiaGstRegistered: false });
+      const range = creditFrom(catalog);
+      expect(range).toBeTruthy();
+      stub(null, url => (url.includes("/api/plans/catalog") ? ok(catalog) : undefined));
+      render(<Plans />);
+      // The price badge carries the catalog range, not the generic word.
+      expect(await screen.findByText(`${range} a credit`)).toBeTruthy();
+      // The credit-cost strip's pack row carries it too.
+      const costs = screen.getByRole("list", { name: "Credit costs" });
+      expect(within(costs).getAllByRole("listitem").map(item => item.textContent)).toContain(`${range}Each credit you buy`);
+      expect(screen.queryByText("Credits")).toBeNull();
+      expect(screen.queryByText("Packs of credits")).toBeNull();
+      cleanup();
+    }
   });
 
   it("shows the account's own usage and only the upgrade moments it has really hit", async () => {

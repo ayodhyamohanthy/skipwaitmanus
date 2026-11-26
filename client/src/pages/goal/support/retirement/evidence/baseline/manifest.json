@@ -1,0 +1,214 @@
+{
+  "source": "2d86a27098e4a4990d88fc734b4ca679d61468ad",
+  "renderedRuntime": "origin/main 09626b57 runtime (working tree)",
+  "sourceTreeDirty": true,
+  "base": "http://127.0.0.1:5200",
+  "synthetic": true,
+  "apiMockedInBrowser": true,
+  "results": [
+    {
+      "file": "help-390.png",
+      "route": "/help",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "signedIn": true,
+      "h1": "Get help.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "safety-390.png",
+      "route": "/safety",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "signedIn": true,
+      "h1": "Stay safe on SkipWait.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "report-sign-in-390.png",
+      "route": "/report",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "signedIn": false,
+      "h1": "Report a problem.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "report-reason-390.png",
+      "route": "/report",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "signedIn": true,
+      "h1": "Report a problem.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "report-details-390.png",
+      "route": "/report?request=42",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "signedIn": true,
+      "h1": "Report a problem.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "report-refused-390.png",
+      "route": "/report",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "deviceScaleFactor": 2
+      },
+      "signedIn": true,
+      "h1": "Report a problem.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "help-1280.png",
+      "route": "/help",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "signedIn": true,
+      "h1": "Get help.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "safety-1280.png",
+      "route": "/safety",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "signedIn": true,
+      "h1": "Stay safe on SkipWait.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "report-sign-in-1280.png",
+      "route": "/report",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "signedIn": false,
+      "h1": "Report a problem.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "report-reason-1280.png",
+      "route": "/report",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "signedIn": true,
+      "h1": "Report a problem.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "report-details-1280.png",
+      "route": "/report?request=42",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "signedIn": true,
+      "h1": "Report a problem.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    },
+    {
+      "file": "report-refused-1280.png",
+      "route": "/report",
+      "viewport": {
+        "width": 1280,
+        "height": 900,
+        "deviceScaleFactor": 1
+      },
+      "signedIn": true,
+      "h1": "Report a problem.",
+      "goalPages": 1,
+      "primaryActions": 1,
+      "horizontalOverflowPx": 0,
+      "unmatchedApi": [],
+      "consoleErrors": [],
+      "unexpectedResponses": []
+    }
+  ]
+}

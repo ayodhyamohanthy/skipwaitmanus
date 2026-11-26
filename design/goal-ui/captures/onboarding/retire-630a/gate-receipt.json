@@ -1,0 +1,40 @@
+{
+  "task": "D-048-K-onboarding",
+  "sourceCommit": "19883f7017cdb05c0b024022fd972026056db324",
+  "baseMain": "b63ea2e34971f6710b2998c1765c7bd0372e3271",
+  "productionBuild": "passed",
+  "focusedTests": { "passed": 19, "failed": 0 },
+  "sourceHeadCi": {
+    "runId": "44314991928",
+    "conclusion": "success",
+    "requiredChecks": "passed",
+    "e2eJourneys": "passed",
+    "optionalReleaseCaptureMatrix": "skipped; no matrix requested by successful planner"
+  },
+  "fullLocalSuite": {
+    "command": "LANG=en_US.UTF-8 pnpm vitest run",
+    "exitCode": 1,
+    "durationSeconds": 1563.45,
+    "files": { "passed": 733, "failed": 8, "skipped": 5, "total": 746 },
+    "tests": { "passed": 7774, "failed": 12, "skipped": 31, "total": 7817 },
+    "reportedFailureEntries": 13,
+    "failedSuiteHooks": 1,
+    "failedCheckReruns": 0,
+    "cause": "not established",
+    "failures": [
+      { "file": "client/src/_core/authCompat.test.ts", "line": 42, "kind": "suite hook", "observed": "hook exceeded 20000 ms" },
+      { "file": "scripts/classifyCiChange.test.ts", "line": 655, "observed": "400-commit fixture exceeded 20000 ms" },
+      { "file": "server/dataExport.test.ts", "line": 18, "observed": "greater-than-10-MB rejection test exceeded 20000 ms" },
+      { "file": "server/jobLinkPreview.roleTitle.test.ts", "line": 70, "case": "raw title", "observedMilliseconds": 1128.4095139999995, "limitMilliseconds": 1000 },
+      { "file": "server/jobLinkPreview.roleTitle.test.ts", "line": 70, "case": "JSON-LD title", "observedMilliseconds": 1186.2695810000005, "limitMilliseconds": 1000 },
+      { "file": "client/src/pages/myCompanyInbox.serverAccess.test.tsx", "line": 57, "observed": "Private ask button not found" },
+      { "file": "client/src/pages/onboardingGoal.test.tsx", "line": 35, "observed": "goal-onboarding marker not found; diagnostic body had an empty div", "belongsToThisSurface": true },
+      { "file": "client/src/pages/profileSetup.test.tsx", "line": 162, "observed": "uploaded resume visible; recorded PATCH resumeAttachmentId was null instead of 5", "belongsToThisSurface": true },
+      { "file": "client/src/pages/startGoal.test.tsx", "failedCases": 5, "observed": "goal marker, Target Role URL control or restored-draft text not found" }
+    ]
+  },
+  "timeoutsOrAssertionsRelaxed": false,
+  "sourceChangedAfterFullGate": false,
+  "draftRemainsUnmerged": true,
+  "productionReleaseClaimed": false
+}

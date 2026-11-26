@@ -1,0 +1,12 @@
+{
+  "checkedAt": "2026-11-19T22:29:25.509819+00:00",
+  "origin": "https://skipwait.me",
+  "expectedWebSha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+  "observedWebSha": "053e8a72f859d8226d247ae35cf9eec0a2ad1a4d",
+  "webStatus": 200,
+  "expectedApiRuntimeSha": "e285f13c25da90b69ca3df172cb15f27dbb9826c",
+  "apiStatus": 200,
+  "apiState": "ready",
+  "observedApiSha": "e285f13c25da90b69ca3df172cb15f27dbb9826c",
+  "scope": "Public read-only identity/readiness; no sign-in or mutation."
+}

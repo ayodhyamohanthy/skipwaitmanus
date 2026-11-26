@@ -1,10 +1,10 @@
 // Real store and data sources for Skippy step 5 (D-141). Reads reuse the same
 // live sources as the public pages (company directory, plan catalog); drafts
 // price with the same helpers as /api/company-referrals/quote (D-137).
-import { and, desc, eq, gte, sql } from "drizzle-orm";
-import { seekerAgentControls, seekerAgentDrafts, seekerAgentEvents, seekerAgentGrants } from "../drizzle/schema";
+import { and, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { assistantApprovals, notifications, referralAttachments, seekerAgentControls, seekerAgentDrafts, seekerAgentEvents, seekerAgentGrants, users } from "../drizzle/schema";
 import { getDb } from "./db";
-import { askLevelCostEnabled } from "./db";
+import { askLevelCostEnabled, listJobSeekerCompanyReferrals } from "./db";
 import { listCompanyDirectory, getCompanyDirectoryEntry } from "./companyDirectory";
 import { planCatalogResponse, sellableItemPrices } from "../shared/billingCatalog";
 import { priceAvailability } from "./billingAvailability";
@@ -12,17 +12,21 @@ import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
 import { indiaGstRegistered, humanReviewersStaffed, usdRecurringConfirmed } from "./billingSettings";
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
 import { normalizeTargetRoleUrl } from "../shared/referralUrl";
+import { sendTransactionalEmail } from "./emailDelivery";
 import type { PublicCompany } from "../shared/companies";
 import type { PlanCatalogResponse } from "../shared/billingCatalog";
 import type { Request } from "express";
 import type { AgentLimits } from "../shared/seekerAgents";
+import { AGENT_EXPIRY_DEFAULT_DAYS, AGENT_EXPIRY_MAX_DAYS, AGENT_LIMIT_DEFAULTS } from "../shared/seekerAgents";
+import { hashAgentKey, mintAgentKey } from "./agentGrantAuth";
 import type { DraftRow, EventRow, GrantRow, SeekerAgentRouteDeps, SeekerAgentStore } from "./seekerAgentRoutes";
 
 type Db = NonNullable<Awaited<ReturnType<typeof getDb>>>;
 
 const toGrant = (row: typeof seekerAgentGrants.$inferSelect): GrantRow => ({
   id: row.id, userId: row.userId, name: row.name, keyPrefix: row.keyPrefix,
-  canLookup: row.canLookup, canDraft: row.canDraft,
+  canLookup: row.canLookup, canDraft: row.canDraft, canSend: row.canSend,
+  autoSend: row.autoSend ?? false,
   maxCreditsPerAsk: row.maxCreditsPerAsk, maxCreditsPerDay: row.maxCreditsPerDay, maxCreditsPerWeek: row.maxCreditsPerWeek, maxAsksPerDay: row.maxAsksPerDay,
   expiresAt: row.expiresAt, revokedAt: row.revokedAt, lastUsedAt: row.lastUsedAt, createdAt: row.createdAt,
 });
@@ -42,7 +46,7 @@ export function createSeekerAgentStore(): SeekerAgentStore {
       const limits: AgentLimits = input.limits;
       await db.insert(seekerAgentGrants).values({
         userId: input.userId, name: input.name, keyPrefix: input.keyPrefix, keyHash: input.keyHash,
-        canLookup: input.canLookup, canDraft: input.canDraft,
+        canLookup: input.canLookup, canDraft: input.canDraft, canSend: input.canSend,
         maxCreditsPerAsk: limits.creditsPerAsk, maxCreditsPerDay: limits.creditsPerDay, maxCreditsPerWeek: limits.creditsPerWeek, maxAsksPerDay: limits.asksPerDay,
         expiresAt: input.expiresAt,
       });
@@ -73,6 +77,12 @@ export function createSeekerAgentStore(): SeekerAgentStore {
       const db = await requireDb();
       await db.update(seekerAgentGrants).set({ lastUsedAt: now }).where(eq(seekerAgentGrants.id, id));
     },
+    async setAutoSend(userId, id, enabled) {
+      const db = await requireDb();
+      // Ownership is in the WHERE clause, so another seeker's grant can never be written even if a caller skips its own check.
+      const result = await db.update(seekerAgentGrants).set({ autoSend: enabled }).where(and(eq(seekerAgentGrants.id, id), eq(seekerAgentGrants.userId, userId)));
+      return Number(result[0]?.affectedRows ?? 0) > 0;
+    },
     async isPaused(userId) {
       const db = await requireDb();
       const [row] = await db.select({ pausedAt: seekerAgentControls.pausedAt }).from(seekerAgentControls).where(eq(seekerAgentControls.userId, userId)).limit(1);
@@ -93,6 +103,35 @@ export function createSeekerAgentStore(): SeekerAgentStore {
       const db = await requireDb();
       const rows = await db.select().from(seekerAgentDrafts).where(eq(seekerAgentDrafts.grantId, grantId)).orderBy(desc(seekerAgentDrafts.createdAt)).limit(limit);
       return rows.map(toDraft);
+    },
+    async getDraftForGrant(grantId, draftId) {
+      const db = await requireDb();
+      const [row] = await db.select().from(seekerAgentDrafts).where(and(eq(seekerAgentDrafts.id, draftId), eq(seekerAgentDrafts.grantId, grantId))).limit(1);
+      return row ? toDraft(row) : undefined;
+    },
+    async createSendRequest(input) {
+      const db = await requireDb();
+      // SKIPPY-6 (D-290 (1)): the existing approvals queue, with the grant set.
+      // The draft keeps its status; nothing is sent and no credit moves here.
+      const expiresAt = input.expiresAt;
+      const inserted = await db.insert(assistantApprovals).values({
+        userId: input.userId,
+        connectionId: null,
+        grantId: input.grantId,
+        kind: "ask_send",
+        provider: "agent",
+        companyDomain: input.companyDomain,
+        role: null,
+        note: input.draft.note || null,
+        creditCount: input.draft.creditCost,
+        slotCount: null,
+        targetRoleUrl: input.draft.targetRoleUrl,
+        attachmentIds: null,
+        // Fixed on the row so a retried approve can never send twice.
+        idempotencyKey: `agent-draft-${input.draft.id}`,
+        expiresAt,
+      });
+      return { id: Number(inserted[0].insertId), expiresAt };
     },
     async sumDraftCreditsSince(grantId, since) {
       const db = await requireDb();
@@ -120,8 +159,44 @@ export function createSeekerAgentStore(): SeekerAgentStore {
   };
 }
 
-/** Live read-only sources + pricing helpers for the route module. */
-export function createSeekerAgentSourceDeps(): Pick<SeekerAgentRouteDeps, "listCompanies" | "prices" | "quoteCost" | "getCompanyDirectoryEntry"> {
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * D-178.grant (D-290 R1): the OAuth exchange creates the canonical D-141 grant
+ * and returns its `swa_` key. Default scopes and limits; D-178.screen carries
+ * the consent page's 1-30 day choice here (7 when absent). No new column.
+ */
+export async function createOAuthAgentGrant(input: {
+  userId: number;
+  clientName: string;
+  expiresInDays?: number;
+  store?: Pick<SeekerAgentStore, "createGrant">;
+  now?: () => number;
+}): Promise<{ token: string; grantId: number; expiresAt: Date }> {
+  const store = input.store ?? createSeekerAgentStore();
+  const nowMs = (input.now ?? Date.now)();
+  const token = mintAgentKey();
+  const name = (input.clientName.replace(/\s+/g, " ").trim() || "Assistant").slice(0, 120);
+  // The route validates too; this clamp keeps a direct caller from minting a longer grant.
+  const days = Number.isInteger(input.expiresInDays) ? Math.min(Math.max(input.expiresInDays!, 1), AGENT_EXPIRY_MAX_DAYS) : AGENT_EXPIRY_DEFAULT_DAYS;
+  const expiresAt = new Date(nowMs + days * DAY_MS);
+  const grant = await store.createGrant({
+    userId: input.userId,
+    name,
+    keyPrefix: token.slice(0, 12),
+    keyHash: hashAgentKey(token),
+    canLookup: true,
+    canDraft: true,
+    // SKIPPY-6: an OAuth-created grant never gets `send` by default; the seeker
+    // turns it on when granting.
+    canSend: false,
+    limits: { ...AGENT_LIMIT_DEFAULTS },
+    expiresAt,
+  });
+  return { token, grantId: grant.id, expiresAt };
+}
+
+/** Live read-only sources + pricing helpers for the route module. */export function createSeekerAgentSourceDeps(): Pick<SeekerAgentRouteDeps, "listCompanies" | "prices" | "quoteCost" | "getCompanyDirectoryEntry" | "listResumes" | "listRequests" | "notifySendRequest"> {
   return {
     listCompanies: async (): Promise<PublicCompany[]> => (await listCompanyDirectory()).companies,
     prices: async (req: Request, region: "IN" | "INTL"): Promise<PlanCatalogResponse> => {
@@ -142,5 +217,55 @@ export function createSeekerAgentSourceDeps(): Pick<SeekerAgentRouteDeps, "listC
       return { level, cost: askLevelCostEnabled() ? creditsForLevel(level) : 1 };
     },
     getCompanyDirectoryEntry,
+    listResumes: async (userId: number) => {
+      const db = await requireDb();
+      return db.select({ id: referralAttachments.id, fileName: referralAttachments.fileName, createdAt: referralAttachments.createdAt })
+        .from(referralAttachments)
+        .where(and(eq(referralAttachments.ownerId, userId), isNull(referralAttachments.referralRequestId)))
+        .orderBy(desc(referralAttachments.createdAt)).limit(25);
+    },
+    /**
+     * D-178.read: the same rows the seeker's /requests page lists, scoped to the
+     * seeker (`jobSeekerId = userId`). The route whitelists fields and drops
+     * every referrer identity field (D-019(e)).
+     */
+    listRequests: async (userId: number) => listJobSeekerCompanyReferrals(userId),
+    /**
+     * SKIPPY-6 / D-060: one in-app notice, and at most one email a day with a
+     * direct link to the approval. The daily check reads before this call's own
+     * notice is written, so a notice never counts itself.
+     */
+    notifySendRequest: async (input) => {
+      const db = await requireDb();
+      const since = new Date(Date.now() - DAY_MS);
+      const [recent] = await db.select({ id: notifications.id }).from(notifications)
+        .where(and(eq(notifications.userId, input.userId), eq(notifications.kind, "agent_send_request"), gte(notifications.createdAt, since)))
+        .limit(1);
+      const eventKey = `agent-send-request:${input.approvalId}`;
+      await db.insert(notifications).values({
+        userId: input.userId,
+        category: "status",
+        kind: "agent_send_request",
+        title: `${input.agentName} asked you to approve a referral`,
+        body: `${input.agentName} prepared a referral request for ${input.companyName}. Nothing is sent until you approve it.`,
+        eventKey,
+        refId: input.approvalId,
+      }).onDuplicateKeyUpdate({ set: { eventKey } });
+      if (recent) return;
+      const [user] = await db.select({ email: users.email }).from(users).where(eq(users.id, input.userId)).limit(1);
+      const to = user?.email?.trim();
+      if (!to) return;
+      const url = `${input.origin}/approve`;
+      await sendTransactionalEmail({
+        to,
+        subject: `${input.agentName} asked you to approve a referral`,
+        text: [
+          `${input.agentName} prepared a referral request for ${input.companyName}.`,
+          "Nothing is sent and no referral is used until you approve it.",
+          "",
+          `Review and approve: ${url}`,
+        ].join("\n"),
+      });
+    },
   };
 }

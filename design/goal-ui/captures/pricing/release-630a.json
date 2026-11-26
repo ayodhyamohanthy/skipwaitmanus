@@ -1,0 +1,50 @@
+{
+  "task": "D-048-p3-pricing",
+  "session": "GPT-6.1 Sol · 630a",
+  "date": "2026-11-18",
+  "sourceCommit": "62499f3aaa367b667b220cdbaaaf54ffaad309c0",
+  "integratedMain": "e8845c360425d3ac546ccad8c5de89c77cda12b1",
+  "route": "/pricing",
+  "preview": "http://127.0.0.1:4633/pricing",
+  "build": "VITE_GOAL_SURFACES='' pnpm build",
+  "captureMethod": "Managed Chromium, Puppeteer fullPage PNG, deviceScaleFactor 1; native image review of both saved PNGs",
+  "captures": [
+    {
+      "file": "release-630a-1280.png",
+      "viewport": { "width": 1280, "height": 900 },
+      "documentHeight": 1544,
+      "horizontalOverflowPx": 0,
+      "primaryHeightPx": 40,
+      "sha256": "31ee91d2126b9e5ec6b26085389e6f572a6c9686ddebedcac411b0572f2fcfcc"
+    },
+    {
+      "file": "release-630a-390.png",
+      "viewport": { "width": 390, "height": 900 },
+      "documentHeight": 2420,
+      "horizontalOverflowPx": 0,
+      "primaryHeightPx": 48,
+      "sha256": "b9767cdab472d66f6bb14460913c1755a7bc884e6703b5c6eb2a374040a161e6"
+    }
+  ],
+  "observations": {
+    "heading": "Know what a referral request costs.",
+    "headingCount": 1,
+    "primaryCount": 1,
+    "primaryLabel": "See plans and prices",
+    "primaryDestination": "/plans",
+    "primaryNavigation": "Observed /plans after clicking, then returned to /pricing",
+    "keyboardFocus": "Reached primary by Tab; visible 3px solid outline",
+    "canonical": "https://skipwait.me/pricing",
+    "prices": ["INR 229 / USD 4.49", "INR 899 / USD 17.99", "INR 1299 / USD 25.99"],
+    "checkout": "Paused copy present; no checkout or money flag changed",
+    "pageErrorsOnReload": [],
+    "apiRequestsOnReload": [{ "method": "GET", "path": "/api/trpc/auth.me" }],
+    "networkScope": "The shared application shell reads auth.me; the public pricing content makes no price, wallet or payment request",
+    "visualReview": "Both saved images inspected natively; no clipping, repeated strips, overlap or horizontal overflow observed"
+  },
+  "limitations": [
+    "Local production-build preview, not a production release claim",
+    "Historical before/after images and their UNVERIFIED record are retained; use these fresh release captures for visual proof",
+    "A combined browser interaction run timed out while waiting for network idle; subsequent separate navigation, keyboard and load checks completed"
+  ]
+}

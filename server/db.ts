@@ -1,18 +1,26 @@
+import { isAdministratorEmail, isFounderSuperAdmin } from "./_core/adminIdentity";
 import { enqueueBillingReviewTx } from "./billingReviewOutbox";
+import { ASK_NO_EXPIRY_ENABLED } from "../shared/askNoExpiry";
+import { ASK_RECONFIRM_ENABLED, RECONFIRM_AFTER_DAYS, type AskReconfirmResponse } from "../shared/askReconfirm";
+import { ASK_RECONFIRM_NOTICE_TITLE, ASK_RECONFIRM_PROMPT } from "../shared/moneyCopy";
 import { buildReferrerHome, monthStartUtc } from "./referrerHome";
 import { enrichInboxRow } from "./inboxEnrichment";
 import { transitionNotificationKind } from "./notificationKinds";
 import { buildEvidenceRows, cleanNote as cleanModerationNote, groupEvents as groupModerationEvents, groupEvidence, reportSeverity, reviewDueAt } from "./moderationCase";
 import { checkPostingAllowance, opportunityLimits } from "./opportunityLimits";
-import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, ne, notInArray, or, sql } from "drizzle-orm";
+import { and, asc, count, desc, eq, gt, gte, inArray, isNotNull, isNull, like, lt, lte, ne, notInArray, or, sql } from "drizzle-orm";
 import { workEmailStorageKeys } from "./workEmailKey";
 import { publicDisplayName } from "../shared/publicDisplayName";
+import { REQUEST_INBOX_LINK_ENABLED, isChosenScreenName, isSafeFastTrackAlias, publicScreenName, type PublicReferralLinkPayload } from "../shared/requestInboxLink";
 import { passReasonSeekerLabel } from "../shared/passReasons";
 import { CREDIT_ENDED_CAVEAT } from "../shared/moneyCopy";
 import { alias } from "drizzle-orm/mysql-core";
 import { drizzle } from "drizzle-orm/mysql2";
 import * as mysql from "mysql2/promise";
-import { accountPreferences, askCosts, seekerLevels, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, canonicalPeople, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
+import { accountPreferences, askCosts, askInviteLinks, askOrigins, seekerLevels, seekerAgentGrants, askWorkItems, moderationEvents, moderationEvidence, adminTokenAdjustments, bandedCheckoutIntents, canonicalPeople, catalogJobs, companies, companyDomains, verifiedLoginAliases, identityLinkAudits, companyCoverageInvitations, companyCoverageRewards, companyOpportunities, employerAccounts, employerPaymentFulfillments, employerPaymentRefunds, employerTalentIntroRequests, employerTalentRefs, partnerModules, paymentFulfillments, personalReferralInvites, personalReferralRewards, privacyRequests, planCreditGrants, promoCreditGrants, userFollows, profileUnlocks, referralAvailabilitySlots, safetyReports, companySuggestions, seekerAlerts, assistantConnections, assistantTokens, developerApps, assistantApprovals, referralRequestSaves, referralRequestPasses, referralTransitionEvents, referralDocumentAccessGrants, referralShareCards, referrerFastTrackLinks, referrerReviewEmailLinks, referralReviewDeliveries, referralReviewGrantRotations, referrerSlackWebhooks, resumeUploadChunks, resumeUploadSessions, subscriptionCheckoutIntents, subscriptionEvents, giftSubscriptionFulfillments, tokenBalances, tokenTransactions, workEmailOtpReceipts, workItems, talentDiscoveryConsents, type PartnerModuleCategory, type InsertUser, jobs, landedJourney, messages, directMessageQuotaWindows, directMessageNotificationOutbox, notifications, operationalActivityLogs, opportunitySponsorshipPurchases, profiles, referralAttachments, referralRequests, savedRoles, userBlocks, users } from "../drizzle/schema";
+import { ACTIVITY_FAMILY_PREFIXES, ACTIVITY_PAGE_MAX, type ActivityPersonMatch, type RequestTransitionRow } from "../shared/adminActivity";
+import type { ActivityListInput } from "./adminActivity";
+import { authEmailKey, isEmailShape } from "./authEvents";
 import { createCipheriv, createDecipheriv, createHash, randomBytes, randomUUID } from "node:crypto";
 import { ENV } from "./_core/env";
 import { canAddAlert, normalizeAlertDomain } from "../shared/alerts";
@@ -49,23 +57,40 @@ import { buildDomainIntegrityReport, type StoredDomainRow } from "./domainIntegr
 import { isPaidPlanActive, resolvePlanEntitlements, planEntitlementsFor, type PlanEntitlements } from "../shared/planEntitlements";
 import { openAskSlots, type OpenAskSlots } from "../shared/openAskSlots";
 import { askWorkItemIdsSchema, dedupeAskWorkItemIds, type AskWorkItem } from "../shared/askWorkItems";
-import { AssistantPlanRequiredError, CompanyCapReachedError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
+import { AssistantPlanRequiredError, CompanyCapReachedError, CoverageOpenedUpError, OpenAskSlotCapError, openAskCondition, PlanLimitError, showcaseLimitViolation } from "./planGates";
+import { agentPortalAllowed } from "./agentPortalAccess";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
+import { POOL_NUDGES_ENABLED } from "../shared/poolNudges";
+import { notifyColleaguesOfReleasedRequest } from "./poolNudges";
 import { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
+// D-393 (a): the demo accounts test any company and any referral in a sandbox. One definition lives in
+// shared/sandboxRequests.ts; this file only asks it.
+import { SANDBOX_REFERRER_EMAIL, SANDBOX_SEEKER_EMAIL, isSandboxReferrer, isSandboxSeeker, sandboxReachableReferrers } from "../shared/sandboxRequests";
 import { COVERAGE_ATTEMPTS_PER_SLOT, COVERAGE_TARGET_SCAN_LIMIT, COVERAGE_WITHDRAWN_NOTICE, askDeliveryKey, coverageDeliveredEventKey, coverageDeliveredNotice, coverageHeldEventKey, coverageHeldNotice, coverageReferrerEventKey, coverageReferrerNotice, coverageWaitExpiredNotice, isAwaitingCoverageActionAllowed, type CoverageDeliveryOutcome, type CoverageHandoffSummary } from "./coverageDelivery";
+import { askInviteActiveRequestKey } from "../shared/askInvites";
 // Re-exported for every existing caller (tests and companyDirectory.ts import
 // these from ./db); the definitions live in server/referrerAvailability.ts.
 export { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
 import { CreditSpendConflictError, InsufficientCreditsError, creditsLedgerTx, freshWalletCycle, isDuplicateKey, readGrantsTx, spendAlreadyRecordedTx, spendCreditsTx, type CyclePatch, type GrantRow, type LedgerTx, type PromoHolding } from "./creditLedger";
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
+import { MCP_GRANT_PROVIDER } from "../shared/seekerAgents";
 import { freeCreditsRequireCardValidation } from "./billingSettings";
 import { grantFreeCycleOnValidationTx, openCycleTx, reconcileSeekerWalletTx, rollCycleTx, seekerCycleDue, termOpeningCycle } from "./creditCycles";
+import { PAID_CREDITS_NEVER_EXPIRE, referralLevelForJobLevel } from "../shared/planFamily";
 import { BUCKET_SOURCES, HIDDEN_LEDGER_KINDS, creditLedgerEntrySchema, type CreditLedgerEntry, type CreditsLedger } from "../shared/creditLedger";
 import { bucketOfLedgerRow } from "../shared/creditSpend";
 import { fetchPublicJobLink } from "./jobLinkPreview";
 import { captureServerError } from "./sentry";
+import { acceptedAskCostSchema, bandedAskQuoteSchema, isBandedPlan, sameAcceptedAskCost, type AcceptedAskCost } from "../shared/acceptedAskCost";
+import { bandedSalesEnabled } from "./billingSettings";
+import { readBandedAllocationTx, readBandedChargeTx, refundBandedDebitTx, spendBandedReferralTx } from "./bandedSpend";
+import { cancelBandedSubscriptionTx, fulfillBandedExtraReferralsTx, fulfillBandedPlanSubscriptionTx, refundBandedPurchaseTx } from "./bandedGrants";
+import { drizzleBandedGrantDb } from "./bandedGrantStore";
+import { resolveBillingEnvironment } from "./chargebeeEnvironment";
+import type { BandedCurrency } from "../shared/bandedGrants";
+import { AskPriceChangedError, ReferralPricingUnavailableError } from "./planGates";
 import { PaymentReviewRefusedError, closeRefundedPaymentReviewTx } from "./paymentRefundReview";
 import { PAYMENT_REVIEW_NOTE_MAX, paymentReviewKind, paymentReviewRefusal, type PaymentReviewDecision, type PaymentReviewOutcome, type RefundReviewReason } from "../shared/paymentReview";
 import { recordPaidEvidenceTx, recordedRefundsCoverPaymentTx, refundEventRecordedTx, settleRefundOfNonCreditedPaymentTx, summariseRecordedRefunds } from "./paymentRefundEvents";
@@ -107,7 +132,6 @@ export async function getDb() {
   return _db;
 }
 
-const durableAdministratorEmail = "ayodhya@skipwait.me";
 
 /**
  * Sessions that assert their own email address rather than inheriting one an
@@ -122,7 +146,8 @@ export function resolveSyncedUserRole(input: { openId: string; email?: string | 
   // The administrator promotion is keyed on the email address, so it is only
   // safe when that address came from a provider that verified it. Otherwise a
   // self-asserted address would hand out administrator access to anyone.
-  if (normalizedEmail === durableAdministratorEmail && emailIsProviderVerified) return "admin" as const;
+  // D-400: the founder (permanent super administrator) and the configured administrator seat are always admin.
+  if (isAdministratorEmail(normalizedEmail) && emailIsProviderVerified) return "admin" as const;
   const ownerMatches = Boolean(ENV.ownerOpenId) && input.openId === ENV.ownerOpenId;
   return input.requestedRole ?? input.existingRole ?? (ownerMatches ? "admin" : "user");
 }
@@ -154,7 +179,7 @@ export async function resolveLoginIdentity(input: { provider: string; subject: s
     const account = (await db.select().from(users).where(eq(users.id, knownAlias.canonicalUserId)).limit(1))[0];
     const person = (await db.select().from(canonicalPeople).where(eq(canonicalPeople.id, knownAlias.canonicalPersonId)).limit(1))[0];
     if (!account || !person || account.suspended || person.suspended) throw new Error(person?.reviewReason ? "IDENTITY_REVIEW_REQUIRED" : "ACCOUNT_NOT_ACTIVE");
-    return { ...account, suspended: false, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter };
+    return withAdministratorRole(db, { ...account, suspended: false, sessionsValidAfter: person.sessionsValidAfter > account.sessionsValidAfter ? person.sessionsValidAfter : account.sessionsValidAfter }, email, input.emailVerified);
   }
   const result = await db.transaction(async tx => {
     // Provider subject is the strongest key. It always resolves before email.
@@ -241,7 +266,18 @@ export async function resolveLoginIdentity(input: { provider: string; subject: s
     return { account: account! };
   });
   if ("blocked" in result) throw new Error(result.blocked);
-  return result.account;
+  return withAdministratorRole(db, result.account, email, input.emailVerified);
+}
+
+/**
+ * FIX-founder-admin-role (D-400): a provider-verified administrator email (the founder, or the configured seat,
+ * decided only by server/_core/adminIdentity.ts) is an administrator on every sign-in, not only when its account was
+ * created. Promote only: an existing administrator is never demoted and an unverified email never promotes.
+ */
+async function withAdministratorRole<T extends { id: number; role: "user" | "admin" }>(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, account: T, email: string, emailVerified: boolean): Promise<T> {
+  if (account.role === "admin" || !emailVerified || !isAdministratorEmail(email)) return account;
+  await db.update(users).set({ role: "admin" }).where(eq(users.id, account.id));
+  return { ...account, role: "admin" };
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {if(!user.openId)throw new Error("User openId is required for upsert");const db=await getDb();if(!db)return;const current=await db.select({role:users.role}).from(users).where(eq(users.openId,user.openId)).limit(1);const role=resolveSyncedUserRole({openId:user.openId,email:user.email,requestedRole:user.role,existingRole:current[0]?.role,loginMethod:user.loginMethod});await db.insert(users).values({...user,role,lastSignedIn:user.lastSignedIn??new Date()}).onDuplicateKeyUpdate({set:{name:user.name??null,email:user.email??null,loginMethod:user.loginMethod??null,lastSignedIn:user.lastSignedIn??new Date(),role}});}
@@ -531,8 +567,9 @@ export async function getAssistantAccess(userId: number): Promise<AssistantAcces
   return assistantAccessFrom(await getSeekerEntitlements(userId));
 }
 
+/** D-178.gate (D-290 R2): agent access is the Skippy agent switch plus the account allow-list, never a plan. */
 async function assertAssistantAccess(userId: number) {
-  if (!(await getSeekerEntitlements(userId)).assistants) throw new AssistantPlanRequiredError();
+  if (!agentPortalAllowed(userId)) throw new AssistantPlanRequiredError();
 }
 
 export async function listAssistantConnections(userId: number): Promise<AssistantConnection[]> {
@@ -597,9 +634,9 @@ export async function verifyAssistantBearer(tokenHash: string): Promise<{ userId
   return { userId: row.userId, tokenId: row.id };
 }
 
-/** True when the owner's plan still includes assistants (the Land tier). Fails closed. */
+/** D-178.gate (D-290 R2): true only when the switch is on and the owner is on the allow-list. Fails closed. */
 export async function hasAssistantAccess(userId: number): Promise<boolean> {
-  try { return (await getSeekerEntitlements(userId)).assistants; } catch { return false; }
+  return agentPortalAllowed(userId);
 }
 
 export async function revokeAssistantToken(userId: number, tokenId: number) {
@@ -615,6 +652,14 @@ export async function listAssistantApprovals(userId: number): Promise<AssistantA
   const now = new Date();
   await db.update(assistantApprovals).set({ status: "expired", decidedAt: now }).where(and(eq(assistantApprovals.userId, userId), eq(assistantApprovals.status, "pending"), lt(assistantApprovals.expiresAt, now)));
   const rows = await db.select().from(assistantApprovals).where(eq(assistantApprovals.userId, userId)).orderBy(desc(assistantApprovals.createdAt)).limit(50);
+  // SKIPPY-6: an agent-requested approval carries its grant, so the card can name
+  // the agent. One read for the distinct grants on this page, never per row.
+  const grantIds = Array.from(new Set(rows.map(row => row.grantId).filter((id): id is number => typeof id === "number")));
+  const grantNames = new Map<number, string>();
+  if (grantIds.length) {
+    const grants = await db.select({ id: seekerAgentGrants.id, name: seekerAgentGrants.name }).from(seekerAgentGrants).where(inArray(seekerAgentGrants.id, grantIds));
+    for (const grant of grants) grantNames.set(grant.id, grant.name);
+  }
   return rows.map(row => ({
     id: row.id,
     kind: row.kind,
@@ -627,7 +672,20 @@ export async function listAssistantApprovals(userId: number): Promise<AssistantA
     slotCount: row.slotCount,
     createdAt: row.createdAt.toISOString(),
     expiresAt: row.expiresAt.toISOString(),
+    targetRoleUrl: row.targetRoleUrl,
+    attachmentIds: parseAttachmentIds(row.attachmentIds),
+    grantId: row.grantId,
+    agentName: row.grantId != null ? grantNames.get(row.grantId) ?? null : null,
   }));
+}
+
+/** SKIPPY-6: the stored resume ids, parsed defensively; a bad value reads as none. */
+function parseAttachmentIds(raw: string | null): number[] {
+  if (!raw) return [];
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((value): value is number => typeof value === "number" && Number.isInteger(value) && value > 0) : [];
+  } catch { return []; }
 }
 
 export async function createAssistantApproval(userId: number, input: {
@@ -683,7 +741,7 @@ export async function listMyUnattachedResumes(userId: number) {
  * here by the server; nothing the assistant supplies sets it. The referrer is never chosen by the assistant:
  * the request goes through the normal company routing when (and only if) the owner approves.
  */
-export async function proposeAssistantAsk(userId: number, input: { targetRoleUrl?: unknown; attachmentIds?: unknown; message?: unknown; provider?: unknown }) {
+export async function proposeAssistantAsk(userId: number, input: { targetRoleUrl?: unknown; attachmentIds?: unknown; message?: unknown; provider?: unknown }, grant?: { grantId: number }) {
   const rawUrl = typeof input.targetRoleUrl === "string" ? input.targetRoleUrl.trim() : "";
   if (!rawUrl || rawUrl.length > 2048 || !isValidTargetRoleUrl(rawUrl)) throw new Error("Add a complete public job link for the role");
   const ids = Array.isArray(input.attachmentIds) ? Array.from(new Set(input.attachmentIds.filter((v): v is number => typeof v === "number" && Number.isInteger(v) && v > 0))) : [];
@@ -697,13 +755,17 @@ export async function proposeAssistantAsk(userId: number, input: { targetRoleUrl
   if (pending.length >= MAX_PENDING_ASSISTANT_ASKS) throw new Error("The member already has several asks waiting for approval. Ask them to review those first");
   const targetRoleUrl = normalizeTargetRoleUrl(rawUrl);
   const companyDomain = directEmployerDomainFromTargetUrl(targetRoleUrl) ?? null;
-  const provider = typeof input.provider === "string" && input.provider.trim() ? input.provider.trim().slice(0, 80) : "assistant";
+  // D-178.mcp-grant: a grant's proposal carries the grant (provider "mcp"), so its approve runs the
+  // grant path (revoke, expiry, pause, caps under lock, the D-142 label); that path re-quotes and
+  // refuses a changed cost, so the row stores the quote the approve route computes (quoteApprovalCost).
+  const provider = grant ? MCP_GRANT_PROVIDER : typeof input.provider === "string" && input.provider.trim() ? input.provider.trim().slice(0, 80) : "assistant";
+  const creditCount = grant ? (askLevelCostEnabled() ? creditsForLevel(assignJobLevel({ url: targetRoleUrl }).level) : FLAT_ASK_COST) : ASSISTANT_ASK_CREDIT_COST;
   const inserted = await db.insert(assistantApprovals).values({
-    userId, connectionId: null, kind: "ask_send", provider, companyDomain, role: null, note: message,
-    creditCount: ASSISTANT_ASK_CREDIT_COST, slotCount: null, targetRoleUrl, attachmentIds: JSON.stringify(ids),
+    userId, connectionId: null, grantId: grant?.grantId ?? null, kind: "ask_send", provider, companyDomain, role: null, note: message,
+    creditCount, slotCount: null, targetRoleUrl, attachmentIds: JSON.stringify(ids),
     idempotencyKey: randomBytes(24).toString("base64url").slice(0, 40), expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())),
   });
-  return { id: Number(inserted[0].insertId), status: "pending" as const, creditCost: ASSISTANT_ASK_CREDIT_COST, expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())).toISOString() };
+  return { id: Number(inserted[0].insertId), status: "pending" as const, creditCost: creditCount, expiresAt: new Date(getApprovalExpiresAtMs(now.getTime())).toISOString() };
 }
 
 export async function decideAssistantApproval(userId: number, approvalId: number, decision: "approved" | "declined") {
@@ -1096,9 +1158,26 @@ export async function listUsersAdmin(limit = 100) {
   const db = await getDb(); if (!db) return [];
   return db.select({ id: users.id, email: users.email, name: users.name, role: users.role, accountType: profiles.accountType, company: profiles.company, workEmailVerifiedAt: profiles.workEmailVerifiedAt, suspended: users.suspended, createdAt: users.createdAt }).from(users).leftJoin(profiles, eq(profiles.userId, users.id)).orderBy(desc(users.createdAt)).limit(Math.min(200, Math.max(1, limit)));
 }
+/** D-400: the founder's account can never be suspended, by any administrator or route. */
+export class FounderProtectedError extends Error {
+  constructor() { super("The founder's account cannot be suspended"); this.name = "FounderProtectedError"; }
+}
+
+/** True when the account, any account row of its canonical person, or a verified alias of that person is the founder. */
+async function belongsToFounder(db: NonNullable<Awaited<ReturnType<typeof getDb>>>, account: { email: string | null; canonicalPersonId: number | null }): Promise<boolean> {
+  if (isFounderSuperAdmin(account.email)) return true;
+  if (!account.canonicalPersonId) return false;
+  const siblings = await db.select({ email: users.email }).from(users).where(eq(users.canonicalPersonId, account.canonicalPersonId));
+  if (siblings.some(row => isFounderSuperAdmin(row.email))) return true;
+  const aliases = await db.select({ email: verifiedLoginAliases.normalizedVerifiedEmail }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.canonicalPersonId, account.canonicalPersonId));
+  return aliases.some(row => isFounderSuperAdmin(row.email));
+}
+
 export async function setUserSuspended(userId: number, suspended: boolean) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
-  const account=(await db.select().from(users).where(eq(users.id,userId)).limit(1))[0];if(!account)throw new Error("User not found");const now=new Date();if(account.canonicalPersonId){// An explicit admin unsuspend IS the operator review the freeze was
+  const account=(await db.select().from(users).where(eq(users.id,userId)).limit(1))[0];if(!account)throw new Error("User not found");
+  // D-400 (owner, Nov 25 2026): "no one can takeover the access away from founder anytime". Lifting a suspension stays allowed.
+  if (suspended && await belongsToFounder(db, account)) throw new FounderProtectedError();const now=new Date();if(account.canonicalPersonId){// An explicit admin unsuspend IS the operator review the freeze was
     // waiting for: clear the identity-review reason so sign-in works again.
     // Suspending never touches the reason.
     await db.update(canonicalPeople).set(suspended?{suspended,sessionsValidAfter:now}:{suspended,reviewReason:null,sessionsValidAfter:now}).where(eq(canonicalPeople.id,account.canonicalPersonId));const aliases=await db.select({userId:verifiedLoginAliases.canonicalUserId}).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.canonicalPersonId,account.canonicalPersonId));await db.update(users).set({suspended,sessionsValidAfter:now}).where(inArray(users.id,[account.id,...aliases.map(a=>a.userId)]));}else await db.update(users).set({suspended,sessionsValidAfter:now}).where(eq(users.id,userId));return {userId,suspended};
@@ -1368,7 +1447,6 @@ export type ReferrerFastTrackLink = { linkCode: string; vanityAlias: string; com
 
 const createFastTrackCode = () => randomUUID().replace(/-/g, "");
 const createFastTrackAlias = () => `ref-${randomUUID().replace(/-/g, "").slice(0, 10)}`;
-const reservedFastTrackAliases = new Set(["admin", "api", "auth", "fast", "inbox", "login", "notifications", "refer", "request", "settings", "start"]);
 
 export function companySlugFromDomain(companyDomain: string) {
   const normalized = companyDomain.trim().toLowerCase().replace(/^www\./, "");
@@ -1376,9 +1454,17 @@ export function companySlugFromDomain(companyDomain: string) {
   return (parts.length > 1 ? parts[0] : normalized).replace(/[^a-z0-9-]/g, "").slice(0, 48);
 }
 
-export function isSafeFastTrackAlias(alias: string) {
-  const normalized = alias.trim().toLowerCase();
-  return /^[a-z0-9][a-z0-9-]{1,28}[a-z0-9]$/.test(normalized) && !reservedFastTrackAliases.has(normalized);
+/** D-089.server §5.1 step 1: the alias rule lives in `shared/requestInboxLink.ts`; re-exported for existing callers. */
+export { isSafeFastTrackAlias };
+
+/**
+ * §4.6: what both public resolvers return. While REQUEST_INBOX_LINK_ENABLED is false the payload is
+ * byte-identical to before (no `screenName` key); with it on, `screenName` is the chosen alias or
+ * null for a generated `ref-` one. Nothing about the person is ever read for it.
+ */
+function publicReferralLinkPayload(companyDomain: string, vanityAlias: string | null): PublicReferralLinkPayload {
+  if (!REQUEST_INBOX_LINK_ENABLED) return { companyDomain, isActive: true };
+  return { companyDomain, isActive: true, screenName: vanityAlias ? publicScreenName(vanityAlias) : null };
 }
 
 export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<ReferrerFastTrackLink> {
@@ -1388,9 +1474,14 @@ export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<
   const companyDomain = profile.workEmailDomain.trim().toLowerCase();
   const existing = await db.select({ linkCode: referrerFastTrackLinks.linkCode, vanityAlias: referrerFastTrackLinks.vanityAlias, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive }).from(referrerFastTrackLinks).where(eq(referrerFastTrackLinks.referrerId, userId)).limit(1);
   if (existing[0] && existing[0].companyDomain === companyDomain && existing[0].vanityAlias) return { ...existing[0], vanityAlias: existing[0].vanityAlias };
+  // D-398 (§4.4, T10): a chosen screen name moves with its person to a new company instead of being
+  // freed, so a link shared under it reaches them (at the new company) or nobody (the old company's
+  // URL no longer matches), never a colleague who took the name. Only a generated `ref-` alias,
+  // which nobody can choose, is re-minted.
+  const previousAlias = existing[0]?.vanityAlias;
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const linkCode = existing[0]?.companyDomain === companyDomain ? existing[0].linkCode : createFastTrackCode();
-    const vanityAlias = createFastTrackAlias();
+    const vanityAlias = isChosenScreenName(previousAlias) ? previousAlias : createFastTrackAlias();
     try {
       if (existing[0]) await db.update(referrerFastTrackLinks).set({ companyDomain, linkCode, vanityAlias, isActive: true, deactivatedAt: null }).where(eq(referrerFastTrackLinks.referrerId, userId));
       else await db.insert(referrerFastTrackLinks).values({ referrerId: userId, companyDomain, linkCode, vanityAlias, isActive: true });
@@ -1402,25 +1493,25 @@ export async function getOrCreateReferrerFastTrackLink(userId: number): Promise<
   throw new Error("We could not create your link");
 }
 
-export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
+export async function getPublicReferrerFastTrackLink(linkCode: string): Promise<PublicReferralLinkPayload | undefined> {
   const normalizedCode = linkCode.trim().slice(0, 64);
   if (!normalizedCode) return undefined;
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, vanityAlias: referrerFastTrackLinks.vanityAlias, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.linkCode, normalizedCode), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
-  return { companyDomain: link.companyDomain, isActive: true };
+  return publicReferralLinkPayload(link.companyDomain, link.vanityAlias);
 }
 
-export async function getPublicReferrerFastTrackVanityLink(companySlug: string, vanityAlias: string): Promise<{ companyDomain: string; isActive: true } | undefined> {
+export async function getPublicReferrerFastTrackVanityLink(companySlug: string, vanityAlias: string): Promise<PublicReferralLinkPayload | undefined> {
   const normalizedSlug = companySlug.trim().toLowerCase();
   const normalizedAlias = vanityAlias.trim().toLowerCase();
   if (!normalizedSlug || !isSafeFastTrackAlias(normalizedAlias)) return undefined;
   const db = await getDb(); if (!db) return undefined;
-  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
+  const result = await db.select({ companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive, vanityAlias: referrerFastTrackLinks.vanityAlias, referrerId: referrerFastTrackLinks.referrerId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt }).from(referrerFastTrackLinks).innerJoin(profiles, eq(referrerFastTrackLinks.referrerId, profiles.userId)).where(and(eq(referrerFastTrackLinks.vanityAlias, normalizedAlias), eq(referrerFastTrackLinks.isActive, true))).limit(1);
   const link = result[0];
   if (!link || companySlugFromDomain(link.companyDomain) !== normalizedSlug || !isVerifiedEmployeeOfCompany(link, link.companyDomain)) return undefined;
-  return { companyDomain: link.companyDomain, isActive: true };
+  return publicReferralLinkPayload(link.companyDomain, link.vanityAlias);
 }
 
 async function getActiveReferrerFastTrackLink(linkCode: string) {
@@ -1444,6 +1535,42 @@ async function getActiveReferrerFastTrackVanityLink(companySlug: string, vanityA
   return { referrerId: link.referrerId, companyDomain: link.companyDomain };
 }
 
+/**
+ * D-089.server (§4.5, T1): turn a paused link back on. It gets a fresh `/fast/` code (the old one
+ * stays dead) and keeps its alias, so a chosen screen name survives a pause and a pause never frees
+ * a name. Verified employees only, exactly as minting. A link at a former company, or no link yet,
+ * goes through the one mint path, which turns it on. Idempotent: an active link is returned as is.
+ */
+export async function resumeReferrerFastTrackLink(userId: number): Promise<ReferrerFastTrackLink & { resumed: boolean }> {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) throw new Error("Verify your company email before creating your link");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const companyDomain = profile.workEmailDomain.trim().toLowerCase();
+  const readLink = async () => (await db.select({ linkCode: referrerFastTrackLinks.linkCode, vanityAlias: referrerFastTrackLinks.vanityAlias, companyDomain: referrerFastTrackLinks.companyDomain, isActive: referrerFastTrackLinks.isActive }).from(referrerFastTrackLinks).where(eq(referrerFastTrackLinks.referrerId, userId)).limit(1))[0];
+  const existing = await readLink();
+  if (!existing || existing.companyDomain !== companyDomain || !existing.vanityAlias) {
+    const minted = await getOrCreateReferrerFastTrackLink(userId);
+    return { ...minted, resumed: !existing || !existing.isActive };
+  }
+  const vanityAlias = existing.vanityAlias;
+  if (existing.isActive) return { ...existing, vanityAlias, resumed: false };
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const linkCode = createFastTrackCode();
+    try {
+      const result = await db.update(referrerFastTrackLinks).set({ linkCode, isActive: true, deactivatedAt: null })
+        .where(and(eq(referrerFastTrackLinks.referrerId, userId), eq(referrerFastTrackLinks.isActive, false), eq(referrerFastTrackLinks.vanityAlias, vanityAlias)));
+      if (Number(result[0].affectedRows) === 1) return { linkCode, vanityAlias, companyDomain, isActive: true, resumed: true };
+      // Another request changed the row first: answer with what is there now, never a guess.
+      const current = await readLink();
+      if (!current?.vanityAlias) throw new Error("We could not turn your link back on");
+      return { ...current, vanityAlias: current.vanityAlias, resumed: false };
+    } catch (error) {
+      if (attempt === 3) throw error;
+    }
+  }
+  throw new Error("We could not turn your link back on");
+}
+
 export async function deactivateReferrerFastTrackLink(userId: number): Promise<{ deactivated: boolean }> {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const result = await db.update(referrerFastTrackLinks).set({ isActive: false, deactivatedAt: new Date() }).where(and(eq(referrerFastTrackLinks.referrerId, userId), eq(referrerFastTrackLinks.isActive, true)));
@@ -1456,19 +1583,68 @@ export async function recordOperationalActivity(input: OperationalActivityInput)
   const metadata = input.metadata ? JSON.stringify(Object.fromEntries(Object.entries(input.metadata).filter(([, value]) => value !== undefined))) : null;
   await db.insert(operationalActivityLogs).values({ actorUserId: input.actorUserId ?? null, action: input.action.slice(0, 100), outcome: input.outcome, resourceType: input.resourceType?.slice(0, 80) ?? null, resourceId: input.resourceId === undefined ? null : String(input.resourceId).slice(0, 120), companyDomain: input.companyDomain?.toLowerCase().slice(0, 255) ?? null, metadata });
 }
+/** ADMIN-activity-log (D-393): the canonical user whose verified login alias is this exact address. Never an unverified email. */
+export async function findVerifiedUserIdByEmail(normalizedEmail: string): Promise<number | undefined> {
+  const db = await getDb(); if (!db) return undefined;
+  const rows = await db.select({ userId: verifiedLoginAliases.canonicalUserId }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.normalizedVerifiedEmail, normalizedEmail)).limit(1);
+  return rows[0]?.userId;
+}
 export async function listMyUploadStarts(userId: number, since: Date) {
   const db = await getDb(); if (!db) return [];
   const rows = await db.select({ sessionId: operationalActivityLogs.resourceId, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt }).from(operationalActivityLogs).where(and(eq(operationalActivityLogs.actorUserId, userId), eq(operationalActivityLogs.action, "document.upload_started"), gt(operationalActivityLogs.createdAt, since))).orderBy(desc(operationalActivityLogs.createdAt)).limit(30);
   return rows.map(row => { let metadata: Record<string, unknown> = {}; try { metadata = row.metadata ? JSON.parse(row.metadata) : {}; } catch {} return { sessionId: row.sessionId, clientUploadId: typeof metadata.clientUploadId === "string" ? metadata.clientUploadId : null, fileName: typeof metadata.fileName === "string" ? metadata.fileName : null, createdAt: row.createdAt }; });
 }
 
-export async function listOperationalActivity(input: { limit?: number; action?: string; query?: string; outcome?: "success" | "failure" | "denied" } = {}) {
+export async function listOperationalActivity(input: Partial<ActivityListInput> = {}) {
   const db = await getDb(); if (!db) return [];
-  const limit = Math.max(1, Math.min(input.limit ?? 100, 250));
+  const limit = Math.max(1, Math.min(input.limit ?? 100, ACTIVITY_PAGE_MAX + 1));
   const term = input.query?.trim();
-  const conditions = [input.action?.trim() ? like(operationalActivityLogs.action, `%${input.action.trim()}%`) : undefined, input.outcome ? eq(operationalActivityLogs.outcome, input.outcome) : undefined, term ? or(like(operationalActivityLogs.action, `%${term}%`), like(operationalActivityLogs.resourceId, `%${term}%`), like(operationalActivityLogs.companyDomain, `%${term}%`), like(users.name, `%${term}%`), like(users.email, `%${term}%`)) : undefined].filter(Boolean);
+  const family = input.family ? or(...ACTIVITY_FAMILY_PREFIXES[input.family].map(prefix => like(operationalActivityLogs.action, `${prefix}%`))) : undefined;
+  // ADMIN-activity-log (D-393): a person is their account ids, plus (for sign-in attempts with no account) the HMAC key of
+  // the email the admin typed; the key is 32 hex characters, so it is safe inside the LIKE pattern.
+  const person = input.userIds || input.emailKey
+    ? or(...(input.userIds?.length ? [inArray(operationalActivityLogs.actorUserId, input.userIds)] : []), ...(input.emailKey && /^[0-9a-f]{32}$/.test(input.emailKey) ? [like(operationalActivityLogs.metadata, `%"emailKey":"${input.emailKey}"%`)] : []))
+    : undefined;
+  const conditions = [
+    input.action?.trim() ? like(operationalActivityLogs.action, `%${input.action.trim()}%`) : undefined,
+    input.outcome ? eq(operationalActivityLogs.outcome, input.outcome) : undefined,
+    term ? or(like(operationalActivityLogs.action, `%${term}%`), like(operationalActivityLogs.resourceId, `%${term}%`), like(operationalActivityLogs.companyDomain, `%${term}%`), like(users.name, `%${term}%`), like(users.email, `%${term}%`)) : undefined,
+    family,
+    person,
+    input.from ? gte(operationalActivityLogs.createdAt, input.from) : undefined,
+    input.to ? lt(operationalActivityLogs.createdAt, input.to) : undefined,
+    input.before ? lt(operationalActivityLogs.id, input.before) : undefined,
+  ].filter(Boolean);
   const where = conditions.length ? and(...conditions) : undefined;
-  return db.select({ id: operationalActivityLogs.id, action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome, resourceType: operationalActivityLogs.resourceType, resourceId: operationalActivityLogs.resourceId, companyDomain: operationalActivityLogs.companyDomain, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt, actorUserId: operationalActivityLogs.actorUserId, actorName: users.name, actorEmail: users.email }).from(operationalActivityLogs).leftJoin(users, eq(operationalActivityLogs.actorUserId, users.id)).where(where).orderBy(desc(operationalActivityLogs.createdAt)).limit(limit);
+  // Newest first by id, so `before` pages back without skipping rows that share a second.
+  return db.select({ id: operationalActivityLogs.id, action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome, resourceType: operationalActivityLogs.resourceType, resourceId: operationalActivityLogs.resourceId, companyDomain: operationalActivityLogs.companyDomain, metadata: operationalActivityLogs.metadata, createdAt: operationalActivityLogs.createdAt, actorUserId: operationalActivityLogs.actorUserId, actorName: users.name, actorEmail: users.email }).from(operationalActivityLogs).leftJoin(users, eq(operationalActivityLogs.actorUserId, users.id)).where(where).orderBy(desc(operationalActivityLogs.id)).limit(limit);
+}
+
+/** ADMIN-activity-log (D-393): the accounts an admin's person filter names: by account email or a verified login alias. */
+export async function resolveActivityPerson(person: string): Promise<ActivityPersonMatch> {
+  const email = person.trim().toLowerCase();
+  if (!isEmailShape(email)) return { userIds: [] };
+  const secret = process.env.JWT_SECRET;
+  const emailKey = secret ? authEmailKey(email, secret) : undefined;
+  const db = await getDb(); if (!db) return { userIds: [], ...(emailKey ? { emailKey } : {}) };
+  const [byAccount, byAlias] = await Promise.all([
+    db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(20),
+    db.select({ id: verifiedLoginAliases.canonicalUserId }).from(verifiedLoginAliases).where(eq(verifiedLoginAliases.normalizedVerifiedEmail, email)).limit(20),
+  ]);
+  const userIds = Array.from(new Set([...byAccount, ...byAlias].map(row => row.id)));
+  return { userIds, ...(emailKey ? { emailKey } : {}) };
+}
+
+/** ADMIN-activity-log (D-393): every transition of the requests a person sent, received or acted on, newest first. */
+export async function listPersonRequestTransitions(userIds: number[], limit: number): Promise<RequestTransitionRow[]> {
+  if (!userIds.length) return [];
+  const db = await getDb(); if (!db) return [];
+  const rows = await db.select({ id: referralTransitionEvents.id, referralRequestId: referralTransitionEvents.referralRequestId, action: referralTransitionEvents.action, fromStatus: referralTransitionEvents.fromStatus, resultingStatus: referralTransitionEvents.resultingStatus, actorUserId: referralTransitionEvents.actorUserId, createdAt: referralTransitionEvents.createdAt, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId })
+    .from(referralTransitionEvents).innerJoin(referralRequests, eq(referralTransitionEvents.referralRequestId, referralRequests.id))
+    .where(or(inArray(referralRequests.jobSeekerId, userIds), inArray(referralRequests.referrerId, userIds), inArray(referralTransitionEvents.actorUserId, userIds)))
+    .orderBy(desc(referralTransitionEvents.id)).limit(Math.max(1, Math.min(limit, 500)));
+  const ids = new Set(userIds);
+  return rows.map(({ jobSeekerId, referrerId, ...row }) => ({ ...row, role: ids.has(jobSeekerId) ? "seeker" as const : referrerId !== null && ids.has(referrerId) ? "referrer" as const : "actor" as const }));
 }
 
 export function companyDomainFromTargetUrl(targetRoleUrl: string): string | undefined {
@@ -1847,7 +2023,7 @@ export async function createReferralRequest(userId: number, input: { jobId: numb
   return { id: requestId };
 }
 
-export type CreateCompanyReferralInput = { selectedCompany?: { name: string; domains: string[] }; targetRoleUrl: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; workItemIds?: number[] };
+export type CreateCompanyReferralInput = { expectedCost?: AcceptedAskCost; selectedCompany?: { name: string; domains: string[] }; targetRoleUrl?: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; catalogJobId?: number; workItemIds?: number[]; /** Set when the composer showed the free-waiting representation. */ expectedCoverage?: "waiting_for_company_coverage" };
 /**
  * The private `jobs` row behind a company ask. Its function is the seeker's
  * explicit choice ("seeker") or the shared classifier's guess from the job
@@ -1865,30 +2041,259 @@ export class AskWorkItemNotInShowcaseError extends Error { constructor() { super
 export class ReferralIdempotencyConflictError extends Error { constructor() { super("This submission key was already used for a different referral request"); this.name="ReferralIdempotencyConflictError"; } }
 /** Idempotency fingerprint. An explicit job function is part of it only when sent, so retries from before 0077 still match. A post selection is part of it only when sent, so a retry that drops it can never silently become a different ask. Pinned work follows the same rule (0095), deduplicated so an order-only or repeated-id retry replays instead of conflicting. */
 export function companyReferralFingerprint(input: CreateCompanyReferralInput, companyDomain: string) {
-  const canonical={targetRoleUrl:normalizeTargetRoleUrl(input.targetRoleUrl),attachmentIds:Array.from(new Set(input.attachmentIds)).sort((a,b)=>a-b),pitchHash:createHash("sha256").update(input.personalPitch).digest("hex"),companyDomain,confirmedCompanyDomain:input.confirmedCompanyDomain?.trim().toLowerCase()||null,compensation:input.compensation?.trim().slice(0,80)||null,fastTrackCode:input.fastTrackCode||null,fastTrackCompanySlug:input.fastTrackCompanySlug||null,fastTrackAlias:input.fastTrackAlias||null,...(input.jobFunction?{jobFunction:input.jobFunction}:{}),...(input.opportunityId?{opportunityId:input.opportunityId}:{}),...(input.workItemIds?.length?{workItemIds:dedupeAskWorkItemIds(input.workItemIds)}:{})};
+  const canonical={targetRoleUrl:normalizeTargetRoleUrl(input.targetRoleUrl ?? ""),attachmentIds:Array.from(new Set(input.attachmentIds)).sort((a,b)=>a-b),pitchHash:createHash("sha256").update(input.personalPitch).digest("hex"),companyDomain,confirmedCompanyDomain:input.confirmedCompanyDomain?.trim().toLowerCase()||null,compensation:input.compensation?.trim().slice(0,80)||null,fastTrackCode:input.fastTrackCode||null,fastTrackCompanySlug:input.fastTrackCompanySlug||null,fastTrackAlias:input.fastTrackAlias||null,...(input.jobFunction?{jobFunction:input.jobFunction}:{}),...(input.opportunityId?{opportunityId:input.opportunityId}:{}),...(input.catalogJobId?{catalogJobId:input.catalogJobId}:{}),...(input.workItemIds?.length?{workItemIds:dedupeAskWorkItemIds(input.workItemIds)}:{})};
   return createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 
+export type AskJobResolutionInput = {
+  targetRoleUrl?: string;
+  catalogJobId?: number;
+  opportunityId?: number;
+  selectedCompany?: { name: string; domains: string[] };
+  confirmedCompanyDomain?: string;
+  compensation?: string | null;
+  jobFunction?: JobFunction;
+  submittedTargetRoleUrl?: string;
+  publishedAt?: Date;
+};
+
+/**
+ * Shared helper for D-174-ask-from-job (D-193 §5.8): resolves the job row,
+ * binds the company domain, and calculates the job level identically for both
+ * createCompanyReferralRequest and previewBandedAskCost (quote).
+ */
+export async function resolveAskJobContext(db: any, input: AskJobResolutionInput) {
+  if (input.catalogJobId) {
+    if (!db) throw new Error("Database unavailable");
+    const catalogRows = await db.select().from(catalogJobs).where(eq(catalogJobs.id, input.catalogJobId)).limit(1);
+    const catalogJob = catalogRows[0];
+    if (!catalogJob) {
+      throw new Error("This job is no longer available. Refresh the company page and choose again.");
+    }
+    if (catalogJob.closedAt !== null) {
+      throw new Error("This job is closed. Refresh the company page and choose again.");
+    }
+    const domainRows = await db.select({ domain: companyDomains.domain, isPrimary: companyDomains.isPrimary }).from(companyDomains).where(eq(companyDomains.companyId, catalogJob.companyId));
+    if (domainRows.length === 0) {
+      throw new Error("We could not identify the employer behind this job.");
+    }
+    const primaryDomain = (domainRows.find((d: { domain: string; isPrimary: boolean }) => d.isPrimary) ?? domainRows[0]).domain.toLowerCase();
+    if (input.selectedCompany) {
+      const allowed = input.selectedCompany.domains.map((d: string) => d.trim().toLowerCase());
+      const matches = domainRows.some((d: { domain: string }) => allowed.includes(d.domain.toLowerCase()));
+      if (!matches) {
+        throw new CompanyLinkMismatchError(input.selectedCompany.name);
+      }
+    }
+    if (input.confirmedCompanyDomain) {
+      const confirmed = input.confirmedCompanyDomain.trim().toLowerCase();
+      const matches = domainRows.some((d: { domain: string }) => d.domain.toLowerCase() === confirmed);
+      if (!matches) {
+        throw new Error("The confirmed company domain does not match this job link.");
+      }
+    }
+    const companyDomain = primaryDomain;
+    const targetRoleUrl = catalogJob.applyUrl;
+    const decided = resolveAskJobFunction({
+      explicit: input.jobFunction ?? (catalogJob.jobFunction as JobFunction | null | undefined),
+      targetRoleUrl: input.submittedTargetRoleUrl ?? targetRoleUrl,
+    });
+    const publishedAt = input.publishedAt ?? (catalogJob.publishedAt ? new Date(catalogJob.publishedAt) : new Date());
+    const jobRow = {
+      title: catalogJob.title,
+      company: companyDomain,
+      location: catalogJob.rawLocation || "Not specified",
+      compensation: input.compensation ?? null,
+      description: catalogJob.snippet,
+      targetRoleUrl,
+      workMode: catalogJob.workMode ?? "Not specified",
+      seniority: "Not specified",
+      employmentType: "Not specified",
+      jobFunction: decided.jobFunction,
+      jobFunctionSource: decided.source,
+      publishedAt,
+    };
+    const level = assignJobLevel({
+      title: jobRow.title,
+      description: jobRow.description,
+      url: jobRow.targetRoleUrl,
+    }).level;
+    return { companyDomain, targetRoleUrl, jobRow, level, catalogJob };
+  }
+
+  if (input.opportunityId) {
+    if (!db) throw new Error("Database unavailable");
+    const oppRows = await db.select().from(companyOpportunities).where(eq(companyOpportunities.id, input.opportunityId)).limit(1);
+    const opportunity = oppRows[0];
+    const nowMs = Date.now();
+    if (!opportunity || !opportunity.isActive || isOpportunityExpired(opportunity.expiresAt, nowMs)) {
+      throw new Error("This opening is no longer available. Refresh the company page and choose again.");
+    }
+    const opportunityDomain = opportunity.companyDomain.trim().toLowerCase();
+    let companyDomain = opportunityDomain;
+    if (input.targetRoleUrl) {
+      const resolvedDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
+      const confirmedDomain = input.confirmedCompanyDomain ? directEmployerDomainFromTargetUrl(`https://${input.confirmedCompanyDomain.trim()}`) : undefined;
+      if (resolvedDomain && confirmedDomain && resolvedDomain !== confirmedDomain) {
+        throw new Error("The confirmed company domain does not match this job link.");
+      }
+      const targetUrlDomain = resolvedDomain ?? confirmedDomain;
+      if (targetUrlDomain && targetUrlDomain.toLowerCase() !== opportunityDomain) {
+        throw new Error("This opening is no longer available. Refresh the company page and choose again.");
+      }
+      if (targetUrlDomain) {
+        companyDomain = targetUrlDomain.toLowerCase();
+      }
+    }
+    if (input.selectedCompany) {
+      const allowed = input.selectedCompany.domains.map((d: string) => d.trim().toLowerCase());
+      if (!allowed.includes(companyDomain)) {
+        throw new CompanyLinkMismatchError(input.selectedCompany.name);
+      }
+    }
+    if (input.confirmedCompanyDomain) {
+      if (input.confirmedCompanyDomain.trim().toLowerCase() !== companyDomain) {
+        throw new Error("The confirmed company domain does not match this job link.");
+      }
+    }
+    const targetRoleUrl = input.targetRoleUrl ?? opportunity.targetRoleUrl ?? "";
+    const decided = resolveAskJobFunction({
+      explicit: input.jobFunction,
+      targetRoleUrl: input.submittedTargetRoleUrl ?? targetRoleUrl,
+    });
+    const publishedAt = input.publishedAt ?? new Date();
+    const jobRow = {
+      title: opportunity.roleTitle,
+      company: companyDomain,
+      location: opportunity.location || "Not specified",
+      compensation: input.compensation ?? opportunity.compensation ?? null,
+      description: "Private referral request routed from a Target Role URL.",
+      targetRoleUrl,
+      workMode: "Not specified",
+      seniority: "Not specified",
+      employmentType: "Not specified",
+      jobFunction: decided.jobFunction,
+      jobFunctionSource: decided.source,
+      publishedAt,
+    };
+    const level = assignJobLevel({
+      title: jobRow.title,
+      description: jobRow.description,
+      url: jobRow.targetRoleUrl,
+    }).level;
+    return { companyDomain, targetRoleUrl, jobRow, level, opportunity };
+  }
+
+  if (!input.targetRoleUrl) {
+    throw new Error("A Target Role URL and at least one resume document are required");
+  }
+  const resolvedDomain = await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
+  const confirmedDomain = input.confirmedCompanyDomain ? directEmployerDomainFromTargetUrl(`https://${input.confirmedCompanyDomain.trim()}`) : undefined;
+  if (resolvedDomain && confirmedDomain && resolvedDomain !== confirmedDomain) {
+    throw new Error("The confirmed company domain does not match this job link.");
+  }
+  if (input.selectedCompany) {
+    const allowed = input.selectedCompany.domains.map(domain => domain.trim().toLowerCase());
+    const matches = (domain: string | undefined) => Boolean(domain) && allowed.includes(domain!.toLowerCase());
+    if (resolvedDomain ? !matches(resolvedDomain) : !matches(confirmedDomain)) {
+      throw new CompanyLinkMismatchError(input.selectedCompany.name);
+    }
+  }
+  const companyDomain = resolvedDomain ?? confirmedDomain;
+  if (!companyDomain) {
+    throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
+  }
+  const publishedAt = input.publishedAt ?? new Date();
+  const jobRow = companyAskJobRow({
+    companyDomain,
+    targetRoleUrl: input.targetRoleUrl,
+    roleLinkUrl: input.submittedTargetRoleUrl,
+    compensation: input.compensation ?? null,
+    jobFunction: input.jobFunction,
+    publishedAt,
+  });
+  const level = assignJobLevel({
+    title: jobRow.title,
+    description: jobRow.description,
+    url: jobRow.targetRoleUrl,
+  }).level;
+  return { companyDomain, targetRoleUrl: input.targetRoleUrl, jobRow, level };
+}
+
+/** Current caller's authoritative preview; no debit, request, document or delivery writes. */
+export async function previewBandedAskCost(userId: number, input: string | { targetRoleUrl?: string; catalogJobId?: number; opportunityId?: number }) {
+  if (!bandedSalesEnabled()) throw new Error("Banded referral quotes are not available yet");
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const normalizedInput = typeof input === "string"
+    ? { targetRoleUrl: normalizeTargetRoleUrl(input) }
+    : {
+        targetRoleUrl: input.targetRoleUrl ? normalizeTargetRoleUrl(input.targetRoleUrl) : undefined,
+        catalogJobId: input.catalogJobId,
+        opportunityId: input.opportunityId,
+      };
+  const context = await resolveAskJobContext(db, normalizedInput);
+  const companyDomain = context.companyDomain;
+  const level = context.level;
+  return db.transaction(async tx => {
+    let wallet = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update"))[0];
+    if (!wallet) {
+      await tx.insert(tokenBalances).values({ userId, role: "job_seeker", balance: 0, ...freshWalletCycle("job_seeker") }).onDuplicateKeyUpdate({ set: { userId } });
+      wallet = (await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, userId), eq(tokenBalances.role, "job_seeker"))).limit(1).for("update"))[0];
+    }
+    if (!wallet) throw new Error("Your referral balance is unavailable");
+    const now = new Date();
+    const reconciled = await reconcileWalletTx(tx, wallet, now);
+    const candidates = await tx.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
+    const counts = await readAllocatedSlotCountsTx(tx, candidates.map(candidate => candidate.userId));
+    // D-393 (a): a sandbox request is covered at any company, because the demo referrer acts as its verified employee.
+    const sandboxSeeker = isSandboxSeeker((await tx.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email);
+    const covered = sandboxSeeker || candidates.some(candidate => isOpenReferrer(candidate, companyDomain, counts.get(candidate.userId) ?? 0));
+    const allocation = await readBandedAllocationTx(tx, reconciled.wallet, level, now);
+    const acceptedCost = covered ? allocation.cost : { ...allocation.cost, units: 0 as const, source: [] };
+    return bandedAskQuoteSchema.parse({ level, cost: covered ? 1 : 0, totalAvailable: allocation.available, shortfall: covered && allocation.available === 0 ? 1 : 0, coverageStatus: covered ? "covered" : "waiting_for_company_coverage", acceptedCost });
+  });
+}
+
+/**
+ * D-393 (a): the demo seeker's user id, or null when that account has not signed in yet.
+ * Every real count excludes this id, so a sandbox request never moves a real figure. Null means there is
+ * nothing to exclude, which is also what a fixture without the demo account sees.
+ */
+export async function sandboxSeekerUserId(dbOverride?: Awaited<ReturnType<typeof getDb>>): Promise<number | null> {
+  const db = dbOverride ?? await getDb();
+  if (!db) return null;
+  const row = (await db.select({ id: users.id }).from(users).where(eq(users.email, SANDBOX_SEEKER_EMAIL)).limit(1))[0];
+  return row?.id ?? null;
+}
+
 export async function createCompanyReferralRequest(userId: number, input: CreateCompanyReferralInput) {
-  const resolvedDomain=await resolveEmployerDomainFromTargetUrl(input.targetRoleUrl);
-  const confirmedDomain=input.confirmedCompanyDomain?directEmployerDomainFromTargetUrl(`https://${input.confirmedCompanyDomain.trim()}`):undefined;
-  if(resolvedDomain&&confirmedDomain&&resolvedDomain!==confirmedDomain)throw new Error("The confirmed company domain does not match this job link.");
-  if(input.selectedCompany){const allowed=input.selectedCompany.domains.map(domain=>domain.trim().toLowerCase());const matches=(domain:string|undefined)=>Boolean(domain)&&allowed.includes(domain!.toLowerCase());
-    // The link has to resolve to this company. A confirmed domain only helps when the link names no employer, and it must be one of the company's own.
-    if(resolvedDomain?!matches(resolvedDomain):!matches(confirmedDomain))throw new CompanyLinkMismatchError(input.selectedCompany.name);}
-  const companyDomain=resolvedDomain??confirmedDomain;if(!companyDomain)throw new Error("We could not safely identify the employer behind this job link. Paste the employer’s careers-page link so we notify only the right employees.");
-  const compensation=input.compensation?.trim().slice(0,80)||null;const fingerprint=companyReferralFingerprint(input,companyDomain);
-  const db=await getDb();if(!db)throw new Error("Database unavailable");
-  if(input.opportunityId&&(input.fastTrackCode||input.fastTrackCompanySlug||input.fastTrackAlias))throw new Error("Use one private referral link at a time");
-  if(input.fastTrackCode&&(input.fastTrackCompanySlug||input.fastTrackAlias))throw new Error("Use one private referral link at a time");
-  const fastTrackLink=input.fastTrackCode?await getActiveReferrerFastTrackLink(input.fastTrackCode):input.fastTrackCompanySlug&&input.fastTrackAlias?await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug,input.fastTrackAlias):undefined;
-  if((input.fastTrackCode||input.fastTrackCompanySlug||input.fastTrackAlias)&&!fastTrackLink)throw new Error(PERSONAL_LINK_UNAVAILABLE);
-  if(fastTrackLink&&!fastTrackLinkMatchesCompany(fastTrackLink.companyDomain,companyDomain))throw new Error("Use a job link for the same company as this private referral link");
-  await ensureTokenWallet(userId,"job_seeker");
-  return db.transaction(async tx=>{
+  if (input.expectedCost !== undefined) acceptedAskCostSchema.parse(input.expectedCost);
+  const db = (input.catalogJobId || input.opportunityId) ? await getDb() : undefined;
+  const context = await resolveAskJobContext(db, input);
+  const companyDomain = context.companyDomain;
+  const targetRoleUrl = context.targetRoleUrl;
+  const jobRow = context.jobRow;
+  const level = context.level;
+  const compensation = input.compensation?.trim().slice(0, 80) || null;
+  const fingerprint = companyReferralFingerprint(input, companyDomain);
+  const realDb = db ?? (await getDb());
+  if (!realDb) throw new Error("Database unavailable");
+  if (input.opportunityId && (input.fastTrackCode || input.fastTrackCompanySlug || input.fastTrackAlias)) throw new Error("Use one private referral link at a time");
+  if (input.fastTrackCode && (input.fastTrackCompanySlug || input.fastTrackAlias)) throw new Error("Use one private referral link at a time");
+  const fastTrackLink = input.fastTrackCode ? await getActiveReferrerFastTrackLink(input.fastTrackCode) : input.fastTrackCompanySlug && input.fastTrackAlias ? await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug, input.fastTrackAlias) : undefined;
+  if ((input.fastTrackCode || input.fastTrackCompanySlug || input.fastTrackAlias) && !fastTrackLink) throw new Error(PERSONAL_LINK_UNAVAILABLE);
+  if (fastTrackLink && !fastTrackLinkMatchesCompany(fastTrackLink.companyDomain, companyDomain)) throw new Error("Use a job link for the same company as this private referral link");
+  if (!bandedSalesEnabled() && input.expectedCost === undefined) await ensureTokenWallet(userId, "job_seeker");
+  return realDb.transaction(async tx=>{
     // The wallet lock is the per-seeker serialization point for both same-key
     // replay and different-key credit races.
-    const lockedWallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];if(!lockedWallet)throw new Error("No referral credit available");
+    let lockedWallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];
+    if (!lockedWallet && bandedSalesEnabled()) {
+      await tx.insert(tokenBalances).values({userId,role:"job_seeker",balance:0,...freshWalletCycle("job_seeker")}).onDuplicateKeyUpdate({set:{userId}});
+      lockedWallet=(await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker"))).limit(1).for("update"))[0];
+    }
+    if(!lockedWallet)throw new Error("No referral credit available");
     // Open-ask slots (kit pricing). Every ask is created here under this wallet lock, so
     // concurrent creates for one seeker are serialized. The lock above is this transaction's
     // first statement, so this plain read's snapshot starts after it and sees every ask a
@@ -1897,7 +2302,14 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const nowMs=Date.now();const entitlements=resolvePlanEntitlements(lockedWallet,new Date(nowMs));
     const openAsks=Number((await tx.select({open:count()}).from(referralRequests).where(openAskCondition(userId,nowMs)))[0]?.open??0);
     const duplicate=await tx.select({id:referralRequests.id,fingerprint:referralRequests.requestFingerprint,companyDomain:jobs.company,jobFunction:jobs.jobFunction,waiting:referralRequests.waitingForCoverage,referrerId:referralRequests.referrerId,opportunityId:referralRequests.opportunityId,firstLookReferrerId:referralRequests.firstLookReferrerId}).from(referralRequests).innerJoin(jobs,eq(jobs.id,referralRequests.jobId)).where(and(eq(referralRequests.jobSeekerId,userId),eq(referralRequests.idempotencyKey,input.idempotencyKey))).limit(1).for("update");
-    if(duplicate[0]){if(duplicate[0].fingerprint!==fingerprint)throw new ReferralIdempotencyConflictError();const wallet=lockedWallet;const invite=(await tx.select({inviteCode:companyCoverageInvitations.inviteCode}).from(companyCoverageInvitations).where(eq(companyCoverageInvitations.referralRequestId,duplicate[0].id)).limit(1))[0];return{requestId:duplicate[0].id,companyDomain:duplicate[0].companyDomain,jobFunction:parseJobFunction(duplicate[0].jobFunction),coverageStatus:duplicate[0].waiting?"waiting_for_company_coverage" as const:"covered" as const,coverageInviteCode:invite?.inviteCode,notifiedEmployees:0,remainingTokens:wallet?creditSummaryFromWallet(wallet).totalAvailable:0,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined,slots:openAskSlots(entitlements,openAsks),fastTrack:Boolean(duplicate[0].referrerId),fromPost:duplicate[0].opportunityId!==null,firstLook:duplicate[0].firstLookReferrerId!==null,replayed:true as const};}
+    if(duplicate[0]){if(duplicate[0].fingerprint!==fingerprint)throw new ReferralIdempotencyConflictError();const wallet=lockedWallet;const invite=(await tx.select({inviteCode:companyCoverageInvitations.inviteCode}).from(companyCoverageInvitations).where(eq(companyCoverageInvitations.referralRequestId,duplicate[0].id)).limit(1))[0];const chargedCost=await readBandedChargeTx(tx,userId,duplicate[0].id);return{requestId:duplicate[0].id,companyDomain:duplicate[0].companyDomain,jobFunction:parseJobFunction(duplicate[0].jobFunction),coverageStatus:duplicate[0].waiting?"waiting_for_company_coverage" as const:"covered" as const,coverageInviteCode:invite?.inviteCode,notifiedEmployees:0,remainingTokens:wallet?creditSummaryFromWallet(wallet).totalAvailable:0,creditSummary:wallet?creditSummaryFromWallet(wallet):undefined,slots:openAskSlots(entitlements,openAsks),fastTrack:Boolean(duplicate[0].referrerId),fromPost:duplicate[0].opportunityId!==null,firstLook:duplicate[0].firstLookReferrerId!==null,...(chargedCost?{chargedCost}:{}),replayed:true as const};}
+    if (!bandedSalesEnabled() && (input.expectedCost || isBandedPlan(lockedWallet.plan))) throw new ReferralPricingUnavailableError();
+    // D-393 (a): a sandbox request is one whose seeker is the reviewer demo seeker. It may go to any company
+    // with no monthly, slot or per-company limit, and it reaches only the demo referrer, who acts as a verified
+    // employee of whatever company the request names — for sandbox requests only. The identity is read from the
+    // canonical account's own row, never from request input.
+    const seekerEmail=(await tx.select({email:users.email}).from(users).where(eq(users.id,userId)).limit(1))[0]?.email;
+    const sandbox=isSandboxSeeker(seekerEmail);
     // D-022: the post behind this ask is locked and re-validated here, so a
     // concurrent close or lapse cannot slip between the read and the insert,
     // and the post must be the same company the link resolved to.
@@ -1906,22 +2318,37 @@ export async function createCompanyReferralRequest(userId: number, input: Create
       opportunity=(await tx.select({id:companyOpportunities.id,ownerId:companyOpportunities.ownerId,companyDomain:companyOpportunities.companyDomain,isActive:companyOpportunities.isActive,expiresAt:companyOpportunities.expiresAt}).from(companyOpportunities).where(eq(companyOpportunities.id,input.opportunityId)).limit(1).for("update"))[0];
       if(!opportunity||!opportunity.isActive||isOpportunityExpired(opportunity.expiresAt,nowMs)||opportunity.companyDomain.trim().toLowerCase()!==companyDomain.trim().toLowerCase())throw new Error("This opening is no longer available. Refresh the company page and choose again.");
     }
+    if(input.catalogJobId){
+      const lockedCatalog=(await tx.select({id:catalogJobs.id,closedAt:catalogJobs.closedAt}).from(catalogJobs).where(eq(catalogJobs.id,input.catalogJobId)).limit(1).for("update"))[0];
+      if(!lockedCatalog||lockedCatalog.closedAt)throw new Error("This opening is no longer available. Refresh the company page and choose again.");
+    }
     const eligibleCandidates=fastTrackLink?await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,paused:profiles.paused,referralCapacity:profiles.referralCapacity,userSuspended:users.suspended,personSuspended:canonicalPeople.suspended,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).leftJoin(canonicalPeople,eq(canonicalPeople.id,users.canonicalPersonId)).where(eq(profiles.userId,fastTrackLink.referrerId)):await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,paused:profiles.paused,referralCapacity:profiles.referralCapacity,userSuspended:users.suspended,personSuspended:canonicalPeople.suspended,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).leftJoin(canonicalPeople,eq(canonicalPeople.id,users.canonicalPersonId)).where(and(eq(profiles.accountType,"referrer"),eq(profiles.workEmailDomain,companyDomain),isNotNull(profiles.workEmailVerifiedAt)));
-    const eligible=eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain));
+    // D-393 (a): a sandbox request reaches the demo referrer alone. The demo referrer is a verified employee of
+    // whatever company the request names, for sandbox requests only, so the company-domain and capacity rules
+    // that pick real employees do not apply to it — and a missing demo referrer reaches nobody, never a real one.
+    const sandboxReferrer=sandbox?(await tx.select({userId:profiles.userId,accountType:profiles.accountType,workEmailDomain:profiles.workEmailDomain,workEmailVerifiedAt:profiles.workEmailVerifiedAt,paused:profiles.paused,referralCapacity:profiles.referralCapacity,userSuspended:users.suspended,personSuspended:canonicalPeople.suspended,email:users.email}).from(profiles).innerJoin(users,eq(users.id,profiles.userId)).leftJoin(canonicalPeople,eq(canonicalPeople.id,users.canonicalPersonId)).where(eq(users.email,SANDBOX_REFERRER_EMAIL)).limit(1))[0]:undefined;
+    const eligible=sandboxReachableReferrers(sandbox,sandboxReferrer,eligibleCandidates.filter(profile=>isVerifiedEmployeeOfCompany(profile,companyDomain)));
     // D-034/D-062: coverage means an *available* referrer (verified, unpaused, under monthly
     // capacity — the directory's own predicate), never merely a verified employee. A personal
     // link is covered by its owner alone and keeps today's single-step lifecycle.
-    const allocatedByReferrer=fastTrackLink?new Map<number,number>():await readAllocatedSlotCountsTx(tx,eligible.map(profile=>profile.userId));
-    const available=fastTrackLink?eligible:eligible.filter(profile=>isOpenReferrer(profile,companyDomain,allocatedByReferrer.get(profile.userId)??0));
+    const allocatedByReferrer=fastTrackLink||sandbox?new Map<number,number>():await readAllocatedSlotCountsTx(tx,eligible.map(profile=>profile.userId));
+    const available=sandbox||fastTrackLink?eligible:eligible.filter(profile=>isOpenReferrer(profile,companyDomain,allocatedByReferrer.get(profile.userId)??0));
     const coverageStatus=companyCoverageStatus(available.length);const isWaiting=coverageStatus==="waiting_for_company_coverage";
+    if (bandedSalesEnabled() && isWaiting && input.expectedCost) {
+      const currentCost: AcceptedAskCost = { units: 0, band: referralLevelForJobLevel(level), source: [] };
+      if (!sameAcceptedAskCost(input.expectedCost, currentCost)) throw new AskPriceChangedError(currentCost);
+    }
+    // D-132 item 3: a composer that promised free waiting never commits a charge because coverage flipped. Thrown before the slot-cap check, the spend and every write; the retry after re-pricing carries no expectation. Guarded by the same server flag as the quote: review F2 (55e5aa3a) - with ASK_LEVEL_COST off the promise does not exist, so today's create-and-charge is unchanged even if a body carries the field.
+    if((bandedSalesEnabled()||askLevelCostEnabled())&&input.expectedCoverage==="waiting_for_company_coverage"&&!isWaiting)throw new CoverageOpenedUpError(companyDomain);
     // D-061: a waiting ask uses no open slot and bypasses the cap until it can reach a referrer.
     // The cap refusal stays ahead of the attachment read, as before, so it needs no document lock.
-    if(!isWaiting&&entitlements.openRequests!==null&&openAsks>=entitlements.openRequests)throw new OpenAskSlotCapError(openAskSlots(entitlements,openAsks));
+    // D-393 (a): the demo seeker has no monthly, slot or per-company limit, so a sandbox request skips both caps.
+    if(!sandbox&&!isWaiting&&entitlements.openRequests!==null&&openAsks>=entitlements.openRequests)throw new OpenAskSlotCapError(openAskSlots(entitlements,openAsks));
     // D-006 fairness, on every plan: at most MAX_OPEN_ASKS_PER_COMPANY open asks at one company.
     // Same room rules as the plan slots: waiting asks hold none (D-061), a replay returns above.
     // Counted under the wallet lock with the same predicate as the plan cap, joined to the ask's company.
-    const openAtCompany=Number((await tx.select({open:count()}).from(referralRequests).innerJoin(jobs,eq(jobs.id,referralRequests.jobId)).where(and(openAskCondition(userId,nowMs),eq(jobs.company,companyDomain.trim().toLowerCase()))))[0]?.open??0);
-    if(openAtCompany>=MAX_OPEN_ASKS_PER_COMPANY)throw new CompanyCapReachedError(companyDomain,openAtCompany);
+    const openAtCompany=sandbox?0:Number((await tx.select({open:count()}).from(referralRequests).innerJoin(jobs,eq(jobs.id,referralRequests.jobId)).where(and(openAskCondition(userId,nowMs),eq(jobs.company,companyDomain.trim().toLowerCase()))))[0]?.open??0);
+    if(!sandbox&&openAtCompany>=MAX_OPEN_ASKS_PER_COMPANY)throw new CompanyCapReachedError(companyDomain,openAtCompany);
     const uniqueAttachmentIds=Array.from(new Set(input.attachmentIds));
     const owned=await tx.select({id:referralAttachments.id}).from(referralAttachments).where(and(inArray(referralAttachments.id,uniqueAttachmentIds),eq(referralAttachments.ownerId,userId),isNull(referralAttachments.referralRequestId))).for("update");
     if(owned.length!==uniqueAttachmentIds.length)throw new Error("One or more resume documents are unavailable or already attached");
@@ -1950,10 +2377,11 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     const reachable=eligible.filter(employee=>!blockedWithSeeker.has(employee.userId));
     // D-022: an ask written from a post goes to the poster alone for 48 hours
     // while they still count as an open referrer; otherwise it opens to the team.
-    const firstLookCandidate=opportunity?await resolveAskFirstLookTx(tx,{posterUserId:opportunity.ownerId,seekerUserId:userId,companyDomain,nowMs}):null;
+    // D-393 (a): a sandbox request never gives a real poster a first look — it goes to the demo referrer.
+    const firstLookCandidate=sandbox||!opportunity?null:await resolveAskFirstLookTx(tx,{posterUserId:opportunity.ownerId,seekerUserId:userId,companyDomain,nowMs});
     const firstLook=firstLookCandidate?reachable.find(employee=>employee.userId===firstLookCandidate.referrerId)??null:null;
     const firstLookUntil=firstLook&&firstLookCandidate?firstLookCandidate.until:null;
-    const jobRow=companyAskJobRow({companyDomain,targetRoleUrl:input.targetRoleUrl,roleLinkUrl:input.submittedTargetRoleUrl,compensation,jobFunction:input.jobFunction,publishedAt:new Date()});const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
+    const jobResult=await tx.insert(jobs).values(jobRow);const jobId=Number(jobResult[0].insertId);
     const requestResult=await tx.insert(referralRequests).values({jobId,jobSeekerId:userId,referrerId:fastTrackLink?.referrerId??null,personalPitch:input.personalPitch,status:"pending",waitingForCoverage:isWaiting,coverageQueuedAt:isWaiting?new Date():null,coverageVisibleAt:isWaiting?null:new Date(nowMs),coverageHeldAt:null,idempotencyKey:input.idempotencyKey,requestFingerprint:fingerprint,opportunityId:opportunity?.id??null,firstLookReferrerId:firstLook?.userId??null,firstLookUntil});const requestId=Number(requestResult[0].insertId);
     // 1 credit = 1 request, spent when the ask first reaches an available referrer (D-034): a covered ask pays
     // here, in this transaction and under the wallet lock, through the credit ledger (soonest-expiring bucket
@@ -1964,11 +2392,23 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // whole ask back, so no ask exists without its credit.
     const summaryNow=new Date(nowMs);const reconciled=await reconcileWalletTx(tx,lockedWallet,summaryNow);const promoState=await promoStateForTx(tx,userId,"job_seeker",summaryNow);
     let remaining:CreditSummary;
+    let chargedCost: AcceptedAskCost | undefined;
     if(isWaiting){
       remaining=await creditSummaryTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoState,now:summaryNow});
     }else{
-      const askCost=askCreditCost({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});
-      const spent=await spendCreditsTx(tx,{wallet:reconciled.wallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:askCost,meta:{idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)},now:summaryNow}).catch(error=>{if(error instanceof InsufficientCreditsError)throw new Error(askLevelCostEnabled()?`This ask costs ${askCost} credit${askCost===1?"":"s"} and your balance is lower. Add credits in Plans & credits to send it now, or wait for your included credits to renew.`:"You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask now, or wait for your included credits to renew.");throw error;});
+      // D-393 (a): a sandbox request's free referrals still move through the normal ledger with keyed rows, so
+      // free/withdraw/refund behaviour is exercised; the free allowance simply never runs out. The top-up is a
+      // wallet reconciliation, not a grant: the spend below still writes its own keyed debit row.
+      let spendWallet=reconciled.wallet;
+      const askCost=sandbox?1:bandedSalesEnabled()?1:askCreditCost({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});
+      if(sandbox&&(spendWallet.monthlyCreditsRemaining??0)<FREE_MONTHLY_ALLOWANCE){
+        await tx.update(tokenBalances).set({monthlyCreditsRemaining:FREE_MONTHLY_ALLOWANCE}).where(and(eq(tokenBalances.userId,userId),eq(tokenBalances.role,"job_seeker")));
+        spendWallet={...spendWallet,monthlyCreditsRemaining:FREE_MONTHLY_ALLOWANCE};
+      }
+      const meta={idempotencyKey:input.idempotencyKey,referenceType:"referral_request",referenceId:String(requestId)};
+      const banded=!sandbox&&bandedSalesEnabled()?await spendBandedReferralTx(tx,{wallet:spendWallet,level,now:summaryNow,meta,expectedCost:input.expectedCost}):null;
+      chargedCost=banded?.chargedCost;
+      const spent=banded?{wallet:banded.wallet,grants:reconciled.grants,promoRemaining:promoState.grant?.creditsRemaining??null}:await spendCreditsTx(tx,{wallet:spendWallet,grants:reconciled.grants,promo:promoGrantsEnabled()?promoHolding(promoState.grant):null,credits:askCost,meta,now:summaryNow}).catch(error=>{if(error instanceof InsufficientCreditsError)throw new Error(askLevelCostEnabled()?`This ask costs ${askCost} credit${askCost===1?"":"s"} and your balance is lower. Add credits in Plans & credits to send it now, or wait for your included credits to renew.`:"You have no referral credits left. Add a credit pack or choose a plan in Plans & credits to send this ask now, or wait for your included credits to renew.");throw error;});
       const debitRow=(await tx.select({id:tokenTransactions.id}).from(tokenTransactions).where(and(eq(tokenTransactions.userId,userId),eq(tokenTransactions.role,"job_seeker"),eq(tokenTransactions.idempotencyKey,`${input.idempotencyKey}#1`))).limit(1))[0];if(!debitRow)throw new Error("The referral credit debit was not recorded");
       await tx.update(referralRequests).set({debitTransactionId:debitRow.id}).where(eq(referralRequests.id,requestId));
       const promoAfter=promoState.grant&&spent.promoRemaining!==null?{grant:{...promoState.grant,creditsRemaining:spent.promoRemaining},status:spent.promoRemaining>0?promoState.status:"exhausted" as const}:promoState;
@@ -1978,7 +2418,7 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     // Task 13 (0105): the pinned-work snapshot, copied once at the send instant so
     // a later showcase edit or delete never rewrites what a referrer was shown.
     // D-132 audit item 2 (0106): with ASK_LEVEL_COST on, the level and cost this ask was priced at are stored once, here. Flag off writes nothing.
-    if(askLevelCostEnabled()){const price=askPriceAtCreate({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});await tx.insert(askCosts).values({referralRequestId:requestId,jobLevel:price.jobLevel,creditCost:price.creditCost,source:"classified_at_create"});}
+    if(bandedSalesEnabled()||askLevelCostEnabled()){const price=bandedSalesEnabled()?{jobLevel:level,creditCost:1}:askPriceAtCreate({title:jobRow.title,description:jobRow.description,url:jobRow.targetRoleUrl});await tx.insert(askCosts).values({referralRequestId:requestId,jobLevel:price.jobLevel,creditCost:price.creditCost,source:"classified_at_create"});}
     for(let index=0;index<pinnedWork.length;index++){const item=pinnedWork[index];await tx.insert(askWorkItems).values({referralRequestId:requestId,workItemId:item.id,title:item.title,kind:item.kind,source:item.source,url:item.url,position:index});}
     // Invite rewards never fund this request. They unlock only after its separately funded, durable creation is
     // complete inside this transaction; a waiting ask has not gone out yet, so its rewards unlock at delivery (see
@@ -1986,21 +2426,36 @@ export async function createCompanyReferralRequest(userId: number, input: Create
     if(!isWaiting)await grantPendingActionRewardsTx(tx,userId,"job_seeker","referral_request",String(requestId));
     // D-022 first look: only the poster is told while their 48 hours run; every
     // other eligible employee is told when the first look lapses (the sweep).
-    // A waiting ask reaches no one yet, so it writes no referrer notice and no review link (delivery writes them).
+    // A waiting ask reaches no one yet, so it writes no referrer notice and no review link (delivery writes them, the link behind POOL_NUDGES_ENABLED).
     const notified=isWaiting?[]:firstLook?[firstLook]:reachable;
     for(const employee of notified){
       await tx.insert(notifications).values({ kind: "ask_new",userId:employee.userId,category:"referral",title:firstLook?"A candidate asked from your post":fastTrackLink?"A referral request from your link is ready":"A private referral request is available",body:firstLook?`A Job Seeker asked for a referral at ${companyDomain} after seeing your opening. You have the first look for 48 hours; if you cannot take it, it opens to other verified employees.`:fastTrackLink?`A Job Seeker used your private link for a role at ${companyDomain}. Review it only if you choose to help.`:`A Job Seeker shared a role at ${companyDomain}. Sign in to review and claim it.`});
-      const email=employee.email?.trim().toLowerCase()||"";if(email&&email.split("@")[1]===companyDomain){const token=reviewLinkToken();const expiresAt=new Date(Date.now()+reviewEmailLifetimeMs);await tx.insert(referrerReviewEmailLinks).values({referralRequestId:requestId,referrerId:employee.userId,linkToken:token,expiresAt});await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});}
+      if(await writeReviewGrantTx(tx,{requestId,referrerId:employee.userId,email:employee.email,companyDomain,nowMs:Date.now()}))await tx.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:employee.userId,channel:"email",grantVersion:1,status:"pending"});
     }
     let inviteCode:string|undefined;if(!fastTrackLink&&isWaiting){inviteCode=randomUUID().replace(/-/g,"");await tx.insert(companyCoverageInvitations).values({inviteCode,inviterUserId:userId,companyDomain:companyDomain.trim().toLowerCase(),referralRequestId:requestId});}
     // A waiting ask has not gone out and holds no open slot (D-061): the count stays as read. A covered ask
     // adds one. `remaining` was computed in the matching branch above, under the same wallet lock.
-    return{requestId,companyDomain,jobFunction:jobRow.jobFunction,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:notified.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,slots:openAskSlots(entitlements,isWaiting?openAsks:openAsks+1),fastTrack:Boolean(fastTrackLink),fromPost:Boolean(opportunity),firstLook:Boolean(firstLook),replayed:false as const};
+    return{requestId,companyDomain,jobFunction:jobRow.jobFunction,coverageStatus,coverageInviteCode:inviteCode,notifiedEmployees:notified.length,remainingTokens:remaining.totalAvailable,creditSummary:remaining,slots:openAskSlots(entitlements,sandbox?0:isWaiting?openAsks:openAsks+1),fastTrack:Boolean(fastTrackLink),fromPost:Boolean(opportunity),firstLook:Boolean(firstLook),...(chargedCost?{chargedCost}:{}),replayed:false as const};
   });
 }
 
 const reviewEmailLifetimeMs = 7 * 24 * 60 * 60 * 1000;
 const reviewLinkToken = () => randomUUID().replace(/-/g, "") + randomUUID().replace(/-/g, "").slice(0, 16);
+
+/**
+ * The one review-grant insert (D-384 (2)), shared by request creation and pool
+ * delivery (deliverWaitingAskTx): a fresh token, the 7-day lifetime and grant
+ * version 1, written only when the referrer's email is at the company's own
+ * domain. Returns whether it wrote a grant. It writes no delivery row: creation
+ * adds its own pending row, and pool delivery leaves the send to the capped
+ * pool-review-email job (server/poolReviewEmail.ts).
+ */
+async function writeReviewGrantTx(tx: Pick<LedgerTx, "insert">, input: { requestId: number; referrerId: number; email: string | null | undefined; companyDomain: string; nowMs: number }): Promise<boolean> {
+  const email = input.email?.trim().toLowerCase() || "";
+  if (!email || email.split("@")[1] !== input.companyDomain) return false;
+  await tx.insert(referrerReviewEmailLinks).values({ referralRequestId: input.requestId, referrerId: input.referrerId, linkToken: reviewLinkToken(), expiresAt: new Date(input.nowMs + reviewEmailLifetimeMs), grantVersion: 1 });
+  return true;
+}
 
 export async function createReferrerReviewEmailLinks(requestId: number, recipients: Array<{ userId: number; email: string | null; companyDomain: string }>) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
@@ -2009,15 +2464,15 @@ export async function createReferrerReviewEmailLinks(requestId: number, recipien
     const email = recipient.email?.trim().toLowerCase() || "";
     if (!email || email.split("@")[1] !== recipient.companyDomain) continue;
     const existing = (await db.select().from(referrerReviewEmailLinks).where(and(eq(referrerReviewEmailLinks.referralRequestId,requestId),eq(referrerReviewEmailLinks.referrerId,recipient.userId))).limit(1))[0];
-    if (!existing) continue; // grants are created only with the request transaction
+    if (!existing) continue; // grants are written by request creation or pool delivery (writeReviewGrantTx)
     await db.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId:recipient.userId,channel:"email",grantVersion:1,status:"pending"}).onDuplicateKeyUpdate({set:{referrerId:recipient.userId}});
     links.push({referrerId:recipient.userId,email,linkToken:existing.linkToken,companyDomain:recipient.companyDomain});
   }
   return links;
 }
 
-export async function claimReferralReviewDelivery(requestId:number,referrerId:number,channel:"email"|"slack",leaseOwner:string){const db=await getDb();if(!db)throw new Error("Database unavailable");const grant=(await db.select({version:referrerReviewEmailLinks.grantVersion}).from(referrerReviewEmailLinks).where(and(eq(referrerReviewEmailLinks.referralRequestId,requestId),eq(referrerReviewEmailLinks.referrerId,referrerId))).limit(1))[0];if(!grant)return undefined;if(channel==="slack")await db.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId,channel,grantVersion:grant.version,status:"pending"}).onDuplicateKeyUpdate({set:{referrerId}});const now=new Date(),leaseExpiresAt=new Date(now.getTime()+60_000);const row=(await db.select().from(referralReviewDeliveries).where(and(eq(referralReviewDeliveries.referralRequestId,requestId),eq(referralReviewDeliveries.referrerId,referrerId),eq(referralReviewDeliveries.channel,channel),eq(referralReviewDeliveries.grantVersion,grant.version))).limit(1))[0];if(!row||row.status==="sent"||row.status==="revoked"||row.attemptCount>=5||row.nextAttemptAt&&row.nextAttemptAt>now)return undefined;const claimed=await db.update(referralReviewDeliveries).set({status:"leased",leaseOwner,leaseExpiresAt,attemptCount:row.attemptCount+1}).where(and(eq(referralReviewDeliveries.id,row.id),or(eq(referralReviewDeliveries.status,"pending"),eq(referralReviewDeliveries.status,"failed"),eq(referralReviewDeliveries.status,"unknown"),and(eq(referralReviewDeliveries.status,"leased"),sql`${referralReviewDeliveries.leaseExpiresAt} < ${now}`))));return Number(claimed[0]?.affectedRows??0)===1?{...row,leaseOwner,leaseExpiresAt}:undefined;}
-export async function completeReferralReviewDelivery(id:number,leaseOwner:string,result:{status:"sent"|"failed"|"unknown";providerMessageId?:string;error?:string}){const db=await getDb();if(!db)throw new Error("Database unavailable");const current=(await db.select().from(referralReviewDeliveries).where(and(eq(referralReviewDeliveries.id,id),eq(referralReviewDeliveries.status,"leased"),eq(referralReviewDeliveries.leaseOwner,leaseOwner))).limit(1))[0];if(!current)return{recorded:false};const delay=Math.min(3600_000,30_000*2**Math.min(current.attemptCount,6));const updated=await db.update(referralReviewDeliveries).set({status:result.status,providerMessageId:result.providerMessageId??null,lastError:result.error?.slice(0,255)??null,sentAt:result.status==="sent"?new Date():null,nextAttemptAt:result.status==="sent"?null:new Date(Date.now()+delay),leaseOwner:null,leaseExpiresAt:null}).where(and(eq(referralReviewDeliveries.id,id),eq(referralReviewDeliveries.status,"leased"),eq(referralReviewDeliveries.leaseOwner,leaseOwner)));return{recorded:Number(updated[0]?.affectedRows??0)===1};}
+export async function claimReferralReviewDelivery(requestId:number,referrerId:number,channel:"email"|"slack",leaseOwner:string){const db=await getDb();if(!db)throw new Error("Database unavailable");const grant=(await db.select({version:referrerReviewEmailLinks.grantVersion}).from(referrerReviewEmailLinks).where(and(eq(referrerReviewEmailLinks.referralRequestId,requestId),eq(referrerReviewEmailLinks.referrerId,referrerId))).limit(1))[0];if(!grant)return undefined;if(channel==="slack")await db.insert(referralReviewDeliveries).values({referralRequestId:requestId,referrerId,channel,grantVersion:grant.version,status:"pending"}).onDuplicateKeyUpdate({set:{referrerId}});const now=new Date(),leaseExpiresAt=new Date(now.getTime()+60_000);const row=(await db.select().from(referralReviewDeliveries).where(and(eq(referralReviewDeliveries.referralRequestId,requestId),eq(referralReviewDeliveries.referrerId,referrerId),eq(referralReviewDeliveries.channel,channel),eq(referralReviewDeliveries.grantVersion,grant.version))).limit(1))[0];if(!row||row.status==="sent"||row.status==="revoked"||row.attemptCount>=5||row.nextAttemptAt&&row.nextAttemptAt>now)return undefined;const claimed=await db.update(referralReviewDeliveries).set({status:"leased",leaseOwner,leaseExpiresAt,attemptCount:row.attemptCount+1}).where(and(eq(referralReviewDeliveries.id,row.id),eq(referralReviewDeliveries.attemptCount,row.attemptCount),lt(referralReviewDeliveries.attemptCount,5),or(isNull(referralReviewDeliveries.nextAttemptAt),lte(referralReviewDeliveries.nextAttemptAt,now)),or(inArray(referralReviewDeliveries.status,["pending","failed","unknown"]),and(eq(referralReviewDeliveries.status,"leased"),lt(referralReviewDeliveries.leaseExpiresAt,now)))));return Number(claimed[0]?.affectedRows??0)===1?{...row,leaseOwner,leaseExpiresAt}:undefined;}
+export async function completeReferralReviewDelivery(id:number,leaseOwner:string,result:{status:"sent"|"failed"|"unknown";providerMessageId?:string;error?:string}){const db=await getDb();if(!db)throw new Error("Database unavailable");const current=(await db.select().from(referralReviewDeliveries).where(and(eq(referralReviewDeliveries.id,id),eq(referralReviewDeliveries.status,"leased"),eq(referralReviewDeliveries.leaseOwner,leaseOwner))).limit(1))[0];if(!current)return{recorded:false};const delay=Math.min(3600_000,30_000*2**Math.min(current.attemptCount,6));const alertOwed=current.channel==="email"&&current.attemptCount>=5&&result.status!=="sent"&&current.ownerAlertStatus===null;const updated=await db.update(referralReviewDeliveries).set({status:result.status,providerMessageId:result.providerMessageId??null,lastError:result.error?.slice(0,255)??null,sentAt:result.status==="sent"?new Date():null,nextAttemptAt:result.status==="sent"?null:new Date(Date.now()+delay),leaseOwner:null,leaseExpiresAt:null,...(alertOwed?{ownerAlertStatus:"pending" as const,ownerAlertLeaseOwner:null,ownerAlertLeaseExpiresAt:null,ownerAlertSentAt:null}:{})}).where(and(eq(referralReviewDeliveries.id,id),eq(referralReviewDeliveries.status,"leased"),eq(referralReviewDeliveries.leaseOwner,leaseOwner),eq(referralReviewDeliveries.attemptCount,current.attemptCount)));return{recorded:Number(updated[0]?.affectedRows??0)===1};}
 
 /** Explicit operator action only: atomically revoke the old token, advance the
  * grant version, audit why, and queue replacement channels. Creation replay
@@ -2084,8 +2539,14 @@ export async function prepareReferrerReviewEmailNotifications(requestId: number)
   const request = await db.select({ companyDomain: jobs.company, status: referralRequests.status, waitingForCoverage: referralRequests.waitingForCoverage, jobSeekerId: referralRequests.jobSeekerId, referrerId: referralRequests.referrerId, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1);
   const current = request[0]; if (!current || current.status !== "pending") return [];
   // D-061: a waiting or held ask has reached no referrer, so it has no email, Slack or review link to prepare;
-  // delivery (deliverWaitingAskTx) writes the referrer notice and the links the day the ask becomes visible.
+  // delivery (deliverWaitingAskTx) writes the referrer notice the day the ask becomes visible, and its review link
+  // behind POOL_NUDGES_ENABLED (D-384); the pool-review-email job then calls this function for it.
   if (current.waitingForCoverage) return [];
+  // D-393 (a): a sandbox request reaches no real person by any channel. Its recipients are re-derived here by
+  // company domain, which for a real company would be that company's real employees, so a sandbox request
+  // prepares no review email at all. The demo referrer still gets the in-app notice from creation.
+  const seekerEmail = (await db.select({ email: users.email }).from(users).where(eq(users.id, current.jobSeekerId)).limit(1))[0]?.email;
+  if (isSandboxSeeker(seekerEmail)) return [];
   const recipients = await db.select({ userId: profiles.userId, email: users.email, workEmailDomain: profiles.workEmailDomain, accountType: profiles.accountType, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, notifyNewAsk: profiles.notifyNewAsk }).from(profiles).innerJoin(users, eq(users.id, profiles.userId)).where(and(eq(profiles.accountType, "referrer"), eq(profiles.workEmailDomain, current.companyDomain), isNotNull(profiles.workEmailVerifiedAt)));
   const passes = await db.select({ referrerId: referralRequestPasses.referrerId }).from(referralRequestPasses).where(eq(referralRequestPasses.referralRequestId, requestId));
   const passed = new Set(passes.map(row => row.referrerId));
@@ -2120,7 +2581,12 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const current = (await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, input.requestId)).limit(1).for("update"))[0];
-    if (!current || !isVerifiedEmployeeOfCompany(profile, current.companyDomain) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
+    // D-393 (a): the demo referrer reviews a sandbox request as a verified employee of the company it names, and no
+    // one else may review a sandbox request. A real request's review rules are unchanged.
+    const reviewerEmail = (await tx.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email;
+    const reviewedSeekerEmail = current ? (await tx.select({ email: users.email }).from(users).where(eq(users.id, current.request.jobSeekerId)).limit(1))[0]?.email : undefined;
+    const mayReview = isSandboxSeeker(reviewedSeekerEmail) ? isSandboxReferrer(reviewerEmail) : Boolean(current && isVerifiedEmployeeOfCompany(profile, current.companyDomain));
+    if (!current || !mayReview || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
     // D-022: while the poster's first look runs, nobody else can decide on the ask;
     // the poster's own approve/pass ends the first look with the decision.
     if (firstLookExcludesViewer(current.request, userId, Date.now())) throw new ReferralTransitionConflict("This referral request is still in its poster's first look", { status: current.request.status, revision: current.request.revision });
@@ -2153,6 +2619,7 @@ export async function oneClickReviewReferralRequest(userId: number, input: { req
 async function passReferralRequestTx(tx: any, input: { requestId: number; actorUserId: number; companyDomain: string; jobSeekerId: number; reason: string; reasonCode: string | null; operationKey: string; reviewLinkToken?: string; releasedClaim: boolean }) {
   const reasonLabel = passReasonSeekerLabel(input.reasonCode);
   const result = await transitionReferralRequestTx(tx, { requestId: input.requestId, actorUserId: input.actorUserId, action: "pass", operationKey: input.operationKey, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== null && row.referrerId !== input.actorUserId) throw new Error("Another verified employee already claimed this request"); }, patch: { referrerId: null, referrerMessage: null, firstLookReferrerId: null, firstLookUntil: null }, notification: { userId: input.jobSeekerId, title: `Update on your referral request — ${input.companyDomain}`, body: input.releasedClaim ? `The employee who was reviewing your request can't take it on${reasonLabel ? ` (${reasonLabel})` : ""}. Your ask is open again to other verified employees at ${input.companyDomain}.` : `The employee can't help right now${reasonLabel ? ` (${reasonLabel})` : ""}. Your request stays active for other employees.` }, beforeCommit: async tx => { if (input.reviewLinkToken) { const consumed = await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.linkToken,input.reviewLinkToken),eq(referrerReviewEmailLinks.referrerId,input.actorUserId),isNull(referrerReviewEmailLinks.consumedAt))); if (Number(consumed[0]?.affectedRows ?? 0) !== 1) throw new Error("This private review link is unavailable"); } await tx.insert(referralRequestPasses).values({ referralRequestId: input.requestId, referrerId: input.actorUserId, reason: input.reason, reasonCode: input.reasonCode }).onDuplicateKeyUpdate({ set: { reason: input.reason, reasonCode: input.reasonCode } }); await tx.update(referralDocumentAccessGrants).set({ revokedAt: new Date(), revokeReason: "passed" }).where(and(eq(referralDocumentAccessGrants.referralRequestId,input.requestId),eq(referralDocumentAccessGrants.referrerId,input.actorUserId),isNull(referralDocumentAccessGrants.revokedAt))); await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId,input.requestId),eq(referralRequestSaves.referrerId,input.actorUserId))); await tx.update(referrerReviewEmailLinks).set({consumedAt:new Date()}).where(and(eq(referrerReviewEmailLinks.referralRequestId,input.requestId),eq(referrerReviewEmailLinks.referrerId,input.actorUserId),isNull(referrerReviewEmailLinks.consumedAt))); await tx.update(referralAvailabilitySlots).set({status:"released",releasedAt:new Date()}).where(and(eq(referralAvailabilitySlots.referralRequestId,input.requestId),eq(referralAvailabilitySlots.referrerId,input.actorUserId),eq(referralAvailabilitySlots.status,"allocated"))); } });
+  if (POOL_NUDGES_ENABLED && input.releasedClaim && !result.replayed) await notifyColleaguesOfReleasedRequest(tx, { requestId: input.requestId, companyDomain: input.companyDomain, seekerUserId: input.jobSeekerId, releasingReferrerId: input.actorUserId, revision: result.revision });
   return { ...result, reopened: input.releasedClaim && !result.replayed };
 }
 
@@ -2166,13 +2633,42 @@ export async function listCompanyReferralInbox(userId: number) {
   return listCompanyReferralInboxByState(userId, "new");
 }
 
+/**
+ * D-174-pool-nudges: how many requests wait in the pool at this referrer's own
+ * verified company. A count only — no seeker data — and only for a verified
+ * employee of that company (D-176: availability is routing, never a browse gate).
+ */
+export async function countWaitingPoolRequestsForReferrer(userId: number): Promise<number> {
+  const profile = await getProfileByUserId(userId);
+  if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return 0;
+  const db = await getDb(); if (!db) return 0;
+  const rows = await db.select({ waiting: count(referralRequests.id) }).from(referralRequests)
+    .innerJoin(jobs, eq(referralRequests.jobId, jobs.id))
+    .where(and(
+      eq(jobs.company, profile.workEmailDomain),
+      eq(referralRequests.status, "pending"),
+      eq(referralRequests.waitingForCoverage, true),
+      isNull(referralRequests.referrerId),
+    ));
+  return Number(rows[0]?.waiting ?? 0);
+}
+
 export type CompanyReferralInboxState = "new" | "saved" | "completed";
 
 export async function listCompanyReferralInboxByState(userId: number, state: CompanyReferralInboxState) {
   const profile = await getProfileByUserId(userId);
   if (!profile?.workEmailDomain || !isVerifiedEmployeeOfCompany(profile, profile.workEmailDomain)) return [];
   const db = await getDb(); if (!db) return [];
-  const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, coverageHeldAt: referralRequests.coverageHeldAt, savedAt: referralRequests.savedAt, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(eq(jobs.company, profile.workEmailDomain), isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.coverageVisibleAt, referralRequests.coverageHeldAt, referralRequests.savedAt, referralRequests.firstLookReferrerId, referralRequests.firstLookUntil, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
+  // D-393 (a): the demo referrer acts as a verified employee of whatever company a sandbox request names, so its
+  // inbox also shows sandbox requests at any company. A real referrer sees its own company only, and never a
+  // sandbox request there: a sandbox request is never shown to a real person.
+  const viewerEmail = (await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email;
+  const sandboxViewer = isSandboxReferrer(viewerEmail);
+  const seekerUsers = alias(users, "sandbox_seeker");
+  const companyScope = sandboxViewer
+    ? or(eq(jobs.company, profile.workEmailDomain), eq(seekerUsers.email, SANDBOX_SEEKER_EMAIL))
+    : and(eq(jobs.company, profile.workEmailDomain), or(isNull(seekerUsers.email), ne(seekerUsers.email, SANDBOX_SEEKER_EMAIL)));
+  const rows = await db.select({ id: referralRequests.id, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, compensation: jobs.compensation, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, coverageHeldAt: referralRequests.coverageHeldAt, savedAt: referralRequests.savedAt, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil, opportunityId: referralRequests.opportunityId, createdAt: referralRequests.createdAt, updatedAt: referralRequests.updatedAt, attachmentCount: count(referralAttachments.id), queueAllocationId: referralAvailabilitySlots.id, savedByYouAt: referralRequestSaves.createdAt }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(seekerUsers, eq(seekerUsers.id, referralRequests.jobSeekerId)).leftJoin(referralAvailabilitySlots, and(eq(referralAvailabilitySlots.referralRequestId, referralRequests.id), eq(referralAvailabilitySlots.status, "allocated"))).leftJoin(referralAttachments, eq(referralAttachments.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).leftJoin(referralRequestSaves, and(eq(referralRequestSaves.referralRequestId, referralRequests.id), eq(referralRequestSaves.referrerId, userId))).where(and(companyScope, isNull(referralRequestPasses.id))).groupBy(referralRequests.id, jobs.targetRoleUrl, jobs.company, jobs.jobFunction, jobs.compensation, referralRequests.status, referralRequests.referrerId, referralRequests.waitingForCoverage, referralRequests.coverageVisibleAt, referralRequests.coverageHeldAt, referralRequests.savedAt, referralRequests.firstLookReferrerId, referralRequests.firstLookUntil, referralRequests.opportunityId, referralRequests.createdAt, referralRequests.updatedAt, referralAvailabilitySlots.id, referralRequestSaves.createdAt).orderBy(desc(referralRequests.updatedAt));
   const scopeNowMs = Date.now();
   // D-050 / P0-allocated-ask-stuck: an assigned ask its employee never claimed (a personal-link ask or a queue allocation) is
   // unclaimed, so past its window it leaves that employee's inbox like any stale unclaimed ask. Fail-soft and reported: the
@@ -2205,6 +2701,10 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
   // Fail-soft: the list never depends on it, and every lapse re-decides under its own row lock.
   const decisionDueAtByRequest = new Map<number, string>();
   const ownPending = scopedRows.filter(row => row.status === "pending" && row.referrerId === userId);
+  // D-089.server (§4.7): a pending ask of the viewer's own is "asked you directly" only when no claim
+  // by them stands since the latest release. Unknown (the read failed) is never shown as direct.
+  const claimedSinceRelease = new Set<number>();
+  let pickupEventsRead = false;
   if (ownPending.length) {
     try {
       const events = await db.select({ id: referralTransitionEvents.id, requestId: referralTransitionEvents.referralRequestId, action: referralTransitionEvents.action, createdAt: referralTransitionEvents.createdAt }).from(referralTransitionEvents)
@@ -2214,6 +2714,8 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
         const previous = latestByRequest.get(event.requestId);
         if (!previous || Number(event.id) > previous.id) latestByRequest.set(event.requestId, { id: Number(event.id), action: event.action, createdAt: event.createdAt });
       }
+      for (const row of ownPending) if (latestByRequest.get(row.id)?.action === "claim") claimedSinceRelease.add(row.id);
+      pickupEventsRead = true;
       for (const row of ownPending) {
         const latest = latestByRequest.get(row.id);
         if (latest?.action === "claim") {
@@ -2228,12 +2730,28 @@ export async function listCompanyReferralInboxByState(userId: number, state: Com
       }
     } catch (error) { console.warn("[inbox] decision deadline skipped", { name: error instanceof Error ? error.name : "unknown" }); }
   }
-  return scopedRows.map(({ firstLookReferrerId: _firstLookReferrerId, firstLookUntil: _firstLookUntil, ...row }) => {
+  // D-398 (§4.7 with D-090-BYOR): BYOR delivery writes an allocated slot, so a one-time-link ask the
+  // viewer took is told apart from a pool allocation by its invite row: delivered to this viewer.
+  const byorDeliveredToYou = new Set<number>();
+  const allocatedOwn = ownPending.filter(row => row.queueAllocationId !== null && row.opportunityId === null);
+  if (REQUEST_INBOX_LINK_ENABLED && allocatedOwn.length) {
+    try {
+      const delivered = await db.select({ requestId: askInviteLinks.referralRequestId }).from(askInviteLinks)
+        .where(and(inArray(askInviteLinks.referralRequestId, allocatedOwn.map(row => row.id)), eq(askInviteLinks.claimedByUserId, userId), eq(askInviteLinks.status, "delivered")));
+      for (const item of delivered) byorDeliveredToYou.add(Number(item.requestId));
+    } catch (error) { console.warn("[inbox] direct-ask invite read skipped", { name: error instanceof Error ? error.name : "unknown" }); }
+  }
+  const askedYouDirectly = (row: (typeof scopedRows)[number]) => row.status === "pending" && row.referrerId === userId && row.opportunityId === null
+    && pickupEventsRead && !claimedSinceRelease.has(row.id) && (row.queueAllocationId === null || byorDeliveredToYou.has(row.id));
+  return scopedRows.map(original => {
+    const { firstLookReferrerId: _firstLookReferrerId, firstLookUntil: _firstLookUntil, opportunityId: _opportunityId, ...row } = original;
+    // Switch off: no key at all, so the row is byte-identical to before (T4).
+    const direct = REQUEST_INBOX_LINK_ENABLED ? { askedYouDirectly: askedYouDirectly(original) } : {};
     // D-061: the shown deadline follows the ask's own window (7 days from first visibility).
     const expiresAtMs = getAskShelfLifeEndsAtMs(row);
     const detail = extra.get(row.id);
     const enrichment = detail ? enrichInboxRow({ title: detail.title, pitch: detail.pitch, targetRoleUrl: row.targetRoleUrl, attachmentCount: row.attachmentCount }) : {};
-    return { ...row, ...enrichment, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), decisionDueAt: decisionDueAtByRequest.get(row.id) ?? null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 };
+    return { ...row, ...enrichment, inboxState: state, isClaimedByYou: row.referrerId === userId, isQueueOpenAllocation: row.queueAllocationId !== null && row.referrerId === userId, expiresAt: expiresAtMs === null ? null : new Date(expiresAtMs).toISOString(), decisionDueAt: decisionDueAtByRequest.get(row.id) ?? null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0, ...direct };
   });
 }
 
@@ -2243,7 +2761,15 @@ export async function getUnclaimedCompanyReferralPreview(userId: number, request
   const db = await getDb(); if (!db) return undefined;
   // One captured instant for both sides of the lapsed check below.
   const freshNow = new Date();
-  const request = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateMessage: referralRequests.personalPitch }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, false), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), eq(jobs.company, profile.workEmailDomain),isNull(referralRequestPasses.id),
+  // D-393 (a) and (5): the inbox's two-way scope. The demo referrer previews a sandbox request at any company it
+  // names (the pre-acceptance privacy view it tests); a real referrer previews its own company only, and never a
+  // sandbox request there.
+  const viewerEmail = (await db.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email;
+  const seekerUsers = alias(users, "sandbox_seeker");
+  const companyScope = isSandboxReferrer(viewerEmail)
+    ? or(eq(jobs.company, profile.workEmailDomain), eq(seekerUsers.email, SANDBOX_SEEKER_EMAIL))
+    : and(eq(jobs.company, profile.workEmailDomain), or(isNull(seekerUsers.email), ne(seekerUsers.email, SANDBOX_SEEKER_EMAIL)));
+  const request = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateMessage: referralRequests.personalPitch, askChannel: askOrigins.channel }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(seekerUsers, eq(seekerUsers.id, referralRequests.jobSeekerId)).leftJoin(askOrigins, eq(askOrigins.referralRequestId, referralRequests.id)).leftJoin(referralRequestPasses,and(eq(referralRequestPasses.referralRequestId,referralRequests.id),eq(referralRequestPasses.referrerId,userId))).where(and(eq(referralRequests.id, requestId), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, false), or(isNull(referralRequests.referrerId), eq(referralRequests.referrerId, userId)), companyScope,isNull(referralRequestPasses.id),
     // D-022 first look: only the poster may preview during their 48 hours (or anyone after it lapses).
     // Lapsed = firstLookUntil <= now, kept as lt-or-eq so every row-lock fixture in this repo can evaluate it.
     or(isNull(referralRequests.firstLookReferrerId), isNull(referralRequests.firstLookUntil), lt(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookUntil, freshNow), eq(referralRequests.firstLookReferrerId, userId)))).limit(1);
@@ -2252,7 +2778,7 @@ export async function getUnclaimedCompanyReferralPreview(userId: number, request
   // Task 13 (0095): the work pinned at send time, in the order the seeker chose.
   // Title, kind, source and link only — no showcase row ids, no seeker identity.
   const pinnedWork = await db.select({ title: askWorkItems.title, kind: askWorkItems.kind, source: askWorkItems.source, url: askWorkItems.url }).from(askWorkItems).where(eq(askWorkItems.referralRequestId, requestId)).orderBy(asc(askWorkItems.position));
-  return { ...request[0], attachments, workItems: pinnedWork };
+  return { ...request[0], sentViaAssistant: request[0].askChannel === "agent", attachments, workItems: pinnedWork };
 }
 
 export async function saveCompanyReferralRequest(userId: number, requestId: number, saved: boolean) {
@@ -2260,9 +2786,13 @@ export async function saveCompanyReferralRequest(userId: number, requestId: numb
   if (!profile?.workEmailDomain || !profile.workEmailVerifiedAt) throw new Error("Verify your work email before saving referrals");
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
-    const request = await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, companyDomain: jobs.company, passedByYou: referralRequestPasses.id, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).where(eq(referralRequests.id, requestId)).limit(1).for("update");
+    const request = await tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId, status: referralRequests.status, referrerId: referralRequests.referrerId, waitingForCoverage: referralRequests.waitingForCoverage, companyDomain: jobs.company, passedByYou: referralRequestPasses.id, firstLookReferrerId: referralRequests.firstLookReferrerId, firstLookUntil: referralRequests.firstLookUntil }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId))).where(eq(referralRequests.id, requestId)).limit(1).for("update");
     const current = request[0];
-    if (!current || current.companyDomain !== profile.workEmailDomain || current.status !== "pending" || current.waitingForCoverage || (current.referrerId !== null && current.referrerId !== userId) || current.passedByYou || firstLookExcludesViewer(current, userId, Date.now())) throw new Error("This private referral request is no longer available to save");
+    // D-393 (a): a sandbox request reaches only the demo referrer, so a real employee of the company it names may
+    // not save it. Read after the row lock without locking the account rows; the answer is the same refusal.
+    const accountEmails = current ? await tx.select({ id: users.id, email: users.email }).from(users).where(inArray(users.id, [userId, current.jobSeekerId])) : [];
+    const sandboxHiddenFromViewer = Boolean(current) && isSandboxSeeker(accountEmails.find(row => row.id === current.jobSeekerId)?.email) && !isSandboxReferrer(accountEmails.find(row => row.id === userId)?.email);
+    if (!current || sandboxHiddenFromViewer || current.companyDomain !== profile.workEmailDomain || current.status !== "pending" || current.waitingForCoverage || (current.referrerId !== null && current.referrerId !== userId) || current.passedByYou || firstLookExcludesViewer(current, userId, Date.now())) throw new Error("This private referral request is no longer available to save");
     if (saved) await tx.insert(referralRequestSaves).values({ referralRequestId: requestId, referrerId: userId }).onDuplicateKeyUpdate({ set: { referrerId: userId } });
     else await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId, requestId), eq(referralRequestSaves.referrerId, userId)));
     return { requestId, saved };
@@ -2284,6 +2814,23 @@ async function heldForReferrerTx(tx: LedgerTx, row: { id: number; status: string
 
 const WITHDRAW_REFUSED = "This request was already claimed by a verified employee and can no longer be withdrawn";
 
+/** Close every open link or live reservation only after its ask row is locked; preserve a delivery to its claimer. */
+async function closeAskInviteForTerminalStateTx(tx: LedgerTx, requestId: number, actorUserId: number, outcome: "ask_withdrawn" | "ask_expired", closedAt: Date, ask: { waitingForCoverage: boolean; referrerId: number | null }): Promise<void> {
+  // A stale claimed reservation and a fresh active link can coexist, so close all of them:
+  // closing one unordered row could leave an activeRequestKey live past the ask.
+  const links = await tx.select({ id: askInviteLinks.id, status: askInviteLinks.status, claimedByUserId: askInviteLinks.claimedByUserId }).from(askInviteLinks).where(and(eq(askInviteLinks.referralRequestId, requestId), inArray(askInviteLinks.status, ["active", "claimed"]))).for("update");
+  for (const link of links) {
+    if (link.status === "claimed" && link.claimedByUserId !== null && !ask.waitingForCoverage && ask.referrerId === link.claimedByUserId) continue;
+    const updated = await tx.update(askInviteLinks).set({ status: "expired", activeRequestKey: null, reservationExpiresAt: null, closedAt }).where(and(eq(askInviteLinks.id, link.id), inArray(askInviteLinks.status, ["active", "claimed"])));
+    if (Number(updated[0]?.affectedRows ?? 0) !== 1) continue;
+    if (link.status === "claimed" && link.claimedByUserId !== null) {
+      const eventKey = `ask-invite:${link.id}:${outcome === "ask_withdrawn" ? "ask-withdrawn" : "ask-expired"}:claimer`;
+      await tx.insert(notifications).values({ userId: link.claimedByUserId, category: "status", kind: "ask_invite_expired", title: "Your reserved ask is no longer available", body: outcome === "ask_withdrawn" ? "The seeker withdrew the ask, so this invite can no longer be used." : "The ask expired before this reservation was completed, so the invite can no longer be used.", eventKey, refId: requestId }).onDuplicateKeyUpdate({ set: { eventKey } });
+    }
+    await tx.insert(operationalActivityLogs).values({ actorUserId, action: "ask_invite.expired", outcome: "success", resourceType: "ask_invite", resourceId: String(link.id), metadata: JSON.stringify({ requestId, linkId: link.id, outcome }) });
+  }
+}
+
 export async function withdrawCompanyReferralRequest(userId: number, requestId: number) {
   const db=await getDb();if(!db)throw new Error("Database unavailable");
   return db.transaction(async tx=>{
@@ -2294,6 +2841,7 @@ export async function withdrawCompanyReferralRequest(userId: number, requestId: 
     // allocation) is still unclaimed; any other assigned ask was picked up.
     const heldFor=current.referrerId===null?null:await heldForReferrerTx(tx,current);
     if(current.referrerId!==null&&heldFor===null)throw new Error(WITHDRAW_REFUSED);
+    await closeAskInviteForTerminalStateTx(tx, requestId, userId, "ask_withdrawn", new Date(), { waitingForCoverage: current.waitingForCoverage === true, referrerId: current.referrerId });
     // Each transition re-checks the locked row. Releasing an unclaimed assignment clears its referrer in the same write, so
     // the withdrawn ask never reads as assigned or reveals who held it; the release audit row keeps that, in this transaction.
     const heldReferrerId=heldFor?.referrerId??null;
@@ -2371,9 +2919,16 @@ export async function refundLedgerSpendTx(tx: any, input: { userId: number; requ
     const credits = -spend.tokenCount;
     let restored = 0;
     let grantId: number | null = null;
-    if (spend.source === BUCKET_SOURCES.purchased) { balance += credits; restored = credits; }
+    const bandedRefund = await refundBandedDebitTx(tx, { ...input.wallet, monthlyCreditsRemaining: monthly }, spend, now);
+    if (bandedRefund.handled) {
+      restored = bandedRefund.restored;
+      monthly = bandedRefund.monthly;
+      if (spend.creditGrantId != null) grantId = spend.creditGrantId;
+    }
+    else if (spend.source === BUCKET_SOURCES.purchased) { balance += credits; restored = credits; }
     else if (spend.source === BUCKET_SOURCES.cycle) {
       if (spend.sourceCycleKey === input.wallet.monthlyCycleKey) { const next = Math.min(input.wallet.monthlyAllowance, monthly + credits); restored = next - monthly; monthly = next; }
+      else if (askLevelCostEnabled() && PAID_CREDITS_NEVER_EXPIRE && input.wallet.plan !== "free" && input.wallet.subscriptionId !== null) { balance += credits; restored = credits; }
     } else if (spend.source === BUCKET_SOURCES.promo) {
       const promo = (await tx.select().from(promoCreditGrants).where(and(eq(promoCreditGrants.userId, userId), eq(promoCreditGrants.role, "job_seeker"))).limit(1).for("update"))[0];
       if (promo && (promo.status === "active" || promo.status === "exhausted") && promo.expiresAt.getTime() > now.getTime() && promo.creditsRemaining + credits <= promo.tokenCount) {
@@ -2441,6 +2996,9 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
     const current = (await tx.select({ id: referralRequests.id, status: referralRequests.status, referrerId: referralRequests.referrerId, debitTransactionId: referralRequests.debitTransactionId, waitingForCoverage: referralRequests.waitingForCoverage, coverageVisibleAt: referralRequests.coverageVisibleAt, createdAt: referralRequests.createdAt, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(and(eq(referralRequests.id, requestId), eq(referralRequests.jobSeekerId, userId))).limit(1).for("update"))[0];
     if (!current) throw new Error("This referral request is not in your account");
     if (current.status !== "pending") return { expired: false as const, requestId, status: current.status };
+    // D-174: while the ask clocks are suspended nothing closes and no credit moves; the ask keeps its
+    // credit until it is claimed or withdrawn (withdrawing before pickup still returns it).
+    if (ASK_NO_EXPIRY_ENABLED) return { expired: false as const, requestId, status: current.status };
     // D-061: the shelf life is window-aware — waiting asks close 90 days after creation at no cost, every other
     // ask 7 days after its first visibility (coverageVisibleAt; pre-0095 rows: creation).
     const expiresAt = getAskShelfLifeEndsAtMs(current);
@@ -2449,6 +3007,7 @@ export async function expireStalePendingReferralRequest(userId: number, requestI
     // expires like an unclaimed one; any other assigned ask is left alone.
     const heldFor = current.referrerId === null ? null : await heldForReferrerTx(tx, current);
     if (current.referrerId !== null && heldFor === null) return { expired: false as const, requestId, status: current.status };
+    await closeAskInviteForTerminalStateTx(tx, requestId, userId, "ask_expired", new Date(nowMs), { waitingForCoverage: current.waitingForCoverage === true, referrerId: current.referrerId });
     const heldReferrerId = heldFor?.referrerId ?? null;
     const authorize: ReferralTransitionInput["authorize"] = row => { if (row.jobSeekerId !== userId || row.referrerId !== heldReferrerId) throw new Error("This request is already in conversation and cannot expire"); };
     const release = heldFor === null ? undefined : { referrerId: null };
@@ -2543,6 +3102,8 @@ export async function releaseFirstLookForRequest(requestId: number, nowMs: numbe
  */
 export async function reconcileExpiredPendingReferrals(userId: number, nowMs: number = Date.now()) {
   const db = await getDb(); if (!db) return { expiredRequestIds: [] as number[] };
+  // D-174: with the clocks off a read closes nothing and refunds nothing; every other read keeps working.
+  if (ASK_NO_EXPIRY_ENABLED) return { expiredRequestIds: [] as number[] };
   const cutoff = new Date(nowMs - ASK_TTL_MS);
   const waitingCutoff = new Date(nowMs - COVERAGE_WAIT_MS);
   // D-061: two windows — a visible ask is stale 7 days after first visibility (pre-0095 rows: creation), a waiting or
@@ -2595,9 +3156,14 @@ export async function listJobSeekerCompanyReferrals(userId: number) {
   // countdown). P0-allocated-ask-stuck: so does a queue allocation nobody claimed; unclaimedAssignment covers both kinds
   // (Withdraw). Fail-soft and reported: the flags only add that entry point; withdraw and expiry re-decide under the row lock.
   let held: UnclaimedAssignments = { personalLink: new Set<number>(), queueAllocation: new Set<number>() };
+  const waitingIds = ASK_RECONFIRM_ENABLED ? rows.filter(row => row.status === "pending" && row.waitingForCoverage).map(row => row.id) : [];
+  const reconfirmEvents = waitingIds.length ? await db.select({ requestId: referralTransitionEvents.referralRequestId, action: referralTransitionEvents.action }).from(referralTransitionEvents)
+    .where(and(inArray(referralTransitionEvents.referralRequestId, waitingIds), inArray(referralTransitionEvents.action, ["reconfirm_requested", "reconfirmed"]))) : [];
+  const confirmedIds = new Set(reconfirmEvents.filter(event => event.action === "reconfirmed").map(event => event.requestId));
+  const awaitingIds = new Set(reconfirmEvents.filter(event => event.action === "reconfirm_requested" && !confirmedIds.has(event.requestId)).map(event => event.requestId));
   try { held = await listHeldForReferrerIds(db, rows); }
   catch (error) { console.warn("[requests] held flag skipped", { name: error instanceof Error ? error.name : "unknown" }); captureServerError(error, { area: "seeker_requests_held_flag" }); }
-  return rows.map(row => ({ ...row, heldForReferrer: held.personalLink.has(row.id), unclaimedAssignment: held.personalLink.has(row.id) || held.queueAllocation.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? (row.coverageHeldAt !== null ? "held_for_credit" as const : "waiting_for_coverage" as const) : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
+  return rows.map(row => ({ ...row, awaitingReconfirm: awaitingIds.has(row.id), heldForReferrer: held.personalLink.has(row.id), unclaimedAssignment: held.personalLink.has(row.id) || held.queueAllocation.has(row.id), referrerName: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.name ?? null : null, referrerTitle: row.referrerId !== null && REFERRER_REVEALED_STATUSES.includes(row.status) ? revealed.get(row.referrerId)?.title ?? null : null, queueStatus: row.referrerId && row.status === "pending" ? "available_for_review" as const : row.waitingForCoverage ? (row.coverageHeldAt !== null ? "held_for_credit" as const : "waiting_for_coverage" as const) : null, unreadMessageCount: unreadByRequestId.get(row.id) ?? 0 }));
 }
 
 /**
@@ -2663,6 +3229,43 @@ async function readAllocatedSlotsForUpdateTx(tx: LedgerTx, referrerId: number): 
 
 type DeliveryCandidate = { userId: number; accountType: string | null; workEmailDomain: string | null; workEmailVerifiedAt: Date | null; paused: boolean | null; referralCapacity: number | null; userSuspended: boolean | null; personSuspended: boolean | null };
 
+/** Always called under the request lock; locking event reads also see concurrent committed consent. */
+async function readAskReconfirmActionsTx(tx: LedgerTx, requestId: number) {
+  return tx.select({ action: referralTransitionEvents.action }).from(referralTransitionEvents)
+    .where(and(eq(referralTransitionEvents.referralRequestId, requestId), inArray(referralTransitionEvents.action, ["reconfirm_requested", "reconfirmed"]))).for("update");
+}
+
+/** Reconfirmation is metadata only: it neither changes request status nor opens referrer access. */
+async function recordAskReconfirmEventTx(tx: LedgerTx, request: typeof referralRequests.$inferSelect, action: "reconfirm_requested" | "reconfirmed", nowMs: number) {
+  const revision = request.revision + 1;
+  const updated = await tx.update(referralRequests).set({ revision }).where(and(eq(referralRequests.id, request.id), eq(referralRequests.revision, request.revision)));
+  if (Number(updated[0]?.affectedRows ?? 0) !== 1) throw new Error("Request confirmation lost a stale-write race");
+  await tx.insert(referralTransitionEvents).values({ referralRequestId: request.id, operationKey: `${action}:${request.id}`, actorUserId: request.jobSeekerId, action, fromStatus: request.status, resultingStatus: request.status, resultingRevision: revision, createdAt: new Date(nowMs) });
+}
+
+export class AskReconfirmError extends Error {
+  constructor(public readonly reason: "missing" | "not_awaiting" | "disabled") {
+    super(reason === "missing" ? "This referral request is not in your account" : reason === "disabled" ? "Request confirmation is not available yet" : "This referral request is not awaiting confirmation");
+    this.name = "AskReconfirmError";
+  }
+}
+
+/** Commit consent before retrying delivery; a failed/lost response is safely retried with the same event and debit keys. */
+export async function reconfirmWaitingAsk(userId: number, requestId: number, nowMs: number = Date.now()): Promise<AskReconfirmResponse> {
+  if (!ASK_RECONFIRM_ENABLED) throw new AskReconfirmError("disabled");
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  await db.transaction(async tx => {
+    const request = (await tx.select().from(referralRequests).where(and(eq(referralRequests.id, requestId), eq(referralRequests.jobSeekerId, userId))).limit(1).for("update"))[0];
+    if (!request) throw new AskReconfirmError("missing");
+    const events = await readAskReconfirmActionsTx(tx, requestId);
+    if (events.some(event => event.action === "reconfirmed")) return;
+    if (request.status !== "pending" || !request.waitingForCoverage || !events.some(event => event.action === "reconfirm_requested")) throw new AskReconfirmError("not_awaiting");
+    await recordAskReconfirmEventTx(tx, request, "reconfirmed", nowMs);
+  });
+  await tryDeliverWaitingAsk(requestId, nowMs);
+  return { requestId, confirmed: true };
+}
+
 /**
  * D-062: employees of `companyDomain` who can take an ask right now, most
  * remaining capacity first (then lowest id). The ask's own seeker is never a
@@ -2698,10 +3301,33 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
   const request = locked?.request;
   if (!locked || !request || request.status !== "pending" || !request.waitingForCoverage) return { outcome: "settled", requestId: input.requestId };
   if (request.jobSeekerId === input.referrerId) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
+  if (ASK_RECONFIRM_ENABLED && input.nowMs - new Date(request.createdAt).getTime() > RECONFIRM_AFTER_DAYS * 86_400_000) {
+    const events = await readAskReconfirmActionsTx(tx, request.id);
+    if (!events.some(event => event.action === "reconfirmed")) {
+      if (!events.some(event => event.action === "reconfirm_requested")) {
+        await recordAskReconfirmEventTx(tx, request, "reconfirm_requested", input.nowMs);
+        const eventKey = `ask-reconfirm:${request.id}`;
+        await tx.insert(notifications).values({ userId: request.jobSeekerId, category: "status", kind: "ask_reconfirm", refId: request.id, title: ASK_RECONFIRM_NOTICE_TITLE, body: ASK_RECONFIRM_PROMPT, eventKey }).onDuplicateKeyUpdate({ set: { eventKey } });
+      }
+      return { outcome: "awaiting_reconfirm", requestId: request.id };
+    }
+  }
+  // Ask → invite → profile is the BYOR lock order; keep this reservation check off when BYOR is disabled.
+  const invite = process.env.BYOR_LINK_ENABLED === "true"
+    ? (await tx.select({ id: askInviteLinks.id, status: askInviteLinks.status, claimedByUserId: askInviteLinks.claimedByUserId, reservationExpiresAt: askInviteLinks.reservationExpiresAt })
+      .from(askInviteLinks).where(and(eq(askInviteLinks.referralRequestId, input.requestId), inArray(askInviteLinks.status, ["active", "claimed"])))
+      .orderBy(desc(askInviteLinks.id)).limit(1).for("update"))[0]
+    : undefined;
+  const hasLiveReservation = invite?.status === "claimed" && invite.reservationExpiresAt !== null && new Date(invite.reservationExpiresAt).getTime() > input.nowMs;
+  if (hasLiveReservation && invite.claimedByUserId !== input.referrerId) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
   const companyDomain = locked.companyDomain;
-  const referrer = (await tx.select({ userId: profiles.userId, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
+  const referrer = (await tx.select({ userId: profiles.userId, email: users.email, accountType: profiles.accountType, workEmailDomain: profiles.workEmailDomain, workEmailVerifiedAt: profiles.workEmailVerifiedAt, paused: profiles.paused, referralCapacity: profiles.referralCapacity, userSuspended: users.suspended, personSuspended: canonicalPeople.suspended })
     .from(profiles).innerJoin(users, eq(users.id, profiles.userId)).leftJoin(canonicalPeople, eq(canonicalPeople.id, users.canonicalPersonId)).where(eq(profiles.userId, input.referrerId)).limit(1).for("update"))[0];
   if (!referrer) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
+  // D-393 (a): a sandbox request reaches the demo referrer alone. It is created covered, so it should never reach
+  // this hand-off; if one does, a real employee is refused here rather than told about it.
+  const sandboxSeekerEmail = (await tx.select({ email: users.email }).from(users).where(eq(users.id, request.jobSeekerId)).limit(1))[0]?.email;
+  if (isSandboxSeeker(sandboxSeekerEmail) && !isSandboxReferrer(referrer.email)) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
   if (!isOpenReferrer(referrer, companyDomain, await readAllocatedSlotsForUpdateTx(tx, input.referrerId))) return { outcome: "waiting", requestId: input.requestId, returnedToWaiting: false };
   // P0-block-delivery: a blocked pair never receives the ask, either way; fail-open and reported (server/blockedPairs.ts).
   if ((await blockedCounterpartsFailOpen(tx, input.referrerId, [request.jobSeekerId], "coverage_delivery")).has(request.jobSeekerId)) return { outcome: "blocked", requestId: input.requestId };
@@ -2712,14 +3338,19 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
     if (!lockedWallet) return { outcome: "held", requestId: input.requestId, seekerUserId: request.jobSeekerId, companyDomain };
     const reconciled = await reconcileWalletTx(tx, lockedWallet, now);
     const promo = await promoStateForTx(tx, request.jobSeekerId, "job_seeker", now);
-    // D-110/D-132: the waiting ask pays the same level cost the covered ask
-    // paid at creation, classified from the same stored job row.
-    const deliveryJob = (await tx.select({ title: jobs.title, description: jobs.description, url: jobs.targetRoleUrl }).from(jobs).where(eq(jobs.id, request.jobId)).limit(1))[0];
-    // D-132 audit item 2: read the cost stored at creation; only an ask with no stored row (made with the flag off) is priced again.
+    // D-110/D-132 + POSTMERGE-oct22 P1 (#482): the waiting ask pays the price it was quoted at creation.
+    // D-132 audit item 2: a stored row is that price. A missing row means the ask was created while level
+    // pricing was off (rows are written only while the flag is on), so it keeps the flat one-credit price:
+    // delivery must never reclassify it against the flag as it stands now, or an ask that waited across the
+    // activation would be repriced higher than the seeker was ever told.
     const storedCost = (await tx.select({ creditCost: askCosts.creditCost }).from(askCosts).where(eq(askCosts.referralRequestId, input.requestId)).limit(1))[0];
-    const deliveryCost = storedCost ? storedCost.creditCost : askCreditCost({ title: deliveryJob?.title, description: deliveryJob?.description, url: deliveryJob?.url });
+    const deliveryCost = storedCost ? storedCost.creditCost : FLAT_ASK_COST;
     try {
-      await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoGrantsEnabled() ? promoHolding(promo.grant) : null, credits: deliveryCost, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) }, now });
+      if (bandedSalesEnabled() && deliveryCost === 1) {
+        const job = (await tx.select({ targetRoleUrl: jobs.targetRoleUrl }).from(jobs).where(eq(jobs.id, request.jobId)).limit(1))[0];
+        if (!job?.targetRoleUrl) throw new Error("The waiting request's job link is unavailable");
+        await spendBandedReferralTx(tx, { wallet: reconciled.wallet, level: assignJobLevel({ url: job.targetRoleUrl }).level, now, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) } });
+      } else await spendCreditsTx(tx, { wallet: reconciled.wallet, grants: reconciled.grants, promo: promoGrantsEnabled() ? promoHolding(promo.grant) : null, credits: deliveryCost, meta: { idempotencyKey: askDeliveryKey(input.requestId), referenceType: "referral_request", referenceId: String(input.requestId) }, now });
     } catch (error) {
       if (!(error instanceof InsufficientCreditsError)) throw error;
       // D-047: no credit at first visibility — hold the ask. Nothing is allocated, no referrer is told, and the
@@ -2737,7 +3368,17 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
   // transaction. The conditional update re-checks the flip under the row lock already held above.
   const flipped = await tx.update(referralRequests).set({ referrerId: input.referrerId, waitingForCoverage: false, coverageQueuedAt: null, coverageVisibleAt: now, coverageHeldAt: null, debitTransactionId }).where(and(eq(referralRequests.id, input.requestId), eq(referralRequests.waitingForCoverage, true)));
   if (Number(flipped[0]?.affectedRows ?? 0) !== 1) throw new Error("The coverage delivery lost a stale-write race");
+  if (invite?.status === "active") {
+    await tx.update(askInviteLinks).set({ status: "expired", activeRequestKey: null, closedAt: now }).where(and(eq(askInviteLinks.id, invite.id), eq(askInviteLinks.status, "active"), eq(askInviteLinks.activeRequestKey, askInviteActiveRequestKey(input.requestId))));
+    await tx.insert(operationalActivityLogs).values({ actorUserId: input.referrerId, action: "ask_invite.expired", outcome: "success", resourceType: "ask_invite", resourceId: String(invite.id), companyDomain: companyDomain.toLowerCase().slice(0, 255), metadata: JSON.stringify({ requestId: input.requestId, linkId: invite.id, outcome: "coverage_delivered" }) });
+  } else if (invite?.status === "claimed" && hasLiveReservation && invite.claimedByUserId === input.referrerId) {
+    await tx.update(askInviteLinks).set({ status: "delivered", reservationExpiresAt: null, activeRequestKey: null, closedAt: now }).where(and(eq(askInviteLinks.id, invite.id), eq(askInviteLinks.status, "claimed"), eq(askInviteLinks.claimedByUserId, input.referrerId)));
+    await tx.insert(operationalActivityLogs).values({ actorUserId: input.referrerId, action: "ask_invite.delivered", outcome: "success", resourceType: "ask_invite", resourceId: String(invite.id), companyDomain: companyDomain.toLowerCase().slice(0, 255), metadata: JSON.stringify({ requestId: input.requestId, linkId: invite.id, outcome: "delivered" }) });
+  }
   await tx.insert(referralAvailabilitySlots).values({ referrerId: input.referrerId, companyDomain, referralRequestId: input.requestId, status: "allocated", activeRequestKey: `request:${input.requestId}` });
+  // D-174-pool-nudges part 2 (D-384 (2)): the review grant the email will carry. No delivery row here: the hourly
+  // pool-review-email job creates it within D-060's one-a-day cap. The blocked-pair check above already returned.
+  if (POOL_NUDGES_ENABLED) await writeReviewGrantTx(tx, { requestId: input.requestId, referrerId: input.referrerId, email: referrer.email, companyDomain, nowMs: input.nowMs });
   const deliveredNotice = coverageDeliveredNotice(companyDomain);
   await tx.insert(notifications).values({ userId: request.jobSeekerId, category: "status", kind: "coverage_delivered", refId: input.requestId, title: deliveredNotice.title, body: deliveredNotice.body, eventKey: coverageDeliveredEventKey(input.requestId) }).onDuplicateKeyUpdate({ set: { eventKey: coverageDeliveredEventKey(input.requestId) } });
   const referrerNotice = coverageReferrerNotice(companyDomain);
@@ -2750,12 +3391,28 @@ async function deliverWaitingAskTx(tx: LedgerTx, input: { requestId: number; ref
 }
 
 /** The company's waiting and held asks a hand-off may deliver, oldest queue position first. */
-async function listDeliverableWaitingAsksTx(tx: LedgerTx, input: { companyDomain: string; limit: number }): Promise<Array<{ id: number; jobSeekerId: number }>> {
+async function listDeliverableWaitingAsksTx(tx: LedgerTx, input: { companyDomain: string; limit: number; nowMs: number }): Promise<Array<{ id: number; jobSeekerId: number }>> {
+  const reserved = process.env.BYOR_LINK_ENABLED === "true"
+    ? await tx.select({ requestId: askInviteLinks.referralRequestId }).from(askInviteLinks)
+      .innerJoin(referralRequests, eq(referralRequests.id, askInviteLinks.referralRequestId)).innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
+      .where(and(eq(jobs.company, input.companyDomain), eq(askInviteLinks.status, "claimed"), gt(askInviteLinks.reservationExpiresAt, new Date(input.nowMs))))
+    : [];
+  const excluded = Array.from(new Set(reserved.map(row => row.requestId))).map(id => ne(referralRequests.id, id));
   return tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId })
     .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id))
-    .where(and(eq(jobs.company, input.companyDomain), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, true), isNull(referralRequests.referrerId)))
+    .where(and(eq(jobs.company, input.companyDomain), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, true), isNull(referralRequests.referrerId), ...excluded))
     .orderBy(asc(referralRequests.coverageQueuedAt), asc(referralRequests.id))
     .limit(input.limit);
+}
+
+/** Live asks reserved for this employee go ahead of the ordinary oldest-first queue. */
+async function listReservedWaitingAsksForReferrerTx(tx: LedgerTx, input: { referrerId: number; companyDomain: string; nowMs: number; limit: number }): Promise<Array<{ id: number; jobSeekerId: number }>> {
+  // D-097: with BYOR off, ordinary hand-off must not read or lock invite rows (D-090 review, Oct 24).
+  if (process.env.BYOR_LINK_ENABLED !== "true") return [];
+  return tx.select({ id: referralRequests.id, jobSeekerId: referralRequests.jobSeekerId }).from(askInviteLinks)
+    .innerJoin(referralRequests, eq(referralRequests.id, askInviteLinks.referralRequestId)).innerJoin(jobs, eq(jobs.id, referralRequests.jobId))
+    .where(and(eq(jobs.company, input.companyDomain), eq(askInviteLinks.status, "claimed"), eq(askInviteLinks.claimedByUserId, input.referrerId), gt(askInviteLinks.reservationExpiresAt, new Date(input.nowMs)), eq(referralRequests.status, "pending"), eq(referralRequests.waitingForCoverage, true), isNull(referralRequests.referrerId)))
+    .orderBy(asc(askInviteLinks.claimedAt), asc(referralRequests.id)).limit(input.limit);
 }
 
 /**
@@ -2774,7 +3431,11 @@ async function handOffWaitingAsksToReferrerTx(tx: LedgerTx, input: { referrerId:
   const target = Math.min(input.maxDeliveries ?? remaining, remaining);
   const summary = { deliveredRequestIds: [] as number[], held: 0, skipped: 0 };
   if (target <= 0) return summary;
-  const candidates = await listDeliverableWaitingAsksTx(tx, { companyDomain: input.companyDomain, limit: target * COVERAGE_ATTEMPTS_PER_SLOT });
+  const scanLimit = target * COVERAGE_ATTEMPTS_PER_SLOT;
+  const reserved = await listReservedWaitingAsksForReferrerTx(tx, { referrerId: input.referrerId, companyDomain: input.companyDomain, nowMs: input.nowMs, limit: scanLimit });
+  const ordinary = await listDeliverableWaitingAsksTx(tx, { companyDomain: input.companyDomain, nowMs: input.nowMs, limit: scanLimit });
+  const reservedIds = new Set(reserved.map(ask => ask.id));
+  const candidates = [...reserved, ...ordinary.filter(ask => !reservedIds.has(ask.id))].slice(0, scanLimit);
   for (const ask of candidates) {
     if (summary.deliveredRequestIds.length >= target) break;
     const outcome = await deliverWaitingAskTx(tx, { requestId: ask.id, referrerId: input.referrerId, nowMs: input.nowMs });
@@ -2812,9 +3473,17 @@ export async function tryDeliverWaitingAsk(requestId: number, nowMs: number = Da
     const current = (await tx.select({ request: referralRequests, companyDomain: jobs.company }).from(referralRequests).innerJoin(jobs, eq(jobs.id, referralRequests.jobId)).where(eq(referralRequests.id, requestId)).limit(1).for("update"))[0];
     if (!current || current.request.status !== "pending" || !current.request.waitingForCoverage) return { outcome: "settled", requestId };
     const wasHeld = current.request.coverageHeldAt !== null;
+    const reservation = process.env.BYOR_LINK_ENABLED === "true"
+      ? (await tx.select({ claimedByUserId: askInviteLinks.claimedByUserId }).from(askInviteLinks)
+        .where(and(eq(askInviteLinks.referralRequestId, requestId), eq(askInviteLinks.status, "claimed"), gt(askInviteLinks.reservationExpiresAt, new Date(nowMs))))
+        .limit(1).for("update"))[0]
+      : undefined;
+    if (reservation?.claimedByUserId !== null && reservation?.claimedByUserId !== undefined) {
+      return deliverWaitingAskTx(tx, { requestId, referrerId: reservation.claimedByUserId, nowMs });
+    }
     for (const candidate of await selectDeliveryCandidatesTx(tx, { companyDomain: current.companyDomain, seekerUserId: current.request.jobSeekerId })) {
       const outcome = await deliverWaitingAskTx(tx, { requestId, referrerId: candidate.userId, nowMs });
-      if (outcome.outcome === "delivered" || outcome.outcome === "held" || outcome.outcome === "settled") return outcome;
+      if (outcome.outcome === "delivered" || outcome.outcome === "held" || outcome.outcome === "settled" || outcome.outcome === "awaiting_reconfirm") return outcome;
       // blocked or waiting: a block is per pair and a full referrer may free capacity; try the next candidate.
     }
     if (wasHeld) {
@@ -2859,9 +3528,12 @@ export type PublicReferralImpact = { acceptedReferrals: number };
 // number; never relabel this one as such.
 export async function getPublicReferralImpact(): Promise<PublicReferralImpact> {
   const db = await getDb(); if (!db) return { acceptedReferrals: 0 };
-  const open = await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(inArray(referralRequests.status, ["approved", "intro_made", "interview", "offer"]));
+  // D-393 (a): a sandbox request never counts toward a real public figure.
+  const sandboxSeekerId = await sandboxSeekerUserId();
+  const notSandbox = sandboxSeekerId === null ? [] : [ne(referralRequests.jobSeekerId, sandboxSeekerId)];
+  const open = await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(and(inArray(referralRequests.status, ["approved", "intro_made", "interview", "offer"]), ...notSandbox));
   const acceptedEventIds = await db.select({ id: referralTransitionEvents.referralRequestId }).from(referralTransitionEvents).where(eq(referralTransitionEvents.resultingStatus, "approved"));
-  const closedAccepted = acceptedEventIds.length === 0 ? [] : await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(and(eq(referralRequests.status, "closed"), inArray(referralRequests.id, acceptedEventIds.map(row => row.id))));
+  const closedAccepted = acceptedEventIds.length === 0 ? [] : await db.select({ acceptedReferrals: count(referralRequests.id) }).from(referralRequests).where(and(eq(referralRequests.status, "closed"), inArray(referralRequests.id, acceptedEventIds.map(row => row.id)), ...notSandbox));
   return { acceptedReferrals: Number(open[0]?.acceptedReferrals ?? 0) + Number(closedAccepted[0]?.acceptedReferrals ?? 0) };
 }
 
@@ -2884,8 +3556,11 @@ export async function getDomainIntegrity(limit = 100) {
 export async function getReferralFlowHealth() {
   const db = await getDb();
   if (!db) return { funnel: { requestsCreated: 0, requestsClaimed: 0, decisionsRecorded: 0, waitingForCoverage: 0 }, coverageGaps: [], instrumentation: { uploadedDocuments: 0, recordedFailures: 0 } };
+  // D-393 (a): a sandbox request is invisible to the admin funnel's real totals.
+  const sandboxSeekerId = await sandboxSeekerUserId();
+  const notSandbox = sandboxSeekerId === null ? [] : [ne(referralRequests.jobSeekerId, sandboxSeekerId)];
   const [requests, verifiedProfiles, activities, domainIntegrity] = await Promise.all([
-    db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
+    db.select({ companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId }).from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).where(and(...notSandbox)),
     db.select({ workEmailDomain: profiles.workEmailDomain }).from(profiles).where(eq(profiles.accountType, "referrer")),
     db.select({ action: operationalActivityLogs.action, outcome: operationalActivityLogs.outcome }).from(operationalActivityLogs).orderBy(desc(operationalActivityLogs.createdAt)).limit(1000),
     getDomainIntegrity(1),
@@ -2931,7 +3606,7 @@ async function auditLedgerWallets(db: LedgerAuditDb, wallets: LedgerAuditWallet[
     if(wallet.balance<0||wallet.monthlyCreditsRemaining<0)integrity.push({type:"negative_bucket",userId:wallet.userId,role:wallet.role,balance:wallet.balance,monthlyCreditsRemaining:wallet.monthlyCreditsRemaining});
     // Kit ledger: the cycle bucket reconciles against its own cycle's rows once that cycle was opened by a plan_grant row
     // (a cycle that began before the ledger has no opening row), and every grant against the rows that name it.
-    const cycleRows=rows.filter(row=>row.source===BUCKET_SOURCES.cycle&&row.sourceCycleKey===wallet.monthlyCycleKey);
+    const cycleRows=rows.filter(row=>(row.source===BUCKET_SOURCES.cycle||row.source?.startsWith("banded:free:"))&&row.sourceCycleKey===wallet.monthlyCycleKey);
    
     if(cycleRows.filter(row=>row.kind==="plan_grant").length===1){const expected=cycleRows.reduce((sum,row)=>sum+row.tokenCount,0);if(expected!==wallet.monthlyCreditsRemaining)mismatches.push({userId:wallet.userId,role:wallet.role,bucket:"cycle",cycleKey:wallet.monthlyCycleKey,expected,actual:wallet.monthlyCreditsRemaining,delta:wallet.monthlyCreditsRemaining-expected});}
     const grants=await readGrantsTx(db,wallet.userId,wallet.role,false);
@@ -2978,7 +3653,12 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   return db.transaction(async tx => {
     const current = (await tx.select({ request: referralRequests, company: jobs.company }).from(referralRequests).innerJoin(jobs,eq(referralRequests.jobId,jobs.id)).where(eq(referralRequests.id,requestId)).limit(1).for("update"))[0];
-    if (!current || current.request.status !== "pending" || current.request.waitingForCoverage || !isVerifiedEmployeeOfCompany(profile,current.company) || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
+    // D-393 (a): a sandbox request may be claimed only by the demo referrer, who acts as a verified employee of the
+    // company it names; a real request may never be claimed by the demo referrer. Every other claimant is unchanged.
+    const claimantEmail = (await tx.select({ email: users.email }).from(users).where(eq(users.id, userId)).limit(1))[0]?.email;
+    const seekerEmail = current ? (await tx.select({ email: users.email }).from(users).where(eq(users.id, current.request.jobSeekerId)).limit(1))[0]?.email : undefined;
+    const mayClaim = isSandboxSeeker(seekerEmail) ? isSandboxReferrer(claimantEmail) : Boolean(current && isVerifiedEmployeeOfCompany(profile, current.company));
+    if (!current || current.request.status !== "pending" || current.request.waitingForCoverage || !mayClaim || (current.request.referrerId !== null && current.request.referrerId !== userId)) throw new ReferralTransitionConflict("This referral request is no longer available", { status: current?.request.status ?? "missing", revision: current?.request.revision ?? -1 });
     // D-061: a waiting or held ask has reached no referrer and cannot be claimed; the claim clock follows the ask's own
     // shelf life (7 days from first visibility; rows without coverageVisibleAt: creation). D-050 / P0-allocated-ask-stuck:
     // an assigned ask its employee never claimed (a personal-link ask or a queue allocation) is unclaimed too (decided under
@@ -3003,7 +3683,8 @@ export async function claimCompanyReferralRequest(userId: number, requestId: num
     // assignment and writes an exclusion, so a released ask never stays assigned to the same person.
     // R-6: repeating a claim on an ask the claimant already holds skips the cap and answers as a replay.
     await tx.select({ id: profiles.id }).from(profiles).where(eq(profiles.userId, userId)).limit(1).for("update");
-    if (current.request.referrerId !== userId) {
+    // D-393 (a): the demo referrer has no open-claim cap, so the sandbox can exercise many asks at once.
+    if (current.request.referrerId !== userId && !isSandboxReferrer(claimantEmail)) {
       const [openClaims] = await tx.select({ openClaims: count() }).from(referralTransitionEvents)
         .innerJoin(referralRequests, eq(referralTransitionEvents.referralRequestId, referralRequests.id))
         .where(and(eq(referralRequests.referrerId, userId), eq(referralRequests.status, "pending"), eq(referralTransitionEvents.action, "claim"), eq(referralTransitionEvents.actorUserId, userId)));
@@ -3062,7 +3743,8 @@ export async function lapseClaimTx(tx: LedgerTx, requestId: number, nowMs: numbe
   if (nowMs < claimLapseAtMs(claimCreatedAt)) return { lapsed: false };
   const referrerId = current.referrerId;
   const companyDomain = current.companyDomain;
-  await transitionReferralRequestTx(tx, { requestId, actorUserId: referrerId, action: "claim_lapse", operationKey: `claim-lapse:${claimEventId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== referrerId) throw new Error("Referral Request not found"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: referrerId, title: "An ask went back to your colleagues", body: `You didn't accept or pass within 48 hours, so it's open to other verified employees at ${companyDomain} again.` } });
+  const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: referrerId, action: "claim_lapse", operationKey: `claim-lapse:${claimEventId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== referrerId) throw new Error("Referral Request not found"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: referrerId, title: "An ask went back to your colleagues", body: `You didn't accept or pass within 48 hours, so it's open to other verified employees at ${companyDomain} again.` } });
+  if (POOL_NUDGES_ENABLED && !transition.replayed) await notifyColleaguesOfReleasedRequest(tx, { requestId, companyDomain, seekerUserId: current.jobSeekerId, releasingReferrerId: referrerId, revision: transition.revision });
   await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId, requestId), eq(referralRequestSaves.referrerId, referrerId)));
   await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.referralRequestId, requestId), eq(referrerReviewEmailLinks.referrerId, referrerId), isNull(referrerReviewEmailLinks.consumedAt)));
   await tx.update(referralAvailabilitySlots).set({ status: "released", releasedAt: new Date() }).where(and(eq(referralAvailabilitySlots.referralRequestId, requestId), eq(referralAvailabilitySlots.referrerId, referrerId), eq(referralAvailabilitySlots.status, "allocated")));
@@ -3084,7 +3766,8 @@ export async function lapseAllocationTx(tx: LedgerTx, requestId: number, nowMs: 
   if (nowMs < allocationLapseAtMs(coverageVisibleAt)) return { lapsed: false };
   const referrerId = current.referrerId;
   const companyDomain = current.companyDomain;
-  await transitionReferralRequestTx(tx, { requestId, actorUserId: referrerId, action: "allocation_lapse", operationKey: `allocation-lapse:${slotId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== referrerId) throw new Error("Referral Request not found"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: referrerId, title: "An ask went back to your colleagues", body: `You didn't respond within 48 hours, so it's open to other verified employees at ${companyDomain} again.` } });
+  const transition = await transitionReferralRequestTx(tx, { requestId, actorUserId: referrerId, action: "allocation_lapse", operationKey: `allocation-lapse:${slotId}`, toStatus: "pending", allowedFrom: ["pending"], authorize: row => { if (row.referrerId !== referrerId) throw new Error("Referral Request not found"); }, patch: { referrerId: null, referrerMessage: null }, notification: { userId: referrerId, title: "An ask went back to your colleagues", body: `You didn't respond within 48 hours, so it's open to other verified employees at ${companyDomain} again.` } });
+  if (POOL_NUDGES_ENABLED && !transition.replayed) await notifyColleaguesOfReleasedRequest(tx, { requestId, companyDomain, seekerUserId: current.jobSeekerId, releasingReferrerId: referrerId, revision: transition.revision });
   await tx.delete(referralRequestSaves).where(and(eq(referralRequestSaves.referralRequestId, requestId), eq(referralRequestSaves.referrerId, referrerId)));
   await tx.update(referrerReviewEmailLinks).set({ consumedAt: new Date() }).where(and(eq(referrerReviewEmailLinks.referralRequestId, requestId), eq(referrerReviewEmailLinks.referrerId, referrerId), isNull(referrerReviewEmailLinks.consumedAt)));
   await tx.update(referralAvailabilitySlots).set({ status: "released", releasedAt: new Date() }).where(and(eq(referralAvailabilitySlots.referralRequestId, requestId), eq(referralAvailabilitySlots.referrerId, referrerId), eq(referralAvailabilitySlots.status, "allocated")));
@@ -3292,11 +3975,13 @@ async function referralWasClaimedTxFromDb(db: NonNullable<Awaited<ReturnType<typ
 // documentAccessActive is the same rule as GET /api/documents/:id. server/referrerAskView.ts builds the response.
 export async function getClaimedCompanyReferralDetail(userId: number, requestId: number) {
   const db = await getDb(); if (!db) return undefined;
-  const rows = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateName: users.name, candidateMessage: referralRequests.personalPitch, referrerId: referralRequests.referrerId, status: referralRequests.status, revision: referralRequests.revision, coverageVisibleAt: referralRequests.coverageVisibleAt, grantId: referralDocumentAccessGrants.id, grantRevokedAt: referralDocumentAccessGrants.revokedAt, grantExpiresAt: referralDocumentAccessGrants.expiresAt, passId: referralRequestPasses.id, acceptedByActorAt: referralTransitionEvents.createdAt, acceptedByActorEventId: referralTransitionEvents.id })
+  const rows = await db.select({ id: referralRequests.id, title: jobs.title, targetRoleUrl: jobs.targetRoleUrl, companyDomain: jobs.company, jobFunction: jobs.jobFunction, candidateName: users.name, candidateMessage: referralRequests.personalPitch, referrerId: referralRequests.referrerId, status: referralRequests.status, revision: referralRequests.revision, coverageVisibleAt: referralRequests.coverageVisibleAt, grantId: referralDocumentAccessGrants.id, grantRevokedAt: referralDocumentAccessGrants.revokedAt, grantExpiresAt: referralDocumentAccessGrants.expiresAt, passId: referralRequestPasses.id, acceptedByActorAt: referralTransitionEvents.createdAt, acceptedByActorEventId: referralTransitionEvents.id, askChannel: askOrigins.channel })
     .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)).innerJoin(users, eq(referralRequests.jobSeekerId, users.id))
     .leftJoin(referralDocumentAccessGrants, and(eq(referralDocumentAccessGrants.referralRequestId, referralRequests.id), eq(referralDocumentAccessGrants.referrerId, userId)))
     .leftJoin(referralRequestPasses, and(eq(referralRequestPasses.referralRequestId, referralRequests.id), eq(referralRequestPasses.referrerId, userId)))
     .leftJoin(referralTransitionEvents, actorAcceptanceEventOn(userId))
+    // SKIPPY-6 (D-142): the referrer sees "Sent via the seeker's assistant" only for an agent ask.
+    .leftJoin(askOrigins, eq(askOrigins.referralRequestId, referralRequests.id))
     .where(and(eq(referralRequests.id, requestId), eq(referralRequests.referrerId, userId), inArray(referralRequests.status, ["pending", ...REFERRER_DOCUMENT_ACCESS_STATUSES]))).limit(1);
   const row = rows[0];
   if (!row || (row.passId ?? null) !== null) return undefined;
@@ -3335,7 +4020,7 @@ export async function getClaimedCompanyReferralDetail(userId: number, requestId:
       }
     }
   }
-  return { id: row.id, title: row.title, targetRoleUrl: row.targetRoleUrl, companyDomain: row.companyDomain, jobFunction: row.jobFunction, candidateMessage: row.candidateMessage, referrerId: row.referrerId, status: row.status, revision: row.revision, candidateName: accepted ? row.candidateName : null, documentAccessActive: isReferrerDocumentAccessActive(access), attachments, ...(REFERRED_DEADLINE_ENABLED ? { referredDueAt, extensionUsed } : {}), decisionDueAt };
+  return { id: row.id, title: row.title, targetRoleUrl: row.targetRoleUrl, companyDomain: row.companyDomain, jobFunction: row.jobFunction, candidateMessage: row.candidateMessage, referrerId: row.referrerId, status: row.status, revision: row.revision, candidateName: accepted ? row.candidateName : null, documentAccessActive: isReferrerDocumentAccessActive(access), attachments, sentViaAssistant: row.askChannel === "agent", ...(REFERRED_DEADLINE_ENABLED ? { referredDueAt, extensionUsed } : {}), decisionDueAt };
 }
 
 export async function createReferralAttachment(ownerId: number, input: { fileName: string; fileKey: string; mimeType: string; fileSize: number }) {
@@ -3898,6 +4583,99 @@ async function addPersonalReferralRewardCredit(tx: any, userId: number) {
   else await tx.insert(tokenBalances).values({ userId, role: "job_seeker", balance: PERSONAL_REFERRAL_REWARD_TOKENS, ...freshWalletCycle("job_seeker") });
 }
 
+/**
+ * Referral-link unlock (D-155): source-backed, provider-verified evidence of
+ * a successful nonzero payment on the account. Two evidence paths:
+ *
+ * 1. A one-time checkout whose fulfillment reached "credited" - written only
+ *    from a payment_succeeded webhook with a nonzero INR/USD amount after
+ *    the amount check (mismatches park as requires_review and never count;
+ *    pending / rejected fulfillments and mere checkout-or-page creation
+ *    never count). A fulfillment later marked "refunded" does NOT unlock:
+ *    refunded-first-payment policy is OPEN (D-155), no founder ruling exists,
+ *    and the refunded-only case is surfaced for his decision rather than
+ *    admitted or revoked silently (production today has no gate at all).
+ * 2. A subscription payment stamped onto the wallet by
+ *    recordSubscriptionPaymentEvidence from a payment_succeeded webhook tied
+ *    to the wallet's subscriptionId. Activation alone (wallet
+ *    subscriptionId) is NOT evidence: it can precede settlement or be
+ *    created by hand in the Chargebee dashboard, and subscription payments
+ *    never create a paymentFulfillments row.
+ *
+ * The promoCreditGrants first_paid_invoice row is not usable here: promo
+ * grants are disabled (grantPromoCreditsTx returns early).
+ */
+export function personalInviteUnlockedFromEvidence(evidence: { paidPayments: number; subscriptionPayments: number }): boolean {
+  return evidence.paidPayments > 0 || evidence.subscriptionPayments > 0;
+}
+
+/**
+ * D-155: record provider-verified paid evidence for a subscription. The
+ * caller passes an already-validated nonzero payment_succeeded event; the
+ * subscriptionEvents row makes redeliveries duplicates and lets a payment
+ * that arrived before the wallet's activation be backfilled by
+ * hasUserMadePayment. The stamp keeps the earliest payment time - a renewal
+ * or redelivery never moves it. Wallets are matched by provider
+ * subscriptionId, so the evidence is tied to the subscription's owner, not
+ * to an email guess.
+ */
+export async function recordSubscriptionPaymentEvidence(input: { eventId: string; subscriptionId: string; occurredAt?: Date }) {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  return db.transaction(async tx => {
+    const duplicate = await tx.select().from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee_paid"), eq(subscriptionEvents.providerEventId, input.eventId))).limit(1);
+    if (duplicate[0]) return { status: "duplicate" as const };
+    await tx.insert(subscriptionEvents).values({ provider: "chargebee_paid", providerEventId: input.eventId, subscriptionId: input.subscriptionId, eventType: "paid_evidence" });
+    const wallet = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
+    if (!wallet) return { status: "recorded" as const, reason: "wallet_not_linked_yet" as const };
+    const paidAt = input.occurredAt ?? new Date();
+    if (!wallet.lastPaidAt || wallet.lastPaidAt > paidAt) await tx.update(tokenBalances).set({ lastPaidAt: paidAt }).where(eq(tokenBalances.id, wallet.id));
+    return { status: "recorded" as const, reason: "stamped" as const };
+  });
+}
+
+export async function hasUserMadePayment(userId: number): Promise<boolean> {
+  const db = await getDb(); if (!db) throw new Error("Database unavailable");
+  const wallets = await db.select({ id: tokenBalances.id, role: tokenBalances.role, subscriptionId: tokenBalances.subscriptionId, lastPaidAt: tokenBalances.lastPaidAt }).from(tokenBalances).where(eq(tokenBalances.userId, userId));
+  if (wallets.some(w => Boolean(w.lastPaidAt))) return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 1 });
+
+  const payments = await db.select({ id: paymentFulfillments.id, role: paymentFulfillments.role, creditedAt: paymentFulfillments.creditedAt, createdAt: paymentFulfillments.createdAt }).from(paymentFulfillments).where(and(eq(paymentFulfillments.userId, userId), eq(paymentFulfillments.status, "credited"))).limit(1);
+  if (payments.length > 0) {
+    const targetWallet = wallets.find(w => w.role === payments[0].role) ?? wallets[0];
+    const paidAt = payments[0].creditedAt ?? payments[0].createdAt ?? new Date();
+    if (targetWallet && !targetWallet.lastPaidAt) {
+      await db.update(tokenBalances).set({ lastPaidAt: paidAt }).where(eq(tokenBalances.id, targetWallet.id));
+      targetWallet.lastPaidAt = paidAt;
+    }
+    return personalInviteUnlockedFromEvidence({ paidPayments: 1, subscriptionPayments: 0 });
+  }
+
+  for (const wallet of wallets) {
+    if (!wallet.subscriptionId) continue;
+    // Out-of-order delivery: the paid_evidence event can be recorded
+    // before the activation that links the wallet. A recorded payment event
+    // for the now linked subscription backfills the stamp.
+    const paidEvent = (await db.select({ id: subscriptionEvents.id }).from(subscriptionEvents).where(and(eq(subscriptionEvents.provider, "chargebee_paid"), eq(subscriptionEvents.subscriptionId, wallet.subscriptionId), eq(subscriptionEvents.eventType, "paid_evidence"))).limit(1))[0];
+    if (paidEvent) {
+      await db.update(tokenBalances).set({ lastPaidAt: new Date() }).where(eq(tokenBalances.id, wallet.id));
+      return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 1 });
+    }
+  }
+  return personalInviteUnlockedFromEvidence({ paidPayments: 0, subscriptionPayments: 0 });
+}
+
+export type PersonalReferralInviteState = { status: "locked" } | { status: "unlocked"; inviteCode: string };
+
+/**
+ * The /share personal invite link (D-155): locked until the account's first
+ * paid invoice; no invite row is created while locked. Once unlocked, the
+ * existing get-or-create behaviour applies unchanged.
+ */
+export async function getPersonalReferralInviteState(userId: number): Promise<PersonalReferralInviteState> {
+  if (!(await hasUserMadePayment(userId))) return { status: "locked" };
+  const invite = await getOrCreatePersonalReferralInvite(userId);
+  return { status: "unlocked", inviteCode: invite.inviteCode };
+}
+
 export async function getOrCreatePersonalReferralInvite(userId: number) {
   const db = await getDb(); if (!db) throw new Error("Database unavailable");
   const existing = (await db.select().from(personalReferralInvites).where(eq(personalReferralInvites.inviterUserId, userId)).limit(1))[0];
@@ -4066,12 +4844,14 @@ export function promoGrantsEnabled(): boolean { return process.env.PROMO_GRANTS_
  * equal to its job's classified level (L1=1 ... L10=10); off keeps the flat
  * 1-credit cost. Changeable default per the owner. */
 export function askLevelCostEnabled(): boolean { return process.env.ASK_LEVEL_COST === "true"; }
+/** The flat one-credit price used while ASK_LEVEL_COST is off (D-110/D-132). */
+export const FLAT_ASK_COST = 1;
 /** Cost of one ask in credits. The create spend and the waiting-ask delivery
  * spend both classify the same stored job fields, and the pre-send quote
  * (/api/company-referrals/quote) classifies the same normalized link, so all
  * three always agree. */
 export function askCreditCost(job: { title?: string | null; description?: string | null; url?: string | null }): number {
-  if (!askLevelCostEnabled()) return 1;
+  if (!askLevelCostEnabled()) return FLAT_ASK_COST;
   return creditsForLevel(assignJobLevel({ title: job.title, description: job.description, url: job.url }).level);
 }
 /** D-132 audit item 2: the level and cost an ask is priced at, for the one row stored at creation. */
@@ -4264,7 +5044,8 @@ function promoHolding(grant: typeof promoCreditGrants.$inferSelect | undefined):
 async function creditSummaryTx(tx: LedgerTx, input: { wallet: WalletRow; grants: GrantRow[]; promo: { grant?: typeof promoCreditGrants.$inferSelect; status: PromoState["status"] }; now: Date }): Promise<CreditSummary> {
   const holding = promoHolding(input.promo.grant);
   // Promo credits count toward the balance only while grants are on (the pre-kit totalAvailable rule).
-  const ledger = await creditsLedgerTx(tx, { wallet: input.wallet, grants: input.grants, promo: promoGrantsEnabled() ? holding : null, now: input.now });
+  const ledgerWallet = isBandedPlan(input.wallet.plan) ? { ...input.wallet, plan: "free" as const, subscriptionId: null, subscriptionCurrentTermStart: null, subscriptionCurrentTermEnd: null } : input.wallet;
+  const ledger = await creditsLedgerTx(tx, { wallet: ledgerWallet, grants: input.grants, promo: promoGrantsEnabled() ? holding : null, now: input.now });
   const legacy = creditSummaryFromWallet(input.wallet, holding ? { remaining: holding.credits, expiresAt: holding.expiresAt, status: input.promo.status } : { remaining: 0, expiresAt: null, status: input.promo.status });
   return { ...legacy, totalAvailable: ledger.balance, ledger };
 }
@@ -4414,7 +5195,19 @@ export async function markChargebeePaymentForReview(paymentId: number, reason: "
   if (!db) throw new Error("Database unavailable");
   await db.transaction(async tx => {
     const row = (await tx.select({ id: paymentFulfillments.id, userId: paymentFulfillments.userId, status: paymentFulfillments.status, providerInvoiceId: paymentFulfillments.providerInvoiceId }).from(paymentFulfillments).where(eq(paymentFulfillments.id, paymentId)).limit(1).for("update"))[0];
-    if (!row || row.status !== "pending") return;
+    if (!row) {
+      const bandedRow = (await tx.select().from(bandedCheckoutIntents).where(eq(bandedCheckoutIntents.id, paymentId)).limit(1).for("update"))[0];
+      if (bandedRow && bandedRow.status === "pending") {
+        await tx.update(bandedCheckoutIntents).set({
+          status: "requires_review",
+          failureReason: reason,
+          lastCheckedAt: new Date(),
+          invoiceId: evidence.invoiceId ?? bandedRow.invoiceId,
+        }).where(eq(bandedCheckoutIntents.id, paymentId));
+      }
+      return;
+    }
+    if (row.status !== "pending") return;
     const invoice = evidence.invoiceId && !row.providerInvoiceId ? { providerInvoiceId: evidence.invoiceId } : {};
     const held = await tx.update(paymentFulfillments).set({ status: "requires_review", reconciliationReason: reason, lastCheckedAt: new Date(), ...invoice }).where(and(eq(paymentFulfillments.id, paymentId), eq(paymentFulfillments.status, "pending")));
     if (Number(held[0]?.affectedRows ?? 0) !== 1) return;
@@ -4453,6 +5246,47 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
   return db.transaction(async tx => {
     const duplicate = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, input.eventId))).limit(1);
     if (duplicate[0]) return { status: "duplicate" as const, tokenCount: duplicate[0].tokenCount };
+
+    const site = resolveBillingEnvironment();
+    const isBandedExtra = checkoutIntentId.startsWith("br_") || Boolean(
+      (await tx.select({ id: bandedCheckoutIntents.id }).from(bandedCheckoutIntents).where(and(
+        eq(bandedCheckoutIntents.site, site),
+        eq(bandedCheckoutIntents.hostedPageId, hostedPageId),
+        eq(bandedCheckoutIntents.kind, "referral")
+      )).limit(1))[0]
+    );
+
+    if (isBandedExtra) {
+      let [intent] = await tx.select().from(bandedCheckoutIntents).where(and(
+        eq(bandedCheckoutIntents.site, site),
+        eq(bandedCheckoutIntents.checkoutIntentId, checkoutIntentId)
+      )).limit(1);
+
+      if (!intent && hostedPageId) {
+        [intent] = await tx.select().from(bandedCheckoutIntents).where(and(
+          eq(bandedCheckoutIntents.site, site),
+          eq(bandedCheckoutIntents.hostedPageId, hostedPageId)
+        )).limit(1);
+      }
+
+      if (intent && intent.userId) {
+        const grantDb = drizzleBandedGrantDb(tx);
+        const result = await fulfillBandedExtraReferralsTx(grantDb, {
+          site,
+          userId: intent.userId,
+          checkoutIntentId: intent.checkoutIntentId,
+          hostedPageId: intent.hostedPageId ?? hostedPageId,
+          invoiceId: input.invoiceId ?? `inv_fallback_${input.eventId}`,
+          amount: input.amount,
+          currency: input.currency as BandedCurrency,
+          now: new Date(),
+        });
+        if (result.status === "applied") return { status: "credited" as const, tokenCount: 0 };
+        if (result.status === "duplicate") return { status: "duplicate" as const, tokenCount: 0 };
+        return { status: "requires_review" as const, reason: result.reason ?? "reconciliation_rejected" };
+      }
+    }
+
     const intent = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerEventId, `pending:${input.hostedPageId}`), eq(paymentFulfillments.checkoutIntentId, checkoutIntentId))).limit(1).for("update");
     if (!intent[0]) {
       // No pending row: credit recovery or the reconcile job may already have
@@ -4494,8 +5328,13 @@ export async function fulfillChargebeePayment(input: { eventId: string; hostedPa
       return { status: "ignored" as const, reason: "payment_already_reconciled" };
     }
     const wallet = await tx.select().from(tokenBalances).where(and(eq(tokenBalances.userId, intent[0].userId), eq(tokenBalances.role, intent[0].role))).limit(1);
-    if (wallet[0]) await tx.update(tokenBalances).set({ balance: sql`${tokenBalances.balance} + ${intent[0].tokenCount}` }).where(eq(tokenBalances.id, wallet[0].id));
-    else await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, ...freshWalletCycle(intent[0].role) });
+    if (wallet[0]) {
+      const setFields: Record<string, unknown> = { balance: sql`${tokenBalances.balance} + ${intent[0].tokenCount}` };
+      if (!wallet[0].lastPaidAt) setFields.lastPaidAt = creditedAt;
+      await tx.update(tokenBalances).set(setFields).where(eq(tokenBalances.id, wallet[0].id));
+    } else {
+      await tx.insert(tokenBalances).values({ userId: intent[0].userId, role: intent[0].role, balance: intent[0].tokenCount, lastPaidAt: creditedAt, ...freshWalletCycle(intent[0].role) });
+    }
     // Tagged with its payment, the shape the admin credit writes: the unique ledger
     // keys then refuse any second purchase row for this payment (P0-refund-review).
     await tx.insert(tokenTransactions).values({ userId: intent[0].userId, role: intent[0].role, tokenCount: intent[0].tokenCount, kind: "purchase", source: "purchased_balance", referenceType: "payment_fulfillment", referenceId: String(intent[0].id), idempotencyKey: `payment-credit-${intent[0].id}` });
@@ -4642,7 +5481,41 @@ export async function applyChargebeePaymentRefund(input: { eventId: string; invo
   return db.transaction(async tx => {
     const rows = await tx.select().from(paymentFulfillments).where(and(eq(paymentFulfillments.provider, "chargebee"), eq(paymentFulfillments.providerInvoiceId, invoiceId))).limit(1).for("update");
     const row = rows[0];
-    if (!row) return { status: "unmatched" as const, reason: "refund_invoice_unknown" as const };
+    if (!row) {
+      const bandedPurchases = await tx.select().from(tokenTransactions).where(and(
+        eq(tokenTransactions.referenceType, "chargebee_invoice"),
+        like(tokenTransactions.referenceId, `${invoiceId}:%`),
+        eq(tokenTransactions.kind, "purchase")
+      ));
+      if (bandedPurchases.length > 0) {
+        const site = resolveBillingEnvironment();
+        const grantDb = drizzleBandedGrantDb(tx);
+        const result = await refundBandedPurchaseTx(grantDb, {
+          site,
+          invoiceId,
+          refundId: input.eventId,
+          now: new Date(),
+        });
+        if (result.handled) {
+          if (result.reason === "shortfall") {
+            return {
+              status: "review" as const,
+              paymentId: bandedPurchases[0].id,
+              reason: "refund_credits_spent" as const,
+              expectedAmount: input.refundAmount ?? 0,
+              currency: input.currency ?? "INR",
+            };
+          }
+          return {
+            status: "revoked" as const,
+            paymentId: bandedPurchases[0].id,
+            tokenCount: result.revoked,
+          };
+        }
+        return { status: "unmatched" as const, reason: "refund_invoice_unknown" as const };
+      }
+      return { status: "unmatched" as const, reason: "refund_invoice_unknown" as const };
+    }
     // Not credited: the refund is recorded once per event and decides what the review may do next; no credit moves there.
     if (row.status !== "credited") return settleRefundOfNonCreditedPaymentTx(tx, row, { eventId: input.eventId, invoiceId, refundAmount: input.refundAmount, currency: input.currency });
     // A replay of a refund recorded while the payment waited for its credit (the admin then added the pack) is not a new refund.
@@ -4725,7 +5598,7 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
       const receiptWallet = (await tx.select().from(tokenBalances).where(eq(tokenBalances.subscriptionId, input.subscriptionId)).limit(1).for("update"))[0];
       if (duplicate[0].subscriptionId !== input.subscriptionId) throw new Error("Duplicate receipt identity conflict");
       const receiptPlan = receiptIntent?.plan ?? input.plan ?? (receiptWallet?.plan !== "free" ? receiptWallet?.plan : undefined);
-      if ((receiptWallet || receiptIntent) && (!receiptPlan || !isBillablePlanId(receiptPlan))) {
+      if ((receiptWallet || receiptIntent) && (!receiptPlan || (!isBillablePlanId(receiptPlan) && !isBandedPlan(receiptPlan)))) {
         await enqueueBillingReviewTx(tx, { eventId: input.eventId, eventType: input.eventType, subscriptionId: input.subscriptionId, itemPriceId: input.itemPriceId, reason: isRetiredPlanId(receiptPlan) ? "plan_retired" : "unsupported_plan" });
       }
       return { status: "duplicate" as const };
@@ -4764,6 +5637,85 @@ export async function applyChargebeeSubscriptionEvent(input: { eventId: string; 
     if (intent && input.plan && input.plan !== intent.plan) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
       return { status: "ignored" as const, reason: "plan_mismatch" };
+    }
+    if (expectedPlan && isBandedPlan(expectedPlan)) {
+      const site = resolveBillingEnvironment();
+      await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
+      const currentSubscription = sameSubscription ? wallet : undefined;
+      if (currentSubscription?.subscriptionResourceVersion && input.resourceVersion && input.resourceVersion <= currentSubscription.subscriptionResourceVersion) {
+        return { status: "stale" as const };
+      }
+      const userId = wallet?.userId ?? intent!.userId;
+      const role = wallet?.role ?? intent!.role;
+      const now = new Date();
+
+      if (input.status === "cancelled" || input.eventType === "subscription_cancelled") {
+        await cancelBandedSubscriptionTx(drizzleBandedGrantDb(tx), { site, subscriptionId: input.subscriptionId, userId, planId: expectedPlan, now });
+        if (wallet) {
+          await tx.update(tokenBalances).set({
+            plan: "free",
+            subscriptionId: null,
+            subscriptionStatus: "cancelled",
+            subscriptionCurrentTermStart: null,
+            subscriptionCurrentTermEnd: null,
+            subscriptionResourceVersion: input.resourceVersion ?? null,
+          }).where(eq(tokenBalances.id, wallet.id));
+        }
+        if (intent) {
+          await tx.update(subscriptionCheckoutIntents).set({ status: "cancelled" }).where(eq(subscriptionCheckoutIntents.id, intent.id));
+        }
+        return { status: "applied" as const, userId, role, plan: expectedPlan };
+      }
+
+      const fulfillResult = await fulfillBandedPlanSubscriptionTx(drizzleBandedGrantDb(tx), {
+        site,
+        userId,
+        subscriptionId: input.subscriptionId,
+        planId: expectedPlan,
+        currency: (intent?.currency ?? input.currency ?? "INR") as BandedCurrency,
+        amount: intent?.amount ?? 0,
+        currentTermStart: input.currentTermStart ?? now,
+        currentTermEnd: input.currentTermEnd ?? new Date(now.getTime() + 30 * 86_400_000),
+        checkoutIntentId: input.passThruContent,
+        hostedPageId: input.hostedPageId,
+        now,
+      });
+
+      if (fulfillResult.status === "requires_review") {
+        return { status: "ignored" as const, reason: fulfillResult.reason ?? "founding_cap_exceeded" };
+      }
+
+      const walletFields = {
+        plan: expectedPlan,
+        subscriptionId: input.subscriptionId,
+        subscriptionStatus: input.status,
+        subscriptionCurrentTermStart: input.currentTermStart ?? now,
+        subscriptionCurrentTermEnd: input.currentTermEnd ?? new Date(now.getTime() + 30 * 86_400_000),
+        subscriptionResourceVersion: input.resourceVersion ?? null,
+        lastPaidAt: now,
+      };
+      if (wallet) {
+        await tx.update(tokenBalances).set(walletFields).where(eq(tokenBalances.id, wallet.id));
+      } else {
+        await tx.insert(tokenBalances).values({
+          userId,
+          role,
+          balance: 0,
+          ...freshWalletCycle(role),
+          ...walletFields,
+        });
+      }
+
+      if (intent) {
+        await tx.update(subscriptionCheckoutIntents).set({ status: "activated" }).where(eq(subscriptionCheckoutIntents.id, intent.id));
+      }
+
+      return {
+        status: fulfillResult.status === "applied" ? ("applied" as const) : ("duplicate" as const),
+        userId,
+        role,
+        plan: expectedPlan,
+      };
     }
     if (!expectedPlan || !isBillablePlanId(expectedPlan)) {
       await tx.insert(subscriptionEvents).values({ provider: "chargebee", providerEventId: input.eventId, subscriptionId: input.subscriptionId, resourceVersion: input.resourceVersion, eventType: input.eventType });
@@ -5389,11 +6341,13 @@ export function orderOpportunitiesOrganicFirst<T extends { createdAt?: Date | st
 export async function listPublicCompanyOpportunitiesWithSponsorship() {
   const db = await getDb(); if (!db) return [];
   const base = { id: companyOpportunities.id, companyDomain: companyOpportunities.companyDomain, kind: companyOpportunities.kind, roleTitle: companyOpportunities.roleTitle, targetRoleUrl: companyOpportunities.targetRoleUrl, location: companyOpportunities.location, walkInAt: companyOpportunities.walkInAt, walkInEndsAt: companyOpportunities.walkInEndsAt, createdAt: companyOpportunities.createdAt };
-  const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier }).from(companyOpportunities).where(liveOpportunityCondition()).orderBy(desc(companyOpportunities.createdAt)).limit(24);
+  // The poster join feeds ONLY the opt-in-gated first-name projection; owner
+  // name/email never leave this function on a public row.
+  const attempt = async () => db.select({ ...base, compensation: companyOpportunities.compensation, sponsoredUntil: companyOpportunities.sponsoredUntil, sponsoredTier: companyOpportunities.sponsoredTier, showPosterFirstName: companyOpportunities.showPosterFirstName, ownerName: users.name, ownerEmail: users.email }).from(companyOpportunities).innerJoin(users, eq(users.id, companyOpportunities.ownerId)).where(liveOpportunityCondition()).orderBy(desc(companyOpportunities.createdAt)).limit(24);
   try {
     const rows = await attempt();
     const now = Date.now();
-    return orderOpportunitiesOrganicFirst(rows).map(row => ({ ...row, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now) }));
+    return orderOpportunitiesOrganicFirst(rows).map(row => ({ id: row.id, companyDomain: row.companyDomain, kind: row.kind, roleTitle: row.roleTitle, targetRoleUrl: row.targetRoleUrl, location: row.location, compensation: row.compensation, walkInAt: row.walkInAt, walkInEndsAt: row.walkInEndsAt, createdAt: row.createdAt, isSponsored: Boolean(row.sponsoredUntil && new Date(row.sponsoredUntil).getTime() > now), poster: opportunityPosterOf(row) }));
   } catch {
     // Pre-migration fallback mirrors the organic list with sponsor flags off.
     return (await listPublicCompanyOpportunities()).map(row => ({ ...row, sponsoredUntil: null as Date | null, sponsoredTier: null as "featured" | "spotlight" | null, isSponsored: false }));

@@ -5,6 +5,7 @@ import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Settings from "./Settings";
+import "./goal/settings/GoalSettings";
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, isLoaded: true, getToken: vi.fn().mockResolvedValue("token") }),
@@ -35,7 +36,7 @@ describe("Settings Slack review alerts row (Notifications)", () => {
     vi.stubGlobal("fetch", fetch);
     const user = userEvent.setup();
     renderNotifications();
-    expect(screen.getByRole("heading", { name: "How we reach you" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "How we reach you" })).toBeTruthy();
     await waitFor(() => expect(screen.getByText("Slack review alerts")).toBeTruthy());
     expect(screen.getByText(/never candidate names, resumes, or documents/i)).toBeTruthy();
     const input = await screen.findByLabelText("Slack incoming-webhook URL");
@@ -65,7 +66,7 @@ describe("Settings Slack review alerts row (Notifications)", () => {
     vi.stubGlobal("fetch", fetchMock({ slackStatus: { connected: true, active: true } }));
     const user = userEvent.setup();
     renderNotifications();
-    await waitFor(() => expect(screen.getByText("Slack triage connected")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("Slack review alerts connected")).toBeTruthy());
     await user.click(screen.getByRole("button", { name: /Disconnect Slack/i }));
     await waitFor(() => expect(screen.getByText("Your Slack triage channel is disconnected.")).toBeTruthy(), { timeout: 8000 });
     const deleteCall = vi.mocked(fetch).mock.calls.find(([, init]) => (init as RequestInit)?.method === "DELETE");

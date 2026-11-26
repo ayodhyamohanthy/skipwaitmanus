@@ -1,0 +1,366 @@
+{
+  "synthetic": true,
+  "sourceHead": "8ecfa5e7445d80fc1a0bc4ef6ea2f3d19423a0b1",
+  "results": [
+    {
+      "file": "profile-default-1280.png",
+      "width": 1280,
+      "pathname": "/profile",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "f655295193ce3852ada9ceae28e05c7db3dccf7fd946f64d3761ee1b33a2abae",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "profile-default-390.png",
+      "width": 390,
+      "pathname": "/profile",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "800994ae3dae65fa1bcfaefa7bb351a98898ed2911064ff5d9c9597e042b9855",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "profile-error-1280.png",
+      "width": 1280,
+      "pathname": "/profile",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "adc42e4fa31577b22fe2e383ff92e6c102eb6b1a4096ead720512e8e0f3cc906",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "profile-error-390.png",
+      "width": 390,
+      "pathname": "/profile",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "231a86b8573b70d55cd149146f232fd8525bac648c9d4ea5cdcc931c1af74455",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "profile-link-1280.png",
+      "width": 1280,
+      "pathname": "/profile?focus=handle",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "4b4d2ef2e9f6b99fca2f430aecf4c0b3412bc0e1e554c6df38ec20fcc440b021",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "profile-link-390.png",
+      "width": 390,
+      "pathname": "/profile?focus=handle",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "10439e1b902a568c5139a496191a36066d4b34e7e715290bd7b6741b9502e732",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "profile-referrer-1280.png",
+      "width": 1280,
+      "pathname": "/profile",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "17d226157d2b4ece7bc17d2af2c7838a13ce3f43b4563a1f2a8f517015fec959",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "profile-referrer-390.png",
+      "width": 390,
+      "pathname": "/profile",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "916f6dcd648319386df1ce17fc239194f574f271f70a7399181158aa157feba8",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "profile-signed-out-1280.png",
+      "width": 1280,
+      "pathname": "/profile",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "2fabab72497d8f82471df21d45b0be88356cc2666197c7156672d3b8b2250e97",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ]
+    },
+    {
+      "file": "profile-signed-out-390.png",
+      "width": 390,
+      "pathname": "/profile",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "c04aba89355268be184563b036c7e7f357ff959914ed91e3c1d4ff6d9deaed5c",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ]
+    },
+    {
+      "file": "work-signed-out-1280.png",
+      "width": 1280,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "d3fa95a5539d68465dc325648b7ae105f1b315f1f9bdbdd2472afa36db7c41d5",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ]
+    },
+    {
+      "file": "work-signed-out-390.png",
+      "width": 390,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "cc02586d84f84123276168de27195a3dcb7d2fb41f49ecc6ce35344f12e748f2",
+      "requests": [
+        "GET /api/trpc/auth.me"
+      ]
+    },
+    {
+      "file": "work-work-1280.png",
+      "width": 1280,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "81535e69ee1b3288db134e04c7d17ab313d16b5fa6db229b38c9e26fdf734543",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "GET /api/work-items",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "work-work-390.png",
+      "width": 390,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "b5a058e95682922069d5b95932998189e587fbbdd8005b566290bd7e45e24cb7",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "GET /api/work-items",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "work-work-add-1280.png",
+      "width": 1280,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "d14621e1e8af7ba5f83d3b221a3ca19e60c7c9b3a04226aee7139ee1e056e4e7",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "GET /api/work-items",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "work-work-add-390.png",
+      "width": 390,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "2aaabb4a03f19e2d41d1cb4a7f0bc68a8585bfe812fa8528c44b6c51836e73e4",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "GET /api/work-items",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "work-work-empty-1280.png",
+      "width": 1280,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "4f7ec6261f63cef37235daee5a67e3f8bd1ec40fedcf7a3747af49e8c0bc1dae",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "GET /api/work-items",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "work-work-empty-390.png",
+      "width": 390,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "e9f5a1cf0f3b763c1c4de23b6aa457b74bb9bd41de1a7f2837435c945f6a71d5",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "GET /api/work-items",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "work-work-error-1280.png",
+      "width": 1280,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "487095aaf5ed742ff47529dd5bdf813c7403880c9e0350aefbad934dc3a2550e",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "GET /api/work-items",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "work-work-error-390.png",
+      "width": 390,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "0f3a026fdc007bba7e90bc3541cd9a48f69bdf778dc59bce67f815dd9cad6c0e",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "GET /api/work-items",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "work-work-referrer-view-1280.png",
+      "width": 1280,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "f3e11999095ba1b033f68ab21229bfe76c0439e0d234ded9be8a02ace6c9c6b4",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "GET /api/work-items",
+        "POST /api/account/signup-language"
+      ]
+    },
+    {
+      "file": "work-work-referrer-view-390.png",
+      "width": 390,
+      "pathname": "/work",
+      "overflow": 0,
+      "errors": [],
+      "sha256": "76ab2099f38e5b0518383fdc4910795f52a175a7764c9ac7bb899a8c35a9fc72",
+      "requests": [
+        "GET /api/account/preferences",
+        "GET /api/company-referrals/access",
+        "GET /api/credits/summary",
+        "GET /api/notifications",
+        "GET /api/profile/me",
+        "GET /api/trpc/auth.me",
+        "GET /api/work-items",
+        "POST /api/account/signup-language"
+      ]
+    }
+  ]
+}

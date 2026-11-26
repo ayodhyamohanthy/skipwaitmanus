@@ -1,0 +1,273 @@
+{
+  "task": "D-048-K-discovery",
+  "baseline": "5cd74ff3c46483b2c201fa4334de0a2187bf1566",
+  "candidateRuntime": "aff9b7f6323353b315496f1d0756e587adc5f98f",
+  "build": "VITE_GOAL_SURFACES='' pnpm build (released defaults, no override)",
+  "driver": "design/goal-ui/captures/discovery/capture.mjs",
+  "synthetic": true,
+  "viewports": [
+    "1280×900 @1x",
+    "390×844 @2x"
+  ],
+  "scenarios": 16,
+  "pairs": 32,
+  "rawIdentical": 31,
+  "comparedAfterNormalizingPointer": 32,
+  "identicalMetrics": true,
+  "candidateIssues": {
+    "pageErrors": 0,
+    "overflow": 0,
+    "nestedButtons": 0,
+    "kitHexClasses": 0,
+    "outsideGoalScope": 0
+  },
+  "originalShareDifference": {
+    "file": "wall-share-copied-1280.png",
+    "route": "/wall?opening=4",
+    "width": 1280,
+    "baselineSha256": "cae50d763716e9ac4a22e1dc7ffe3410d923b15e8c34564a8a8dfdc283821f36",
+    "candidateSha256": "c0c69ad28f460b25c12f7c2ad373e11ab6e1a85af3a949eea121a6968429a508",
+    "retained": false,
+    "changedPixels": 5617,
+    "boundsInclusive": [
+      1003,
+      625,
+      1131,
+      668
+    ],
+    "location": "More share-control rectangle"
+  },
+  "settledShare": {
+    "file": "wall-share-copied-1280.png",
+    "sha256": "50f471edf74b9a66841281531f1ebc1de8c8e5b3d499e974282282696dec5611",
+    "normalization": "Moved pointer off More after the click, used reduced motion and disabled screenshot animations.",
+    "status": "Opening link copied."
+  },
+  "matrix": [
+    {
+      "file": "wall-default-1280.png",
+      "route": "/wall",
+      "width": 1280,
+      "sha256": "688490e5f96ca025df6a763c51f949de5bb874b493e8950712a01ece812a4e4e",
+      "retained": true
+    },
+    {
+      "file": "wall-walk-in-1280.png",
+      "route": "/wall?opening=3",
+      "width": 1280,
+      "sha256": "a70bd65e045cdfb6c7a29459fc8b4788f411ea6ae8f2ed0000bcfcbc16cad432",
+      "retained": false
+    },
+    {
+      "file": "wall-empty-1280.png",
+      "route": "/wall",
+      "width": 1280,
+      "sha256": "217b165fbea55e6877c2e3695b5844d8b7ac9dda384ec9596db1fea5718094a4",
+      "retained": false
+    },
+    {
+      "file": "wall-error-1280.png",
+      "route": "/wall",
+      "width": 1280,
+      "sha256": "508f6022ed09798bcc62b25fccb0cc15ae8c57b4d7fd9ec61dbc83f3dfe7d6f3",
+      "retained": false
+    },
+    {
+      "file": "jobs-default-1280.png",
+      "route": "/jobs",
+      "width": 1280,
+      "sha256": "add9e445680f212a190368a107f125ae944964f0be29091f5a986b0746ed5950",
+      "retained": false
+    },
+    {
+      "file": "jobs-no-link-1280.png",
+      "route": "/jobs?job=12",
+      "width": 1280,
+      "sha256": "05de28a54ddb1c7dcaa0f9c1a79ab15501532adafc155e48e0eec2c118408fb6",
+      "retained": false
+    },
+    {
+      "file": "jobs-empty-1280.png",
+      "route": "/jobs?q=astronaut",
+      "width": 1280,
+      "sha256": "faaf1a03f1409139abb9b2f6eb0445f7a36c52fb522bcb0c6afc739e70e492e0",
+      "retained": false
+    },
+    {
+      "file": "jobs-error-1280.png",
+      "route": "/jobs",
+      "width": 1280,
+      "sha256": "40a11046db027109656587f74bf11e9642323ec34b27a53e136ac5b3fa5bdfc5",
+      "retained": false
+    },
+    {
+      "file": "wall-share-copied-1280.png",
+      "route": "/wall?opening=4",
+      "width": 1280,
+      "baselineSha256": "cae50d763716e9ac4a22e1dc7ffe3410d923b15e8c34564a8a8dfdc283821f36",
+      "candidateSha256": "c0c69ad28f460b25c12f7c2ad373e11ab6e1a85af3a949eea121a6968429a508",
+      "retained": false
+    },
+    {
+      "file": "wall-first-visit-1280.png",
+      "route": "/wall",
+      "width": 1280,
+      "sha256": "688490e5f96ca025df6a763c51f949de5bb874b493e8950712a01ece812a4e4e",
+      "retained": false
+    },
+    {
+      "file": "jobs-sign-in-step-1280.png",
+      "route": "/jobs",
+      "width": 1280,
+      "sha256": "082c5eabc4ced3e31147d894940fe2942f0d7a9ef10bfcdbfc8281b53e54226e",
+      "retained": false
+    },
+    {
+      "file": "jobs-first-visit-1280.png",
+      "route": "/jobs",
+      "width": 1280,
+      "sha256": "add9e445680f212a190368a107f125ae944964f0be29091f5a986b0746ed5950",
+      "retained": false
+    },
+    {
+      "file": "wall-opening-11-1280.png",
+      "route": "/wall?opening=11",
+      "width": 1280,
+      "sha256": "1590cf52efe9efa90b1b2926ba8eecd9a6fc56a8a922d455bf6c56de2bc741cf",
+      "retained": false
+    },
+    {
+      "file": "jobs-job-22-1280.png",
+      "route": "/jobs?job=22",
+      "width": 1280,
+      "sha256": "7aa34051266429c82efbe3b9f8b22bf0d2e5987939fae0d385359b290af1e08e",
+      "retained": true
+    },
+    {
+      "file": "wall-select-end-1280.png",
+      "route": "/wall",
+      "width": 1280,
+      "sha256": "e10dca036565e883ef665dea133fe429e355ae27e667a6b1f2c27abd6f7a91c8",
+      "retained": false
+    },
+    {
+      "file": "jobs-select-end-1280.png",
+      "route": "/jobs",
+      "width": 1280,
+      "sha256": "7aa34051266429c82efbe3b9f8b22bf0d2e5987939fae0d385359b290af1e08e",
+      "retained": false
+    },
+    {
+      "file": "wall-default-390.png",
+      "route": "/wall",
+      "width": 390,
+      "sha256": "375e8bee7999cf9d57e1fd6be5386dbfd3a6286f854757e4be596c9c109acbc8",
+      "retained": false
+    },
+    {
+      "file": "wall-walk-in-390.png",
+      "route": "/wall?opening=3",
+      "width": 390,
+      "sha256": "509fce6b901d44a34e5169232f65b3187672a62476f0bc53793e2b704fc7c589",
+      "retained": true
+    },
+    {
+      "file": "wall-empty-390.png",
+      "route": "/wall",
+      "width": 390,
+      "sha256": "a5c8f969188473146f7840348180336d2ecdcd69d9aed058a55fbe6f0b559cd4",
+      "retained": false
+    },
+    {
+      "file": "wall-error-390.png",
+      "route": "/wall",
+      "width": 390,
+      "sha256": "d6e737e6722b83f325c89db9b6411ba96ab9408c4e96a84940f63d58bc4b845a",
+      "retained": false
+    },
+    {
+      "file": "jobs-default-390.png",
+      "route": "/jobs",
+      "width": 390,
+      "sha256": "55b6d406a0942f56e6f07ab4dce96fcadc11d77d3ac08f9c48eb543873655b21",
+      "retained": true
+    },
+    {
+      "file": "jobs-no-link-390.png",
+      "route": "/jobs?job=12",
+      "width": 390,
+      "sha256": "c68cc0911924ec8aaa37225cd585031d535c3d72c4a45a9f33fbdff66e599967",
+      "retained": false
+    },
+    {
+      "file": "jobs-empty-390.png",
+      "route": "/jobs?q=astronaut",
+      "width": 390,
+      "sha256": "0b4b5ffa6e91abbcd701a791b917a0ace0d3ed8a816189922d4dde501c500270",
+      "retained": false
+    },
+    {
+      "file": "jobs-error-390.png",
+      "route": "/jobs",
+      "width": 390,
+      "sha256": "25482619fb8ed11296692a205bc09e4c04b7ba51bbd7e299f163296c1c2aff25",
+      "retained": false
+    },
+    {
+      "file": "wall-share-copied-390.png",
+      "route": "/wall?opening=4",
+      "width": 390,
+      "sha256": "eeea2dab1e9dd754945ca8535c0deea359166fc8b3ef3ddd6788d1518701ddd1",
+      "retained": false
+    },
+    {
+      "file": "wall-first-visit-390.png",
+      "route": "/wall",
+      "width": 390,
+      "sha256": "375e8bee7999cf9d57e1fd6be5386dbfd3a6286f854757e4be596c9c109acbc8",
+      "retained": false
+    },
+    {
+      "file": "jobs-sign-in-step-390.png",
+      "route": "/jobs",
+      "width": 390,
+      "sha256": "c49c4cd998548373143e43da2641595a56f0c0504954a40f2c421f32209450d3",
+      "retained": false
+    },
+    {
+      "file": "jobs-first-visit-390.png",
+      "route": "/jobs",
+      "width": 390,
+      "sha256": "55b6d406a0942f56e6f07ab4dce96fcadc11d77d3ac08f9c48eb543873655b21",
+      "retained": false
+    },
+    {
+      "file": "wall-opening-11-390.png",
+      "route": "/wall?opening=11",
+      "width": 390,
+      "sha256": "326b961ae12ff429d26fe416663156ccea05f8f68b1ed9218c9133dc5ec9bd29",
+      "retained": false
+    },
+    {
+      "file": "jobs-job-22-390.png",
+      "route": "/jobs?job=22",
+      "width": 390,
+      "sha256": "351553bd837a8b5a06d066df336077b35df4c155edf879806f5a9cd78c72d503",
+      "retained": false
+    },
+    {
+      "file": "wall-select-end-390.png",
+      "route": "/wall",
+      "width": 390,
+      "sha256": "179073d951e765f77fd218ad82786b75e8115c7fec4d0f0c8988372ef0672c29",
+      "retained": false
+    },
+    {
+      "file": "jobs-select-end-390.png",
+      "route": "/jobs",
+      "width": 390,
+      "sha256": "4fb46a3f8e1e70ce2e92e2ad38737422f2a0d937d0b3da9ca708763e0fe2465a",
+      "retained": false
+    }
+  ]
+}

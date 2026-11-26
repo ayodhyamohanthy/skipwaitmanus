@@ -11,7 +11,15 @@ const CLIENT_SRC = join(__dirname, "..", "..");
 const ALLOWLIST = /components[\\/]goal[\\/]|pages[\\/]goal[\\/]|pages[\\/]ComponentShowcase\.tsx$|pages[\\/]GoalLanding\.tsx$|pages[\\/]GoalLandingV9\.tsx$|pages[\\/]GoalSignIn\.tsx$|test[\\/]goalShellHarness\.tsx$|test[\\/]goalPageContract\.ts$|\.test\.tsx?$/;
 
 // Phase-3 waves that have landed, one entry per moved surface.
-const MOVED_SURFACES = new Set(["components/AppShell.tsx", "pages/MyRequests.tsx", "pages/Explore.tsx", "pages/explore/AskDrawer.tsx", "pages/MyCompanyInbox.tsx", "pages/ExploreCompany.tsx", "pages/explore/useAskComposer.tsx", "pages/Ask.tsx", "pages/conversation/SeekerConversation.tsx", "pages/conversation/ReferrerConversation.tsx", "components/requests/askView.ts", "components/ask/PinnedWorkPicker.tsx"]); // W0: the app shell; W1: My asks, referral queue, then Find a referral (page + drawer); task 13: the pinned-work picker, new and goal-native (rendered only by the migrated composer and its drawer) // W0: the app shell; W1: My asks, then Find a referral (page + drawer)
+const MOVED_SURFACES = new Set(["components/AppShell.tsx", "pages/MyRequests.tsx", "pages/AskInviteLink.tsx", "components/requests/AskInviteSheet.tsx", "pages/Explore.tsx", "pages/explore/AskDrawer.tsx", "pages/explore/CompanyJobs.tsx", "pages/explore/ReasonsCoach.tsx", "pages/MyCompanyInbox.tsx", "pages/ExploreCompany.tsx", "pages/explore/useAskComposer.tsx", "pages/Ask.tsx", "pages/conversation/SeekerConversation.tsx", "pages/conversation/ReferrerConversation.tsx", "components/requests/askView.ts", "components/ask/PinnedWorkPicker.tsx", "components/demand/CompanyDemandLine.tsx", "components/demand/CompanyDemandList.tsx", "components/AccountMenu.tsx"]); // W0: the app shell; W1: My asks, referral queue, then Find a referral (page + drawer); task 13: the pinned-work picker, new and goal-native (rendered only by the migrated composer and its drawer) // W0: the app shell; W1: My asks, then Find a referral (page + drawer) // D-326: the demand line and list, new and goal-native (rendered only by D-086.mount on the already-moved Explore pages) // D-333 / D-093.menu: the moved account menu now imports the goal language picker.
+// D-193: new goal-native consent control, mounted only by the moved MyRequests page.
+MOVED_SURFACES.add("components/requests/ReconfirmRequest.tsx");
+// P0 (Nov 24): the job-link line draws a mismatch with the crimson GoalFieldError; it is rendered only by the moved
+// AskDrawer and Ask pages.
+MOVED_SURFACES.add("pages/explore/JobLinkFromPosting.tsx");
+// D-394 (SEARCH-universal): the one-box results (a resolved posting and careers-site jobs), new and goal-native,
+// rendered only by the already-moved Explore page.
+MOVED_SURFACES.add("pages/explore/UniversalSearchResults.tsx");
 
 function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {

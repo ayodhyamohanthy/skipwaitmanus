@@ -1,0 +1,120 @@
+{
+  "task": "D-090-BYOR C6 local synthetic QA",
+  "sourceCommit": "f179f882",
+  "capturedAt": "2026-10-27T03:51:33.294Z",
+  "flags": {
+    "BILLING_ENV": "test",
+    "BYOR_LINK_ENABLED": "true",
+    "VITE_BYOR_LINK": "true"
+  },
+  "build": {
+    "VITE_GOAL_SURFACES": "not used by D-090 captures",
+    "sourceCommit": "f179f882"
+  },
+  "environment": "local Vite only; fixture-intercepted API; no database, provider, production backend, or real account",
+  "personas": [
+    {
+      "id": "waiting-row",
+      "persona": "synthetic seeker; waiting ask",
+      "fixture": "waiting-row.json"
+    },
+    {
+      "id": "invite-sheet",
+      "persona": "synthetic seeker; invite sheet open",
+      "fixture": "invite-sheet.json"
+    },
+    {
+      "id": "sheet-revoke-confirmation",
+      "persona": "synthetic seeker; revoke confirmation",
+      "fixture": "sheet-revoke-confirmation.json"
+    },
+    {
+      "id": "landing-signed-out",
+      "persona": "signed-out synthetic viewer",
+      "fixture": "landing-signed-out.json"
+    },
+    {
+      "id": "landing-verified",
+      "persona": "verified same-company synthetic referrer",
+      "fixture": "landing-verified.json"
+    },
+    {
+      "id": "landing-claimed",
+      "persona": "synthetic claimer; claimed state",
+      "fixture": "landing-claimed.json"
+    },
+    {
+      "id": "landing-held",
+      "persona": "synthetic claimer; held/reserved result",
+      "fixture": "landing-held.json"
+    }
+  ],
+  "captures": [
+    {
+      "id": "waiting-row",
+      "persona": "synthetic seeker; waiting ask",
+      "status": "captured",
+      "viewports": [
+        "web",
+        "mobile"
+      ]
+    },
+    {
+      "id": "invite-sheet",
+      "persona": "synthetic seeker; invite sheet open",
+      "status": "captured",
+      "viewports": [
+        "web",
+        "mobile"
+      ]
+    },
+    {
+      "id": "sheet-revoke-confirmation",
+      "persona": "synthetic seeker; revoke confirmation",
+      "status": "captured",
+      "viewports": [
+        "web",
+        "mobile"
+      ]
+    },
+    {
+      "id": "landing-signed-out",
+      "persona": "signed-out synthetic viewer",
+      "status": "captured",
+      "viewports": [
+        "web",
+        "mobile"
+      ]
+    },
+    {
+      "id": "landing-verified",
+      "persona": "verified same-company synthetic referrer",
+      "status": "captured",
+      "viewports": [
+        "web",
+        "mobile"
+      ]
+    },
+    {
+      "id": "landing-claimed",
+      "persona": "synthetic claimer; claimed state",
+      "status": "captured",
+      "viewports": [
+        "web",
+        "mobile"
+      ]
+    },
+    {
+      "id": "landing-held",
+      "persona": "synthetic claimer; held/reserved result",
+      "status": "captured",
+      "viewports": [
+        "web",
+        "mobile"
+      ]
+    }
+  ],
+  "hardFailures": [],
+  "result": "incomplete-auth-config",
+  "blocker": "The local server-session fallback emitted its expected missing VITE_WORKOS_CLIENT_ID console diagnostic. No dummy client ID was used because it caused an external WorkOS request in a probe. Capture screenshots are local/synthetic; a configured non-production auth environment is needed for zero-console-error acceptance."
+}

@@ -1,10 +1,9 @@
 import React, { lazy, Suspense } from "react";
-import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/_core/auth";
 import { useEffect } from "react";
 import { Redirect, Route, Switch } from "wouter";
-import ErrorBoundary from "./components/ErrorBoundary";
+import ErrorBoundary, { ErrorFallbackSwitch } from "./components/ErrorBoundary";
 import { captureClientError } from "./lib/sentry";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { SmokeProvider } from "./contexts/SmokeContext";
@@ -12,7 +11,8 @@ import { markSecureSessionVerified } from "./lib/pwaContinuity";
 import { askRedirectTarget } from "./lib/fastTrackHandoff";
 import { PLAN_FAMILY_V2_CLIENT } from "@/lib/planFamilyFlag";
 import Home from "./pages/Home";
-import { OfflineNotice, PwaUpdatePrompt, SlowConnectionNotice } from "./components/PwaStatus";
+import { AppToaster, OfflineNotice, PwaUpdatePrompt, SlowConnectionNotice } from "./components/PwaStatus";
+import { useLanguageSync } from "@/lib/useLanguageSync";
 import { ErrorScreen, LoadingScreen, needsReload } from "./components/app-states/SystemStates";
 import { AppShell } from "./components/AppShell";
 const CompanyClaim = lazy(() => import("./pages/CompanyClaim"));
@@ -75,6 +75,7 @@ const FastTrackLink = lazy(() => import("./pages/FastTrackLink"));
 const VanityFastTrackLink = lazy(() => import("./pages/VanityFastTrackLink"));
 const ShareCard = lazy(() => import("./pages/ShareCard"));
 const EmailReviewAction = lazy(() => import("./pages/EmailReviewAction"));
+const AskInviteLink = lazy(() => import("./pages/AskInviteLink"));
 const MyRequests = lazy(() => import("./pages/MyRequests"));
 const MyCompanyInbox = lazy(() => import("./pages/MyCompanyInbox"));
 const ReferralConversation = lazy(() => import("./pages/ReferralConversation"));
@@ -86,6 +87,8 @@ const AdminCatalogSync = lazy(() => import("./pages/AdminCatalogSync"));
 const AdminApprovalQueue = lazy(() => import("./pages/AdminApprovalQueue"));
 const AdminApprovalRecord = lazy(() => import("./pages/AdminApprovalRecord"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
+// ADMIN-support-view (D-393): one person's whole state on one admin page.
+const AdminSupport = lazy(() => import("./pages/goal/admin/GoalAdminSupport"));
 const EmployerDashboard = lazy(() => import("./pages/EmployerDashboard"));
 const TalentDiscovery = lazy(() => import("./pages/TalentDiscovery"));
 const EmployerBilling = lazy(() => import("./pages/EmployerBilling"));
@@ -113,11 +116,168 @@ class RouteErrorBoundary extends React.Component<{ children: React.ReactNode }, 
   retry = () => { if (needsReload(this.state.error)) window.location.reload(); else this.setState({ error: null }); };
   render() {
     // Same kit error screen as the app-wide ErrorBoundary; the raw message stays in Sentry.
-    if (this.state.error) return <ErrorScreen screen="route-error" onRetry={this.retry} />;
+    if (this.state.error) return <ErrorFallbackSwitch screen="route-error" onRetry={this.retry} legacy={<ErrorScreen screen="route-error" onRetry={this.retry} />} />;
     return this.props.children;
   }
 }
 
-function Router(){return <RouteErrorBoundary><Suspense fallback={<LoadingScreen/>}><Switch><Route path="/" component={Home}/><Route path="/fast/:linkCode" component={FastTrackLink}/><Route path="/refer/:companySlug/:vanityAlias" component={VanityFastTrackLink}/><Route path="/share-card/:token" component={ShareCard}/><Route path="/email-review/:linkToken" component={EmailReviewAction}/><Route path="/start" component={Onboarding}/><Route path="/request"><Redirect to={askRedirectTarget(typeof window === "undefined" ? "" : window.location.search)} /></Route><Route path="/requests" component={MyRequests} /><Route path="/verify"><AppShell><Verify /></AppShell></Route><Route path="/ask" component={Ask} /><Route path="/explore" component={Explore} /><Route path="/explore/:slug" component={ExploreCompany} /><Route path="/alerts"><AppShell><Alerts /></AppShell></Route><Route path="/notifications"><Redirect to="/alerts" /></Route><Route path="/onboarding"><AppShell><ProfileSetup /></AppShell></Route><Route path="/profile"><AppShell><Profile /></AppShell></Route><Route path="/work"><AppShell><Work /></AppShell></Route><Route path="/p/:handle" component={PublicProfile} /><Route path="/referrer-home"><AppShell><ReferrerHome /></AppShell></Route><Route path="/invite"><AppShell><Invite /></AppShell></Route><Route path="/referrer-setup"><AppShell><ReferrerSetup /></AppShell></Route><Route path="/safety"><AppShell><Safety /></AppShell></Route><Route path="/help"><AppShell><Help /></AppShell></Route><Route path="/landed"><AppShell><Landed /></AppShell></Route><Route path="/sign-in" component={SignIn} /><Route path="/reviewer-sign-in" component={ReviewerSignIn} /><Route path="/report"><AppShell><Report /></AppShell></Route><Route path="/suggest-company"><AppShell><SuggestCompany /></AppShell></Route><Route path="/company/claim" component={CompanyClaim}/><Route path="/company/dashboard/:slug" component={CompanyClaim}/><Route path="/for-companies" component={ForCompanies} /><Route path="/admin-review" component={AdminReview} /><Route path="/app-states" component={AppStates} /><Route path="/emails" component={Emails} /><Route path="/developers" component={Developers} /><Route path="/assistants"><AppShell><Assistants /></AppShell></Route><Route path="/skippy" component={Skippy} /><Route path="/agents"><AppShell><SeekerAgents /></AppShell></Route><Route path="/approve"><AppShell><Approve /></AppShell></Route><Route path="/connect-assistant" component={ConnectAssistant} /><Route path="/developer-console" component={DeveloperConsole} /><Route path="/forgot-password" component={ForgotPassword} /><Route path="/reset-password" component={ResetPassword} /><Route path="/wallet"><Redirect to="/plans" /></Route><Route path="/thread" component={ThreadListAlias} /><Route path="/thread/:requestId" component={ThreadDetailAlias} /><Route path="/conversation/:requestId"><ReferralConversation framed /></Route><Route path="/messages" component={Messages}/><Route path="/share" component={ShareHub}/><Route path="/inbox"><AppShell><UnifiedInbox /></AppShell></Route><Route path="/queue" component={MyCompanyInbox} /><Route path="/settings"><AppShell><Settings /></AppShell></Route><Route path="/referrer"><AppShell><Referrer /></AppShell></Route><Route path="/referrer/impact"><AppShell><ReferrerImpact /></AppShell></Route><Route path="/premium" component={Premium}/><Route path="/plans"><AppShell>{PLAN_FAMILY_V2_CLIENT ? <PlansV2 /> : <Plans />}</AppShell></Route><Route path="/billing"><AppShell><Billing /></AppShell></Route><Route path="/privacy" component={TrustPrivacy}/><Route path="/terms" component={Terms}/><Route path="/refunds" component={RefundPolicy}/><Route path="/shipping" component={ShippingPolicy}/><Route path="/cancellations" component={CancellationPolicy}/><Route path="/about" component={About}/><Route path="/contact" component={Contact}/><Route path="/pricing" component={Pricing}/><Route path="/support" component={Support}/><Route path="/guidelines" component={Guidelines}/><Route path="/job-referral-platforms" component={GuidePage}/><Route path="/choosing-a-job-referral-platform" component={GuidePage}/><Route path="/how-employees-refer-candidates" component={GuidePage}/><Route path="/offline" component={Offline}/><Route path="/wall" component={OpportunityWall}/><Route path="/jobs" component={JobExplorer}/><Route path="/employer" component={EmployerDashboard}/><Route path="/employer/talent" component={TalentDiscovery}/><Route path="/employer/billing" component={EmployerBilling}/><Route path="/employer/opportunities" component={EmployerOpportunities}/><Route path="/admin" component={AdminOverview}/><Route path="/admin/partners" component={AdminPartners}/><Route path="/post-opportunity" component={PostOpportunity}/><Route path="/admin/activity" component={AdminActivity}/><Route path="/admin/approvals" component={AdminApprovalQueue}/><Route path="/admin/approvals/:kind/:id" component={AdminApprovalRecord}/><Route path="/admin/payments" component={AdminPaymentsReview}/><Route path="/admin/catalog-sync" component={AdminCatalogSync}/><Route path="/admin/privacy-requests" component={AdminPrivacyRequests}/><Route path="/admin/flow-health" component={AdminFlowHealth}/><Route path="/admin/token-recovery" component={AdminTokenRecovery}/><Route path="/admin/users" component={AdminUsers}/><Route path="/admin/schema" component={AdminSchema}/><Route path="/admin/smoke" component={AdminSmoke}/><Route path="/admin/money-check" component={AdminMoneyCheck}/><Route path="/admin/skippie" component={AdminSkippie}/>{import.meta.env.DEV ? <Route path="/components" component={ComponentShowcase}/> : null}<Route component={NotFound}/></Switch></Suspense></RouteErrorBoundary>}function PwaSessionContinuity(){const {isLoaded,isSignedIn}=useAuth();useEffect(()=>{if(isLoaded&&isSignedIn)markSecureSessionVerified()},[isLoaded,isSignedIn]);return null}const personalInviteStorageKey="skipwait:personal-invite-code";
+function Router() {
+  return (
+    <RouteErrorBoundary>
+      <Suspense fallback={<LoadingScreen />}>
+        <Switch>
+          <Route path="/" component={Home} />
+          <Route path="/fast/:linkCode" component={FastTrackLink} />
+          <Route path="/refer/:companySlug/:vanityAlias" component={VanityFastTrackLink} />
+          <Route path="/share-card/:token" component={ShareCard} />
+          <Route path="/email-review/:linkToken" component={EmailReviewAction} />
+          <Route path="/r/:token" component={AskInviteLink} />
+          <Route path="/start" component={Onboarding} />
+          <Route path="/request">
+            <Redirect to={askRedirectTarget(typeof window === "undefined" ? "" : window.location.search)} />
+          </Route>
+          <Route path="/requests" component={MyRequests} />
+          <Route path="/verify">
+            <AppShell><Verify /></AppShell>
+          </Route>
+          <Route path="/ask" component={Ask} />
+          <Route path="/explore" component={Explore} />
+          <Route path="/explore/:slug" component={ExploreCompany} />
+          <Route path="/alerts">
+            <AppShell><Alerts /></AppShell>
+          </Route>
+          <Route path="/notifications"><Redirect to="/alerts" /></Route>
+          <Route path="/onboarding">
+            <AppShell><ProfileSetup /></AppShell>
+          </Route>
+          <Route path="/profile">
+            <AppShell><Profile /></AppShell>
+          </Route>
+          <Route path="/work">
+            <AppShell><Work /></AppShell>
+          </Route>
+          <Route path="/p/:handle" component={PublicProfile} />
+          <Route path="/referrer-home">
+            <AppShell><ReferrerHome /></AppShell>
+          </Route>
+          <Route path="/invite">
+            <AppShell><Invite /></AppShell>
+          </Route>
+          <Route path="/referrer-setup">
+            <AppShell><ReferrerSetup /></AppShell>
+          </Route>
+          <Route path="/safety">
+            <AppShell><Safety /></AppShell>
+          </Route>
+          <Route path="/help">
+            <AppShell><Help /></AppShell>
+          </Route>
+          <Route path="/landed">
+            <AppShell><Landed /></AppShell>
+          </Route>
+          <Route path="/sign-in" component={SignIn} />
+          <Route path="/reviewer-sign-in" component={ReviewerSignIn} />
+          <Route path="/report">
+            <AppShell><Report /></AppShell>
+          </Route>
+          <Route path="/suggest-company">
+            <AppShell><SuggestCompany /></AppShell>
+          </Route>
+          <Route path="/company/claim" component={CompanyClaim} />
+          <Route path="/company/dashboard/:slug" component={CompanyClaim} />
+          <Route path="/for-companies" component={ForCompanies} />
+          <Route path="/admin-review" component={AdminReview} />
+          <Route path="/app-states" component={AppStates} />
+          <Route path="/emails" component={Emails} />
+          <Route path="/developers" component={Developers} />
+          <Route path="/assistants">
+            <AppShell><Assistants /></AppShell>
+          </Route>
+          <Route path="/skippy" component={Skippy} />
+          <Route path="/agents">
+            <AppShell><SeekerAgents /></AppShell>
+          </Route>
+          <Route path="/approve">
+            <AppShell><Approve /></AppShell>
+          </Route>
+          <Route path="/connect-assistant" component={ConnectAssistant} />
+          <Route path="/developer-console" component={DeveloperConsole} />
+          <Route path="/forgot-password" component={ForgotPassword} />
+          <Route path="/reset-password" component={ResetPassword} />
+          <Route path="/wallet">
+            <Redirect to="/plans" />
+          </Route>
+          <Route path="/thread" component={ThreadListAlias} />
+          <Route path="/thread/:requestId" component={ThreadDetailAlias} />
+          <Route path="/conversation/:requestId">
+            <ReferralConversation framed />
+          </Route>
+          <Route path="/messages" component={Messages} />
+          <Route path="/share" component={ShareHub} />
+          <Route path="/inbox">
+            <AppShell><UnifiedInbox /></AppShell>
+          </Route>
+          <Route path="/queue" component={MyCompanyInbox} />
+          <Route path="/settings">
+            <AppShell><Settings /></AppShell>
+          </Route>
+          <Route path="/referrer">
+            <AppShell><Referrer /></AppShell>
+          </Route>
+          <Route path="/referrer/impact">
+            <AppShell><ReferrerImpact /></AppShell>
+          </Route>
+          <Route path="/premium" component={Premium} />
+          <Route path="/plans">
+            <AppShell>{PLAN_FAMILY_V2_CLIENT ? <PlansV2 /> : <Plans />}</AppShell>
+          </Route>
+          <Route path="/billing">
+            <AppShell><Billing /></AppShell>
+          </Route>
+          <Route path="/privacy" component={TrustPrivacy} />
+          <Route path="/terms" component={Terms} />
+          <Route path="/refunds" component={RefundPolicy} />
+          <Route path="/shipping" component={ShippingPolicy} />
+          <Route path="/cancellations" component={CancellationPolicy} />
+          <Route path="/about" component={About} />
+          <Route path="/contact" component={Contact} />
+          <Route path="/pricing" component={Pricing} />
+          <Route path="/support" component={Support} />
+          <Route path="/guidelines" component={Guidelines} />
+          <Route path="/job-referral-platforms" component={GuidePage} />
+          <Route path="/choosing-a-job-referral-platform" component={GuidePage} />
+          <Route path="/how-employees-refer-candidates" component={GuidePage} />
+          <Route path="/offline" component={Offline} />
+          <Route path="/wall" component={OpportunityWall} />
+          <Route path="/jobs" component={JobExplorer} />
+          <Route path="/employer" component={EmployerDashboard} />
+          <Route path="/employer/talent" component={TalentDiscovery} />
+          <Route path="/employer/billing" component={EmployerBilling} />
+          <Route path="/employer/opportunities" component={EmployerOpportunities} />
+          <Route path="/admin" component={AdminOverview} />
+          <Route path="/admin/partners" component={AdminPartners} />
+          <Route path="/post-opportunity" component={PostOpportunity} />
+          <Route path="/admin/activity" component={AdminActivity} />
+          <Route path="/admin/approvals" component={AdminApprovalQueue} />
+          <Route path="/admin/approvals/:kind/:id" component={AdminApprovalRecord} />
+          <Route path="/admin/payments" component={AdminPaymentsReview} />
+          <Route path="/admin/catalog-sync" component={AdminCatalogSync} />
+          <Route path="/admin/privacy-requests" component={AdminPrivacyRequests} />
+          <Route path="/admin/flow-health" component={AdminFlowHealth} />
+          <Route path="/admin/token-recovery" component={AdminTokenRecovery} />
+          <Route path="/admin/users" component={AdminUsers} />
+          <Route path="/admin/users/:id/support" component={AdminSupport} />
+          <Route path="/admin/schema" component={AdminSchema} />
+          <Route path="/admin/smoke" component={AdminSmoke} />
+          <Route path="/admin/money-check" component={AdminMoneyCheck} />
+          <Route path="/admin/skippie" component={AdminSkippie} />
+          {import.meta.env.DEV ? <Route path="/components" component={ComponentShowcase} /> : null}
+          <Route component={NotFound} />
+        </Switch>
+      </Suspense>
+    </RouteErrorBoundary>
+  );
+}
+function PwaSessionContinuity(){const {isLoaded,isSignedIn}=useAuth();useEffect(()=>{if(isLoaded&&isSignedIn)markSecureSessionVerified()},[isLoaded,isSignedIn]);return null}const personalInviteStorageKey="skipwait:personal-invite-code";
 function PersonalInviteAttribution(){const {isLoaded,isSignedIn}=useAuth();useEffect(()=>{if(typeof window==="undefined")return;const inviteCode=new URLSearchParams(window.location.search).get("invite")?.trim()??"";if(/^r\d+-[a-f0-9]{8}$/i.test(inviteCode))sessionStorage.setItem(personalInviteStorageKey,inviteCode)},[]);useEffect(()=>{if(!isLoaded||!isSignedIn)return;const inviteCode=sessionStorage.getItem(personalInviteStorageKey);if(!inviteCode)return;void fetch("/api/personal-invites/claim",{method:"POST",headers:{"Content-Type":"application/json"},credentials:"include",body:JSON.stringify({inviteCode})}).finally(()=>sessionStorage.removeItem(personalInviteStorageKey))},[isLoaded,isSignedIn]);return null}
-export default function App(){return <ErrorBoundary><ThemeProvider defaultTheme="light"><SmokeProvider><TooltipProvider><PwaSessionContinuity/><PersonalInviteAttribution/><OfflineNotice/><SlowConnectionNotice/><PwaUpdatePrompt/><Toaster position="top-center" offset={{ top: "72px" }} mobileOffset={{ top: "72px" }} /><Router/></TooltipProvider></SmokeProvider></ThemeProvider></ErrorBoundary>}
+export default function App(){useLanguageSync();return <ErrorBoundary><ThemeProvider defaultTheme="light"><SmokeProvider><TooltipProvider><PwaSessionContinuity/><PersonalInviteAttribution/><OfflineNotice/><SlowConnectionNotice/><PwaUpdatePrompt/><AppToaster/><Router/></TooltipProvider></SmokeProvider></ThemeProvider></ErrorBoundary>}

@@ -4,25 +4,24 @@
  * existing free gateway; with no key configured the deterministic rules run
  * instead (D-138). Everything the model or a document returns is data (D-140).
  */
-import ipaddr from "ipaddr.js";
+import { fetchPublicJobLink, previewJobLink } from "./jobLinkPreview";
 import { unzipSync, strFromU8 } from "fflate";
 import { ENV } from "./_core/env";
 import { invokeLLM } from "./_core/llm";
 import { assignJobLevel, creditsForLevel } from "../shared/jobLevel";
 import { buildSimpleDocx } from "../shared/docxSimple";
+import { bandedAskQuoteSchema } from "../shared/acceptedAskCost";
+import { normalizeTargetRoleUrl } from "../shared/referralUrl";
+import { bandedSalesEnabled } from "./billingSettings";
+import { resolveChargebeeRuntime } from "./chargebeeEnvironment";
+import { createSkippieCardStore, type SkippieCardStore } from "./skippieMoneyCards";
+import { skippieQuoteSchema } from "./skippieSeekerCost";
 import * as db from "./db";
 import { rulesAnalyzeFit, type FitDraft, type OwnedResume, type SkippieQuote, type SkippieSeekerDeps } from "./skippieSeeker";
 
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
 /* --- job page fetching (bounded, no private networks) --- */
-
-function isPublicHostname(hostname: string): boolean {
-  let addr: ipaddr.IPv4 | ipaddr.IPv6;
-  try { addr = ipaddr.parse(hostname); } catch { return true; } // a name: resolved by the fetch itself
-  const range = addr.range();
-  return !(range === "loopback" || range === "private" || range === "linkLocal" || range === "uniqueLocal" || range === "reserved" || range === "multicast" || range === "broadcast" || range === "unspecified");
-}
 
 function htmlToText(html: string): string {
   return html
@@ -39,32 +38,18 @@ function htmlToText(html: string): string {
     .trim();
 }
 
-async function fetchJobText(url: string): Promise<string | null> {
-  let current = url;
-  for (let hop = 0; hop < 3; hop++) {
-    let host: string;
-    try { host = new URL(current).hostname; } catch { return null; }
-    if (!isPublicHostname(host)) return null;
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 10_000);
-    try {
-      const res = await fetch(current, { signal: controller.signal, redirect: "manual", headers: { "User-Agent": "skipwait.me Skippy (job page reader)", Accept: "text/html,*/*" } });
-      if (res.status >= 300 && res.status < 400) {
-        const next = res.headers.get("location");
-        if (!next) return null;
-        current = new URL(next, current).toString();
-        if (!/^https?:\/\//i.test(current)) return null;
-        continue;
-      }
-      if (!res.ok) return null;
-      const type = res.headers.get("content-type") ?? "";
-      if (type && !/text\/html|application\/xhtml|text\/plain/i.test(type)) return null;
-      const raw = (await res.text()).slice(0, 400_000);
-      const text = htmlToText(raw);
-      return text.length >= 80 ? text : null;
-    } catch { return null; } finally { clearTimeout(timer); }
+export async function fetchJobText(
+  url: string,
+  fetcher: typeof fetchPublicJobLink = fetchPublicJobLink,
+): Promise<string | null> {
+  try {
+    const { body } = await fetcher(url);
+    if (!body) return null;
+    const text = htmlToText(body);
+    return text.length >= 80 ? text : null;
+  } catch {
+    return null;
   }
-  return null;
 }
 
 /* --- resume text extraction (local, no service) --- */
@@ -144,10 +129,14 @@ async function analyzeFit(input: { resumeText: string; jobText: string }): Promi
 export function createSkippieSeekerDeps(overrides: {
   storagePut?: (key: string, data: Uint8Array, contentType: string) => Promise<{ key: string; url: string }>;
   storageGetBytes?: (key: string) => Promise<Buffer>;
+  /** SKIPPY-3: the one-use money-card store the route also approves from; one per process. */
+  moneyCards?: SkippieCardStore;
 } = {}): SkippieSeekerDeps {
   const storagePut = overrides.storagePut;
   const storageGetBytes = overrides.storageGetBytes;
+  const moneyCards = overrides.moneyCards ?? createSkippieCardStore();
   return {
+    previewJob: url => previewJobLink(url, db.resolveEmployerDomainFromTargetUrl),
     fetchJobText,
     extractResumeText: async (attachment: OwnedResume) => {
       if (!storageGetBytes || !attachment.fileKey) return null;
@@ -160,17 +149,28 @@ export function createSkippieSeekerDeps(overrides: {
     },
     analyzeFit,
     getQuote: async (userId: number, targetRoleUrl: string): Promise<SkippieQuote> => {
-      // The same math as GET /api/company-referrals/quote, kept in lockstep.
-      const level = assignJobLevel({ url: targetRoleUrl }).level;
+      const url = normalizeTargetRoleUrl(targetRoleUrl);
+      if (bandedSalesEnabled()) return bandedAskQuoteSchema.parse(await db.previewBandedAskCost(userId, url));
+      const level = assignJobLevel({ url }).level;
       const cost = process.env.ASK_LEVEL_COST === "true" ? creditsForLevel(level) : 1;
-      const summary = (await db.getTokenWallet(userId, "job_seeker")) as { totalAvailable?: unknown };
-      const totalAvailable = typeof summary?.totalAvailable === "number" ? summary.totalAvailable : 0;
-      return { level, cost, totalAvailable, shortfall: Math.max(0, cost - totalAvailable) };
+      const summary = await db.getTokenWallet(userId, "job_seeker");
+      return skippieQuoteSchema.parse({ level, cost, totalAvailable: summary.totalAvailable, shortfall: Math.max(0, cost - summary.totalAvailable) });
     },
     getOwnedResume: async (userId, attachmentId) => {
       try { return await db.getOwnedResumeAttachmentForPitch(userId, attachmentId); } catch { return undefined; }
     },
     createAsk: (userId, input) => db.createCompanyReferralRequest(userId, input),
+    // SKIPPY-3: the same on-sale answer GET /api/chargebee/banded/offer gives, plus its own flag.
+    // With SKIPPIE_PURCHASE_ENABLED off, or banded sales off, or billing unconfigured, no card is offered.
+    getBandedOffer: async () => {
+      if (process.env.SKIPPIE_PURCHASE_ENABLED !== "true" || !bandedSalesEnabled()) return { onSale: false };
+      try {
+        return { onSale: Boolean(resolveChargebeeRuntime(undefined)) };
+      } catch {
+        return { onSale: false };
+      }
+    },
+    createMoneyCard: input => moneyCards.create(input),
     saveTailoredResume: async (userId, { text, basedOnAttachmentId }) => {
       if (!storagePut) throw new Error("Document storage is unavailable");
       const bytes = buildSimpleDocx(text.split(/\r?\n/));

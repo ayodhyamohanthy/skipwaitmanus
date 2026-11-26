@@ -12,20 +12,29 @@ function fakeStore() {
   const drafts: DraftRow[] = [];
   const events: EventRow[] = [];
   const pausedUsers = new Set<number>();
+  const sendRequests: Array<{ id: number; userId: number; grantId: number; draftId: number; expiresAt: Date }> = [];
   const store: SeekerAgentStore = {
     createGrant: async input => {
-      const row: GrantRow = { id: seq++, userId: input.userId, name: input.name, keyPrefix: input.keyPrefix, canLookup: input.canLookup, canDraft: input.canDraft, maxCreditsPerAsk: input.limits.creditsPerAsk, maxCreditsPerDay: input.limits.creditsPerDay, maxCreditsPerWeek: input.limits.creditsPerWeek, maxAsksPerDay: input.limits.asksPerDay, expiresAt: input.expiresAt, revokedAt: null, lastUsedAt: null, createdAt: new Date() };
+      const row: GrantRow = { id: seq++, userId: input.userId, name: input.name, keyPrefix: input.keyPrefix, canLookup: input.canLookup, canDraft: input.canDraft, canSend: input.canSend, autoSend: false, maxCreditsPerAsk: input.limits.creditsPerAsk, maxCreditsPerDay: input.limits.creditsPerDay, maxCreditsPerWeek: input.limits.creditsPerWeek, maxAsksPerDay: input.limits.asksPerDay, expiresAt: input.expiresAt, revokedAt: null, lastUsedAt: null, createdAt: new Date() };
       grants.push(row); return row;
     },
     listGrants: async userId => grants.filter(g => g.userId === userId),
     getGrantForUser: async (userId, id) => grants.find(g => g.userId === userId && g.id === id),
     findGrantByKeyHash: async () => undefined, // replaced per test via keyIndex
     revokeGrant: async (userId, id) => { const g = grants.find(x => x.userId === userId && x.id === id); if (g) g.revokedAt = new Date(); return Boolean(g); },
+    setAutoSend: async (userId, id, enabled) => { const g = grants.find(x => x.userId === userId && x.id === id); if (g) g.autoSend = enabled; return Boolean(g); },
     touchLastUsed: async (id, now) => { const g = grants.find(x => x.id === id); if (g) g.lastUsedAt = now; },
     isPaused: async userId => pausedUsers.has(userId),
     setPaused: async (userId, paused) => { if (paused) pausedUsers.add(userId); else pausedUsers.delete(userId); },
     createDraft: async input => { const row: DraftRow = { id: seq++, status: "draft", createdAt: new Date(), ...input }; drafts.push(row); return row; },
     listDraftsByGrant: async grantId => drafts.filter(d => d.grantId === grantId),
+    getDraftForGrant: async (grantId, draftId) => drafts.find(d => d.grantId === grantId && d.id === draftId),
+    createSendRequest: async input => {
+      const id = seq++;
+      const expiresAt = input.expiresAt;
+      sendRequests.push({ id, userId: input.userId, grantId: input.grantId, draftId: input.draft.id, expiresAt });
+      return { id, expiresAt };
+    },
     sumDraftCreditsSince: async (grantId, since) => drafts.filter(d => d.grantId === grantId && d.createdAt >= since && d.status === "draft").reduce((n, d) => n + d.creditCost, 0),
     countDraftsSince: async (grantId, since) => drafts.filter(d => d.grantId === grantId && d.createdAt >= since && d.status === "draft").length,
     listEvents: async (userId, grantId) => events.filter(e => e.grantId === grantId),
@@ -36,7 +45,7 @@ function fakeStore() {
   const origCreate = store.createGrant;
   store.createGrant = async input => { const row = await origCreate(input); byHash.set(input.keyHash, row); return row; };
   store.findGrantByKeyHash = async hash => byHash.get(hash);
-  return { store, grants, drafts, events, pausedUsers };
+  return { store, grants, drafts, events, pausedUsers, sendRequests };
 }
 
 const companies: PublicCompany[] = [
@@ -44,20 +53,24 @@ const companies: PublicCompany[] = [
   { slug: "tcs", name: "TCS", initials: "TC", industry: "IT", location: "Mumbai", functions: ["engineering"], blurb: "b", domains: ["tcs.com"], openToReferrals: false },
 ] as never;
 
-function makeApp(opts: { userId?: number; enabled?: boolean; now?: () => number } = {}) {
-  const { store, grants, drafts, events } = fakeStore();
+function makeApp(opts: { userId?: number; enabled?: boolean; now?: () => number; allowed?: ReadonlySet<number> } = {}) {
+  const { store, grants, drafts, events, sendRequests } = fakeStore();
   const app = express(); app.use(express.json());
   registerSeekerAgentRoutes(app, {
     enabled: () => opts.enabled ?? true,
+    autoSendEnabled: () => opts.enabled ?? true,
+    allowedUserIds: () => opts.allowed ?? new Set([7, 8]),
     resolveIdentity: async () => (opts.userId ? { account: { id: opts.userId } } : undefined),
     store,
     listCompanies: async () => companies,
     prices: async (_req, region) => ({ region, currency: region === "IN" ? "INR" : "USD", priceNote: null, free: { openRequests: 3, creditsPerMonth: 3 }, plans: [], packs: [{ id: "credits_5", credits: 5, amount: 490, available: false, firstPack: false, recommended: false }], sessions: [] } as never),
     quoteCost: url => ({ level: url.includes("staff") ? 5 : 1, cost: url.includes("staff") ? 5 : 1 }),
-    getCompanyDirectoryEntry: async slug => (slug === "wipro" ? { name: "Wipro" } : undefined),
+    getCompanyDirectoryEntry: async slug => (slug === "wipro" ? { name: "Wipro", domains: ["wipro.com"] } : undefined),
+    listResumes: async () => [{ id: 41, fileName: "cv.pdf", createdAt: new Date("2026-11-01T00:00:00Z") }],
+    notifySendRequest: async () => undefined,
     now: opts.now,
   });
-  return { app, grants, drafts, events };
+  return { app, grants, drafts, events, sendRequests };
 }
 
 const DRAFT = { companySlug: "wipro", targetRoleUrl: "https://jobs.wipro.com/role/123", note: "Please refer me." };
@@ -77,6 +90,67 @@ describe("seeker agents (Skippy step 5)", () => {
     expect((await request(app).post("/api/seeker/agents").send({ name: "x" })).status).toBe(404);
     expect((await request(app).get("/api/agent/v1/me")).status).toBe(404);
     expect((await request(app).post("/api/agent/v1/drafts").send(DRAFT)).status).toBe(404);
+  });
+
+  it("allowlist denies every seeker-agent route for an existing grant owner", async () => {
+    const allowed = new Set([7, 8]);
+    const { app, grants, drafts, events } = makeApp({ userId: 8, allowed });
+    await grantKey(app);
+    const id = grants[0].id;
+    const beforeEvents = events.length;
+    allowed.delete(8);
+    const responses = await Promise.all([
+      request(app).get("/api/seeker/agents"),
+      request(app).post("/api/seeker/agents").send({ name: "another" }),
+      request(app).post(`/api/seeker/agents/${id}/revoke`),
+      request(app).post("/api/seeker/agents/pause-all"),
+      request(app).post("/api/seeker/agents/resume-all"),
+      request(app).get(`/api/seeker/agents/${id}/drafts`),
+      request(app).get(`/api/seeker/agents/${id}/events`),
+    ]);
+    expect(responses.map(response => response.status)).toEqual([404, 404, 404, 404, 404, 404, 404]);
+    expect(grants).toHaveLength(1);
+    expect(grants[0].revokedAt).toBeNull();
+    expect(drafts).toEqual([]);
+    expect(events).toHaveLength(beforeEvents);
+  });
+
+  it("allowlist denies a valid key on every agent route without touching its usage", async () => {
+    const allowed = new Set([7, 8]);
+    const { app, grants, drafts, events } = makeApp({ userId: 8, allowed });
+    const key = await grantKey(app);
+    const beforeEvents = events.length;
+    allowed.delete(8);
+    const auth = `Bearer ${key}`;
+    const responses = await Promise.all([
+      request(app).get("/api/agent/v1/me").set("Authorization", auth),
+      request(app).get("/api/agent/v1/companies").set("Authorization", auth),
+      request(app).get("/api/agent/v1/prices").set("Authorization", auth),
+      request(app).get("/api/agent/v1/drafts").set("Authorization", auth),
+      request(app).post("/api/agent/v1/drafts").set("Authorization", auth).send(DRAFT),
+    ]);
+    expect(responses.map(response => response.status)).toEqual([404, 404, 404, 404, 404]);
+    expect(grants[0].lastUsedAt).toBeNull();
+    expect(drafts).toEqual([]);
+    expect(events).toHaveLength(beforeEvents);
+  });
+
+  it("allowlist denies an expired or revoked key owner before exposing grant status", async () => {
+    const allowed = new Set([8]);
+    const { app, grants } = makeApp({ userId: 8, allowed });
+    const key = await grantKey(app);
+    allowed.clear();
+    grants[0].revokedAt = new Date();
+    grants[0].expiresAt = new Date(0);
+    const response = await request(app).get("/api/agent/v1/me").set("Authorization", `Bearer ${key}`);
+    expect(response.status).toBe(404);
+    expect(response.body).toEqual({ error: "Not found" });
+  });
+
+  it("an empty allowlist grants access to nobody", async () => {
+    const { app } = makeApp({ userId: 7, allowed: new Set() });
+    expect((await request(app).get("/api/seeker/agents")).status).toBe(404);
+    expect((await request(app).post("/api/seeker/agents").send({ name: "hidden" })).status).toBe(404);
   });
 
   it("shows the key exactly once, never in the list view", async () => {

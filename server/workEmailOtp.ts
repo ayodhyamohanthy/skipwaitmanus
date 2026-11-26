@@ -1,11 +1,13 @@
-import { createHash, randomBytes, randomInt } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from "node:crypto";
 import { and, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 import { workEmailOtpCodes, workEmailOtpRateLimits, workEmailOtpReceipts } from "../drizzle/schema";
 import { getDb, isWorkEmailDomain } from "./db";
 import { sendTransactionalEmail } from "./emailDelivery";
+import { EMAIL_SIGN_IN_LINK_ENABLED, emailSignInLink } from "../shared/emailSignIn";
 import { resolve4, resolveMx } from "node:dns/promises";
 
-export type WorkEmailOtpDeliveryInput = { to: string; code: string };
+/** `seeker` names the plane that asked, so a D-406 sign-in link finishes on the right verify endpoint. */
+export type WorkEmailOtpDeliveryInput = { to: string; code: string; seeker?: boolean };
 export type WorkEmailOtpSendResult = { sent: boolean; reason: "sent" | "not_configured" | "delivery_failed" | "rate_limited" | "invalid_email" | "invalid_domain"; retryAfterSeconds?: number };
 
 import { workEmailStorageKeys } from "./workEmailKey";
@@ -47,7 +49,38 @@ export function isValidOtpLoginEmail(value: string, opts: { seeker?: boolean } =
   if (opts.seeker) return true;
   return isWorkEmailDomain(value.slice(value.lastIndexOf("@") + 1).toLowerCase());
 }
-export function hashCode(email: string, code: string): string { return createHash("sha256").update(`${email.toLowerCase()}:${code}`).digest("hex"); }
+/**
+ * D-100.otp-hmac: a six-digit code has a million values, so an unkeyed SHA-256 of `email:code`
+ * is recoverable offline from one database row. The stored hash is HMAC-SHA256 under a server
+ * key derived like `workEmailFingerprintSecret` (`server/workEmailKey.ts`) with its own
+ * `work-email-otp:` prefix: `WORK_EMAIL_HMAC_KEY` when set, otherwise `JWT_SECRET`. Same 64-hex
+ * width, so no migration. Rotating the key only voids codes in flight (each lives 10 minutes).
+ */
+export function otpCodeHashSecret(env: NodeJS.ProcessEnv = process.env): string {
+  const configured = env.WORK_EMAIL_HMAC_KEY?.trim();
+  return configured ? `work-email-otp:${configured}` : `work-email-otp-jwt:${env.JWT_SECRET?.trim() || "skipwait-local-development-secret"}`;
+}
+export function hashCode(email: string, code: string, secret: string = otpCodeHashSecret()): string {
+  return createHmac("sha256", secret).update(`${email.toLowerCase()}:${code}`).digest("hex");
+}
+/** The pre-D-100 form, read only for rows created before OTP_HMAC_SINCE. */
+function legacyHashCode(email: string, code: string): string { return createHash("sha256").update(`${email.toLowerCase()}:${code}`).digest("hex"); }
+/**
+ * Rows created before this instant may still hold the legacy SHA-256 form. Codes live
+ * CODE_TTL_MS (10 minutes), so the legacy read dies on its own once this has passed; a later
+ * row may delete it. Rows created at or after it must carry the HMAC.
+ */
+export const OTP_HMAC_SINCE = "2026-12-01T00:00:00.000Z";
+const OTP_HMAC_SINCE_MS = Date.parse(OTP_HMAC_SINCE);
+function sameHex(a: string, b: string): boolean {
+  const left = Buffer.from(a, "utf8"), right = Buffer.from(b, "utf8");
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+function storedCodeMatches(row: { codeHash: string; createdAt: Date | string | null }, email: string, code: string): boolean {
+  if (sameHex(row.codeHash, hashCode(email, code))) return true;
+  const createdMs = row.createdAt == null ? Number.NaN : new Date(row.createdAt).getTime();
+  return Number.isFinite(createdMs) && createdMs < OTP_HMAC_SINCE_MS && sameHex(row.codeHash, legacyHashCode(email, code));
+}
 
 type Limit = { key: string; windowMs: number; limit: number };
 function fixedWindow(timestamp: number, windowMs: number) { return Math.floor(timestamp / windowMs) * windowMs; }
@@ -114,7 +147,7 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
         throw error;
       }
       const code = String(randomInt(0, 1_000_000)).padStart(6, "0");
-      const delivery = await sendEmail({ to: email, code }).catch(() => ({ sent: false, reason: "delivery_failed" }));
+      const delivery = await sendEmail({ to: email, code, ...(context.seeker ? { seeker: true } : {}) }).catch(() => ({ sent: false, reason: "delivery_failed" }));
       if (!delivery.sent) return { sent: false, reason: delivery.reason === "not_configured" ? "not_configured" : "delivery_failed" };
       await db.insert(workEmailOtpCodes).values({ email: workEmailStorageKeys(email).write, codeHash: hashCode(email, code), expiresAt: new Date(now() + CODE_TTL_MS), attempts: 0, createdAt: new Date(now()) });
       return { sent: true, reason: "sent" };
@@ -139,10 +172,10 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
       const accepted = await db.transaction(async tx => {
         // Only the newest active code is accepted. Locking serializes correct
         // and wrong guesses, so one request consumes it and counters never lose increments.
-        const selected = await tx.execute(sql`SELECT id, codeHash, attempts FROM workEmailOtpCodes WHERE email IN (${sql.join(workEmailStorageKeys(email).read.map(value => sql`${value}`), sql`, `)}) AND consumedAt IS NULL AND expiresAt > ${new Date(timestamp)} ORDER BY createdAt DESC, id DESC LIMIT 1 FOR UPDATE`);
-        const rows = (selected as unknown as Array<Array<{ id: number; codeHash: string; attempts: number }>>)[0] ?? [];
+        const selected = await tx.execute(sql`SELECT id, codeHash, attempts, createdAt FROM workEmailOtpCodes WHERE email IN (${sql.join(workEmailStorageKeys(email).read.map(value => sql`${value}`), sql`, `)}) AND consumedAt IS NULL AND expiresAt > ${new Date(timestamp)} ORDER BY createdAt DESC, id DESC LIMIT 1 FOR UPDATE`);
+        const rows = (selected as unknown as Array<Array<{ id: number; codeHash: string; attempts: number; createdAt: Date | string | null }>>)[0] ?? [];
         if (rows.length !== 1 || rows[0].attempts >= MAX_ATTEMPTS) return false;
-        if (rows[0].codeHash !== hashCode(email, code)) {
+        if (!storedCodeMatches(rows[0], email, code)) {
           await tx.update(workEmailOtpCodes).set({ attempts: sql`${workEmailOtpCodes.attempts} + 1` }).where(and(eq(workEmailOtpCodes.id, rows[0].id), isNull(workEmailOtpCodes.consumedAt), lt(workEmailOtpCodes.attempts, MAX_ATTEMPTS)));
           return false;
         }
@@ -175,4 +208,39 @@ export function createWorkEmailOtpService(dependencies: WorkEmailOtpDependencies
 
   };
 }
-export const workEmailOtpService = createWorkEmailOtpService({ sendEmail: async ({ to, code }) => sendTransactionalEmail({ to, subject: "Your skipwait.me verification code", text: `Your skipwait.me verification code is ${code}. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email - nothing changes.` }) });
+/** The code email. The code leads the subject so lock-screen previews and the phone's code
+ *  autofill (iOS AutoFill from Mail, Android suggestions) can offer it without opening the email. */
+export function otpEmailMessage(code: string): { subject: string; text: string } {
+  return {
+    subject: `${code} is your skipwait.me verification code`,
+    text: `Your skipwait.me verification code is ${code}. It expires in 10 minutes and works once.\n\nIf you did not request it, ignore this email - nothing changes.`,
+  };
+}
+
+const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" })[char] ?? char);
+
+/** The origin the D-406 link points at: PUBLIC_BASE_URL when it is an http(s) origin, otherwise the canonical site. */
+function signInLinkOrigin(): string {
+  const configured = (process.env.PUBLIC_BASE_URL ?? "").trim();
+  return /^https?:\/\/[^\s/]+\/?$/.test(configured) ? configured : "https://skipwait.me";
+}
+
+/**
+ * D-406: the sign-in email. Switch off: exactly today's code email. Switch on: the sign-in subject (code first, for
+ * lock-screen preview and phone autofill) plus a one-click link whose fragment holds the email and code; /sign-in
+ * spends the code only when the person presses Sign in. The D-245 step-up keeps calling otpEmailMessage, no link.
+ */
+export function signInEmailMessage(input: WorkEmailOtpDeliveryInput, options: { enabled?: boolean; origin?: string } = {}): { subject: string; text: string; html?: string } {
+  const base = otpEmailMessage(input.code);
+  if (!(options.enabled ?? EMAIL_SIGN_IN_LINK_ENABLED)) return base;
+  const link = emailSignInLink(options.origin ?? signInLinkOrigin(), { email: input.to, code: input.code, plane: input.seeker ? "s" : "r" });
+  return {
+    subject: `${input.code} is your skipwait.me sign-in code`,
+    text: `Your skipwait.me sign-in code is ${input.code}. It expires in 10 minutes and works once.\n\nOr sign in with one click:\n${link}\n\nIf you did not request it, ignore this email - nothing changes.`,
+    html: `<p>Your skipwait.me sign-in code is <strong style="font-size:20px;letter-spacing:3px">${input.code}</strong>.</p>`
+      + `<p>Or sign in with one click as ${escapeHtml(input.to)}:</p>`
+      + `<p><a href="${escapeHtml(link)}" style="display:inline-block;padding:10px 18px;background:#0a0a0a;color:#ffffff;border-radius:8px;text-decoration:none">Sign in to skipwait.me</a></p>`
+      + `<p style="color:#555">The code and link expire in 10 minutes and work once. If you did not request this, ignore this email - nothing changes.</p>`,
+  };
+}
+export const workEmailOtpService = createWorkEmailOtpService({ sendEmail: async input => sendTransactionalEmail({ to: input.to, ...signInEmailMessage(input) }) });

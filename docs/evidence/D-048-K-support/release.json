@@ -1,0 +1,32 @@
+{
+  "task": "D-048-K-support",
+  "session": "GPT-6.1 Sol · 814e",
+  "recordedAt": "2026-11-19T15:54:44Z",
+  "pullRequest": 1314,
+  "mergeSha": "c27ce712393d04aae2b6ce493c7a6c89ca832486",
+  "finalHead": "8c8aee69d2898cfd66a3afdc6354c51e52ca2d81",
+  "decisionsReadThrough": "D-366",
+  "checks": {
+    "finalHeadCI": {"url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44557745557", "conclusion": "success", "allThreeTestShardsAndAggregate": true, "e2e": true},
+    "mainCI": {"url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44558430242", "conclusion": "success"},
+    "pages": {"url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44558430125", "conclusion": "success"},
+    "releaseVerificationWorkflow": {"url": "https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/44558535633", "conclusion": "success"},
+    "integratedLocalFocusedTests": {"files": 5, "passed": 73},
+    "localFullSuiteCompleted": false,
+    "localFullSuiteGreen": false,
+    "localFullSuiteRerun": false
+  },
+  "web": {"observedSha": "c27ce712393d04aae2b6ce493c7a6c89ca832486", "routes": ["/help", "/report", "/safety"], "viewportWidths": [1280, 390], "captures": 6, "receipt": "receipt.json", "nativeVisualInspection": true, "authenticated": false, "businessMutations": false},
+  "api": {
+    "observedReadySha": "53e4db638e9c40d87972baa4e22515be5d4dffd9",
+    "remoteApiRuntimeTag": "53e4db638e9c40d87972baa4e22515be5d4dffd9",
+    "state": "ready",
+    "correctExpectedSource": "git ls-remote origin refs/tags/api-runtime",
+    "verifierResult": "CONVERGED",
+    "initialComparison": {"expectedFromStaleLocalTag": "9365f9b280a613e3956b73a3f23f7dea6857d282", "result": "DRIFT", "explanation": "The first command used a stale local mutable tag. A remote read established the current expected SHA; verification with that corrected input converged. No runtime or tag was modified to obtain convergence."},
+    "directOriginProbe": "workers-dev.json"
+  },
+  "productionIssueQueries": "sentry.json",
+  "limits": "Fresh signed-out canonical proof only. Existing signed-in synthetic before/after retirement artifacts remain separate. All non-GET/HEAD business requests were intercepted; external/CSP telemetry was fulfilled locally. The original 3600-second local-suite attempt stays incomplete without totals, rerun or weakening in gate-814e.json. Preferred autoglm browser skill and mcporter are unavailable, so the existing read-only Playwright fallback was used. No new product copy, identity rule, payment, account, OTP or report mutation was introduced.",
+  "rollback": "Protected revert of PR #1314."
+}
