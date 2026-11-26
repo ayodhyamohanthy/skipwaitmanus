@@ -496,6 +496,71 @@
       "epic": "D-212"
     },
     {
+      "id": "FIX-admin-catalog-signin",
+      "title": "/admin/catalog-sync offers Sign in as administrator when the dry run answers 401/403, instead of an error and a reload loop (owner report Nov 26, D-408 (3))",
+      "row": "D-212",
+      "packet": "docs/plans/FIX-admin-catalog-signin.md",
+      "tier": 2,
+      "lane": "admin-catalog-signin",
+      "branch": "agent/queue/fix-admin-catalog-signin",
+      "status": "todo",
+      "syncedTo": "D-408",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/admin-money/GoalAdminCatalogSync.tsx",
+        "client/src/pages/goal/admin-money/adminCatalogSignIn.goal.test.tsx",
+        "docs/plans/FIX-admin-catalog-signin.md"
+      ],
+      "note": "Unblocks the owner's BANDED-release step (the catalog dry run). Client copy and state only.",
+      "epic": "D-212"
+    },
+    {
+      "id": "DEVICE-SIGNIN-seeker-release",
+      "title": "Release seeker passkey/biometric sign-in after a real phone and laptop check: PASSKEY_SIGNIN_ENABLED true, captures at 1280 and 390 (D-408 (1))",
+      "row": "D-172",
+      "packet": "docs/plans/DEVICE-SIGNIN-referrer.md",
+      "tier": 1,
+      "lane": "auth-device",
+      "branch": "agent/queue/device-signin-seeker-release",
+      "status": "todo",
+      "syncedTo": "D-408",
+      "dependsOn": [],
+      "owns": [
+        "server/_core/passkeyLogin.ts",
+        "server/_core/passkeyLogin.test.ts",
+        "client/src/components/goal/GoalPasskeySignIn.tsx",
+        "docs/plans/DEVICE-SIGNIN-referrer.md",
+        "docs/BUGFREE_GATE.md"
+      ],
+      "note": "Owner D-408. Build is on main (PR #697). Real-device proof required before the flip.",
+      "epic": "D-172"
+    },
+    {
+      "id": "DEVICE-SIGNIN-referrer-passkeys",
+      "title": "Referrer passkeys bound to the work-email account: enrol only in a work-email-code session, valid while the work email was verified in the last 30 days, behind a switch that starts off (D-408 (2))",
+      "row": "D-172",
+      "packet": "docs/plans/DEVICE-SIGNIN-referrer.md",
+      "tier": 1,
+      "lane": "auth-device-referrer",
+      "branch": "agent/queue/device-signin-referrer-passkeys",
+      "status": "todo",
+      "syncedTo": "D-408",
+      "dependsOn": [
+        "DEVICE-SIGNIN-seeker-release"
+      ],
+      "owns": [
+        "server/_core/passkeyLogin.ts",
+        "server/_core/passkeyReferrer.ts",
+        "server/_core/passkeyReferrer.test.ts",
+        "client/src/pages/goal/sign-in/GoalReferrerCodeForm.tsx",
+        "client/src/pages/loginRule.test.tsx",
+        "client/src/pages/signIn.test.tsx",
+        "docs/plans/DEVICE-SIGNIN-referrer.md"
+      ],
+      "note": "Owner D-408, superseding D-333 (a). Referrer surfaces never offer personal email, social or password.",
+      "epic": "D-172"
+    },
+    {
       "id": "AUTH-workos-refresh-scope",
       "title": "The client asks WorkOS to refresh only a session WorkOS issued, ending the 400 from api.workos.com on every cookie-session page (D-389)",
       "row": "D-212",
@@ -9667,9 +9732,9 @@
       "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-contracts",
-      "branch": "agent/queue/group-contracts",
+      "branch": "agent/queue/group-contracts-implementation",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-recipients"
       ],
@@ -9685,7 +9750,7 @@
         "docs/plans/GROUP-schema-contract.md",
         "docs/plans/GROUP-plan-split.md"
       ],
-      "note": "Packet sections 4 and 6.1. Contract and DDL blueprint before SQL/business logic; consume the existing recipients parser. Declare GROUP_PLAN_ENABLED, GROUP_DELEGATED_SEND_ENABLED and VITE_GROUP_PLAN false, exact-true server readers and passthrough tests. No queries, identity linking, price policy, email or enabled route. Red-first strict/round-trip/state/privacy/config contracts."
+      "note": "Packet sections 4 and 6.1. Contract and DDL blueprint before SQL/business logic; consume the existing recipients parser. Declare GROUP_PLAN_ENABLED, GROUP_DELEGATED_SEND_ENABLED and VITE_GROUP_PLAN false, exact-true server readers and passthrough tests. No queries, identity linking, price policy, email or enabled route. Red-first strict/round-trip/state/privacy/config contracts. D-200/D-373(6)/D-407 carrier reconciliation: PR #1629 merged preparation documentation only. Section 6.1 shared schemas, transitions, disabled flag/config contracts and exact DDL blueprint remain undelivered. Fresh implementation carrier preserves prior history and all original acceptance; no implementation acceptance claimed."
     },
     {
       "id": "GROUP-provider",
@@ -9716,9 +9781,9 @@
       "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-migration",
-      "branch": "agent/queue/group-migration",
+      "branch": "agent/queue/group-migration-implementation",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-contracts"
       ],
@@ -9729,7 +9794,7 @@
         "docs/plans/GROUP-schema-contract.md",
         "docs/plans/GROUP-plan-split.md"
       ],
-      "note": "Packet section 6.3 and the contracts row's exact DDL blueprint. Allocate next free SQL number after main/open-PR check, pin its exact path in this row, apply-twice real MySQL proof, retain historical identity/wallet/ledger rows. No seed allocations/grants, destructive changes or runtime model. Done requires production migration checksum/apply acceptance through normal exact-green-main gates."
+      "note": "Packet section 6.3 and the contracts row's exact DDL blueprint. Allocate next free SQL number after main/open-PR check, pin its exact path in this row, apply-twice real MySQL proof, retain historical identity/wallet/ledger rows. No seed allocations/grants, destructive changes or runtime model. Done requires production migration checksum/apply acceptance through normal exact-green-main gates. D-200/D-373(6)/D-407 carrier reconciliation: PR #1630 merged preparation documentation only. SQL, real-MySQL apply-twice/parity proof and production checksum acceptance remain unverified. Fresh implementation carrier preserves prior history; exact upstream DDL precedes SQL and production migration acceptance precedes GROUP-schema landing."
     },
     {
       "id": "GROUP-schema",
