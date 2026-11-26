@@ -44,7 +44,7 @@ export function ThemeProvider({
   switchable = false,
 }: ThemeProviderProps) {
   const pathname = usePathname();
-  const routeSwitchable = switchable && DARK_READY_ROUTES.has(pathname.replace(/\/+$/, "") || "/");
+  const routeSwitchable = switchable && DARK_READY_ROUTES.has(pathname.replace(/([^/])\/$/, "$1"));
   const [preferredTheme, setPreferredTheme] = useState<Theme>(() =>
     switchable ? readStoredTheme() ?? defaultTheme : defaultTheme,
   );

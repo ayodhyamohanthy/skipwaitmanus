@@ -18,6 +18,7 @@ const LIGHT_ROUTES = [
   "/requests/123", "/request/123", "/requesting", "/explores", "/asking",
   "/sign-in", "/settings", "/inbox", "/referrer-home", "/billing", "/admin",
   "/unknown", "/Explore", "/Ask", "/%61sk", "/explor%65", "/explore//stripe",
+  ...DARK_ROUTES.map(path => path === "/" ? "//" : `${path}//`),
 ];
 
 function applyPrePaintTheme() {
@@ -117,7 +118,7 @@ describe("ThemeProvider per-device theme", () => {
     expectTheme("light");
   });
 
-  it.each(DARK_ROUTES.flatMap(path => path === "/" ? [path] : [path, `${path}/`, `${path}///`]))(
+  it.each(DARK_ROUTES.flatMap(path => path === "/" ? [path] : [path, `${path}/`]))(
     "pre-paint and provider admit only the exact dark-ready route %s", path => {
       window.history.replaceState(null, "", path);
       localStorage.setItem("sw-theme", "dark");
@@ -129,8 +130,8 @@ describe("ThemeProvider per-device theme", () => {
   );
 
   it.each(LIGHT_ROUTES.flatMap(path => [path, `${path}/`]))(
-    "pre-paint and provider keep uncaptured route %s light", path => {
-      window.history.replaceState(null, "", path);
+    "pre-paint and provider keep uncaptured or malformed route %s light", path => {
+      window.history.replaceState(null, "", `${window.location.origin}${path}`);
       localStorage.setItem("sw-theme", "dark");
       document.documentElement.classList.add("dark");
       applyPrePaintTheme();

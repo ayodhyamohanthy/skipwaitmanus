@@ -9,7 +9,7 @@
       (function () {
         var dark = false;
         try {
-          var path = location.pathname.replace(/\/+$/, "") || "/";
+          var path = location.pathname.replace(/([^/])\/$/, "$1");
           var ready = ["/", "/explore", "/ask", "/requests", "/request"].includes(path);
           dark = ready && localStorage.getItem("sw-theme") === "dark";
         } catch (e) {}
