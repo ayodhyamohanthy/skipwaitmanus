@@ -17,6 +17,7 @@ import {
   AGENT_SEND_DAILY_CAP,
   AGENT_SEND_HOURLY_CAP,
   AGENT_SEND_PER_REQUEST_CEILING,
+  MCP_GRANT_PROVIDER,
 } from "../shared/seekerAgents";
 import { quoteApprovalCost } from "./assistantApprovalCost";
 import { listCompanyDirectory } from "./companyDirectory";
@@ -101,12 +102,16 @@ async function approveAgentSend(input: { userId: number; approvalId: number; row
   if (row.creditCount != null && quote.cost !== row.creditCount) throw new AgentSendRefusal("The cost changed. Nothing was spent.", "cost");
   if (quote.cost > AGENT_SEND_PER_REQUEST_CEILING) throw new AgentSendRefusal(AGENT_ERROR.creditLimit, "limit");
 
+  const fromMcp = row.provider === MCP_GRANT_PROVIDER;
   // The company the agent drafted for, so a link outside its domains fails
-  // exactly as it does on the company page.
+  // exactly as it does on the company page. An MCP proposal names no company:
+  // a direct employer link is matched the same way, and a hosted job-board
+  // link (no domain) goes to the request creator's strict employer check, as
+  // it does for the seeker's own legacy-assistant approvals.
   const domain = (row.companyDomain ?? "").trim().toLowerCase();
   const directory = await deps.listCompanies();
   const company = domain ? directory.companies.find(entry => entry.domains.some(value => value.trim().toLowerCase() === domain)) : undefined;
-  if (!company) throw new AgentSendRefusal("Choose a company from the list", "company");
+  if (!company && !(fromMcp && !domain)) throw new AgentSendRefusal("Choose a company from the list", "company");
 
   const db = await deps.getDb();
   if (!db) throw new Error("Database unavailable");
@@ -120,7 +125,7 @@ async function approveAgentSend(input: { userId: number; approvalId: number; row
     if (!locked || locked.userId !== userId) throw new AgentSendRefusal(AGENT_ERROR.revoked, "grant");
     if (locked.revokedAt) throw new AgentSendRefusal(AGENT_ERROR.revoked, "grant");
     if (locked.expiresAt.getTime() <= nowMs) throw new AgentSendRefusal(AGENT_ERROR.expired, "grant");
-    if (!locked.canSend) throw new AgentSendRefusal(AGENT_ERROR.sendScope, "grant");
+    if (fromMcp ? !locked.canDraft : !locked.canSend) throw new AgentSendRefusal(fromMcp ? AGENT_ERROR.scope : AGENT_ERROR.sendScope, "grant");
     const control = (await tx.select({ pausedAt: seekerAgentControls.pausedAt }).from(seekerAgentControls).where(eq(seekerAgentControls.userId, userId)).limit(1))[0];
     if (control?.pausedAt != null) throw new AgentSendRefusal(AGENT_ERROR.paused, "grant");
     // The caps count this grant's approved sends. Selecting the rows (at most a
@@ -151,7 +156,7 @@ async function approveAgentSend(input: { userId: number; approvalId: number; row
 
   try {
     const created = await deps.createRequest(userId, {
-      selectedCompany: { name: company.name, domains: [...company.domains] },
+      ...(company ? { selectedCompany: { name: company.name, domains: [...company.domains] } } : {}),
       targetRoleUrl,
       personalPitch: row.note?.trim() || "No personal note was included with this referral request.",
       attachmentIds: ids,

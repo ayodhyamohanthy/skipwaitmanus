@@ -38,6 +38,8 @@ catch (error) { if (error.code !== "ERR_MODULE_NOT_FOUND") throw error; }
 // D-200 (owner, Oct 24): no step waits for one model or session; Claude Code sessions build too.
 
 export const IDLE_MS = 2 * 60 * 60 * 1000;
+/** D-407 (4): a built-ahead draft at least this many commits behind main is handed out to be kept current. */
+export const REFRESH_BEHIND = 20;
 /** A holder whose claim has been quiet this long re-takes it on the takeover ref instead of a side heartbeat. */
 export const RECLAIM_MS = 90 * 60 * 1000;
 export const STATUSES = ["todo", "in-review", "done", "architect", "owner"];
@@ -326,6 +328,92 @@ export function sessionName(raw, tag) {
   const name = sanitizeName(raw);
   // The tag must survive the 60-character cut every later read applies, or the name could never be reused.
   return name.includes(" · ") ? name : `${name.slice(0, 60 - 3 - tag.length).trimEnd()} · ${tag}`;
+}
+
+/**
+ * PICKER-short-session (D-401): a session whose client ended the conversation (a 20-turn cap, say) is continued under
+ * its name by the next bare `--claim "<model>"` on this clone, once its claim has been quiet this long. A claim that
+ * moved more recently may belong to a live session, and two live sessions never share a name.
+ */
+export const RESUME_QUIET_MS = 20 * 60 * 1000;
+/** The model part of a session name: everything before " · <tag>" (the whole name when it has no tag). */
+export const modelOfSession = raw => sanitizeName(raw).split(" · ")[0].trim();
+
+/**
+ * D-401: the clone's session record (`<git common dir>/skipwait-sessions.json`): { [model]: { model, name, at } }.
+ * Anything malformed is dropped on read, so a damaged file only means a new tag, never a wrong name. A name must
+ * carry a tag and belong to its model (its model part equals the model, or is the model cut to fit the tag).
+ */
+export function parseSessionRecords(text) {
+  let raw;
+  try { raw = JSON.parse(String(text ?? "")); } catch { return {}; }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out = {};
+  for (const [key, entry] of Object.entries(raw)) {
+    if (!entry || typeof entry !== "object") continue;
+    const { model, name, at } = entry;
+    if (typeof model !== "string" || typeof name !== "string" || typeof at !== "string") continue;
+    if (!model || key !== model || sanitizeName(model) !== model || sanitizeName(name) !== name || !name.includes(" · ")) continue;
+    const head = modelOfSession(name);
+    if (!head || !(head === model || model.startsWith(head)) || !Number.isFinite(Date.parse(at))) continue;
+    out[model] = { model, name, at };
+  }
+  return out;
+}
+
+/** D-401: one entry per model, the newest wins. Returns a new record; the input is not changed. */
+export function recordSession(records, { model, name, at }) {
+  const prev = records?.[model];
+  if (prev && Date.parse(prev.at) > Date.parse(at)) return { ...records };
+  return { ...records, [model]: { model, name, at } };
+}
+
+/**
+ * D-401: when a claim `name` holds (one of heldAllBy's picks) last moved: a push to its branch or lock, or a heartbeat
+ * whose last marker is that name. A stage this does not know counts as moving now, so it is never resumed.
+ */
+export function claimMovedAt(pick, branches, name) {
+  const tipOf = ref => (ref ? branches.get(ref)?.tipMs ?? 0 : 0);
+  const beat = ref => {
+    const hb = ref ? branches.get(heartbeatOf(slugOf(ref))) : null;
+    return hb && hb.markers.at(-1)?.who === name ? hb.tipMs : 0;
+  };
+  const workLike = () => Math.max(tipOf(pick.work ?? pick.task?.branch), beat(pick.task?.branch));
+  switch (pick.of) {
+    case "fix-main": return Math.max(tipOf(pick.lock), beat(pick.lock));
+    case "build": case "green": return workLike();
+    case "land": return pick.tier1 ? Math.max(tipOf(pick.lock), tipOf(pick.work)) : workLike();
+    case "fix": return Math.max(tipOf(pick.lock), tipOf(pick.work));
+    case "review": case "architect": case "resync": case "unblock": case "landing-slot": return tipOf(pick.lock);
+    default: return Number.POSITIVE_INFINITY;
+  }
+}
+
+/**
+ * D-401: the session name for a claim. A bare model name reuses the name this clone recorded for that exact model
+ * only when that session holds an unfinished claim (claims: [{ id, movedAt }], queue order) and every one of them has
+ * been quiet at least RESUME_QUIET_MS; `--new-session`, a tagged name, no record or a recent move mint as before.
+ * -> { name, resumed: false } | { name, resumed: true, task, quietMin }
+ */
+export function resumeDecision({ requested, newSession = false, records = {}, claims = [], tag, now }) {
+  const model = sanitizeName(requested);
+  const fresh = { name: sessionName(requested, tag), resumed: false };
+  if (newSession || model.includes(" · ")) return fresh;
+  const rec = records?.[model];
+  if (!rec || rec.model !== model || !claims.length) return fresh;
+  const movedAt = Math.max(...claims.map(c => c.movedAt));
+  if (!(now - movedAt >= RESUME_QUIET_MS)) return fresh;
+  return { name: rec.name, resumed: true, task: claims[0].id, quietMin: Math.floor((now - movedAt) / 60_000) };
+}
+
+/** D-401: resumeDecision over the loaded picker state: what the recorded session holds (heldAllBy) and when each moved. */
+export function chooseSessionName({ requested, newSession = false, records = {}, tag, now, mainSha = null, ...state }) {
+  const model = sanitizeName(requested);
+  const rec = !newSession && !model.includes(" · ") ? records?.[model] ?? null : null;
+  const claims = rec
+    ? heldAllBy({ ...state, claimant: rec.name, mainSha, now }).map(pick => ({ id: pick.task?.id ?? slugOf(pick.lock), movedAt: claimMovedAt(pick, state.branches, rec.name) }))
+    : [];
+  return resumeDecision({ requested, newSession, records, claims, tag, now });
 }
 /** A refused marker push: lost to another agent ("race"), or anything else ("error", which must stop the run). */
 export function classifyPushError(stderr) {
@@ -880,7 +968,7 @@ export function decisionsSince(register, syncedTo) {
 }
 
 /** D-085: the one thing the next agent should do (D-083). */
-function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), prFacts = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null, only = null }) {
+function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), prFacts = new Map(), prBehind = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null, only = null }) {
   // PICKER-claim-task (D-353 (2)): `--task <id>` restricts the pick to that one task; anything it cannot be handed is refused.
   const target = only ? tasks.find(t => t.id === only) ?? null : null;
   if (only && !target) return { kind: "ineligible", task: null, id: only, reason: `no task ${only} in docs/plans/assignments.json` };
@@ -1185,6 +1273,20 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
         continue;
       }
       return { kind: "build", task: v.task, ciRunning: mainCi.state === "running", parked: why };
+    }
+    // D-407 (4) (owner, Nov 26: no WAIT while tasks are pending): with nothing left to build, most unfinished rows are
+    // already built ahead as drafts, so keep a quiet one current, in queue order: merge main and make its required CI
+    // green on its own branch. Only rows the stages above withhold qualify (a dependency not done, an owner row or a
+    // standing block); nothing lands from here and no block, owner call or out-of-sync row (D-202) is touched.
+    const behindOf = v => { const n = prBehind.get(v.work); return Number.isSafeInteger(n) && n >= 0 ? n : null; };
+    const withheld = v => unmetOf(v).length > 0 || v.task.status === "owner" || v.blockWaitingForEvidence;
+    for (const v of view) {
+      if ((only && v.task.id !== only) || v.done || !v.pr || !v.info || !withheld(v) || avoid.has(v.task.id) || staleOf(v) || !quiet(workAt(v))) continue;
+      const behind = behindOf(v);
+      const red = v.ci === "red";
+      if (!red && !(behind !== null && behind >= REFRESH_BEHIND)) continue;
+      const refresh = red ? `its draft's required CI is red${behind ? ` and it is ${behind} commits behind main` : ""}` : `its draft is ${behind} commits behind main`;
+      return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), refresh };
     }
     return null;
   };
