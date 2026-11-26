@@ -48,12 +48,18 @@ const WORKOS_ISSUER = "https://api.workos.com";
 const CLIENT_ID_PATTERN = /^client_[A-Za-z0-9]+$/;
 const workosJwksByClient = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
-/** The WorkOS AuthenticationException reason (code, or `error` for sso_required), only when it is a plain snake_case word. */
-export function authenticationCodeOf(error: unknown): string | null {
+/** The reasons WorkOS raises AuthenticationException for (@workos-inc/node AuthenticationErrorCode, plus sso_required). */
+export const WORKOS_AUTHENTICATION_REASONS = [
+  "email_verification_required", "organization_selection_required", "mfa_enrollment", "mfa_challenge",
+  "mfa_verification", "radar_email_challenge", "radar_sms_challenge", "sso_required",
+] as const;
+
+/** The WorkOS AuthenticationException reason as one of our own constants; never the value the error carried. */
+export function authenticationCodeOf(error: unknown): (typeof WORKOS_AUTHENTICATION_REASONS)[number] | null {
   if (!(error instanceof Error) || error.name !== "AuthenticationException") return null;
   const shaped = error as Error & { code?: unknown; rawData?: { code?: unknown; error?: unknown } };
-  const candidate = [shaped.code, shaped.rawData?.code, shaped.rawData?.error].find(value => typeof value === "string");
-  return typeof candidate === "string" && /^[a-z][a-z_]{2,59}$/.test(candidate) ? candidate : null;
+  const candidates = [shaped.code, shaped.rawData?.code, shaped.rawData?.error];
+  return WORKOS_AUTHENTICATION_REASONS.find(reason => candidates.includes(reason)) ?? null;
 }
 
 export function configuredWorkosClientId(): string {

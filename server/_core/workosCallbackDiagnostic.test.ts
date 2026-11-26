@@ -21,6 +21,7 @@ describe("authenticationCodeOf", () => {
     ["any other error type", Object.assign(new Error("x"), { name: "OauthException", code: "invalid_grant" })],
     ["a code that is not a plain snake_case word", authError({ code: "Weird <script>" })],
     ["an email address as the code", authError({ code: "founder@skipwait.me" })],
+    ["a snake_case word WorkOS does not use", authError({ code: "some_other_reason" })],
     ["no code at all", authError({})],
     ["a value that is not an Error", { name: "AuthenticationException", code: "sso_required" }],
   ])("returns nothing for %s", (_name, error) => {
