@@ -38,4 +38,4 @@ tested without spawning a real agent. The CLI wrapper does only I/O.
 
 ## Status
 
-- AGENT-LOOP-supervisor: todo — registered Nov 25 2026 by Claude Code · 43c8 (D-402).
+- AGENT-LOOP-supervisor: done — Claude Code · 43c8 — 2026-11-25 — 4868df59e

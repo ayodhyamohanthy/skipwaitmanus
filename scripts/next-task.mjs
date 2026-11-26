@@ -26,7 +26,7 @@
 import { loadTrustedProvenance, markerReferences, parseProvenanceLog, PROVENANCE_LOG_FORMAT, resolveTaskProvenance, routeIdentity } from "./modelProvenance.mjs";
 import { execFileSync, spawnSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   chooseSessionName, modelOfSession, parseSessionRecords, recordSession,
@@ -110,20 +110,25 @@ const pidAlive = pid => {
   try { process.kill(pid, 0); return true; } catch (error) { return error?.code === "EPERM"; }
 };
 
-/**
- * Takes the per-clone run lock, or returns the record of the run that holds it.
- * Takeover: the recorded process is gone, or the lock is older than RUN_LOCK_TAKEOVER_MS
- * (a reused pid must not block the clone forever).
- */
+/** A live pid always holds the lock; dead pids and old unreadable files may be taken over. */
 export function acquireRunLock(file, nowMs = Date.now()) {
-  const take = () => {
+  const readHeld = () => {
     try {
-      const body = readFileSync(file, "utf8");
-      const held = JSON.parse(body);
-      const startedAt = Date.parse(String(held?.startedAt ?? ""));
-      const stale = !pidAlive(Number(held?.pid)) || !Number.isFinite(startedAt) || nowMs - startedAt > RUN_LOCK_TAKEOVER_MS;
-      return stale ? null : held;
-    } catch { return null; } // unreadable or partial lock: treat as stale
+      const body = JSON.parse(readFileSync(file, "utf8"));
+      return { pid: Number(body?.pid), startedAt: Date.parse(String(body?.startedAt ?? "")) };
+    } catch { return null; }
+  };
+  /** null means "take it over"; otherwise the record of the live holder that must be respected. */
+  const verdict = () => {
+    const held = readHeld();
+    if (!held) {
+      // Respect a partial writer until its mtime is old enough to be a crash leftover.
+      let mtimeMs = nowMs;
+      try { mtimeMs = statSync(file).mtimeMs; } catch { return null; }
+      return nowMs - mtimeMs > RUN_LOCK_TAKEOVER_MS ? null : { pid: null, startedAt: new Date(mtimeMs).toISOString() };
+    }
+    if (pidAlive(held.pid)) return { pid: held.pid, startedAt: Number.isFinite(held.startedAt) ? new Date(held.startedAt).toISOString() : null };
+    return null;
   };
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
@@ -131,7 +136,7 @@ export function acquireRunLock(file, nowMs = Date.now()) {
       return { acquired: true };
     } catch (error) {
       if (error?.code !== "EEXIST") throw error;
-      const held = take();
+      const held = verdict();
       if (held) return { acquired: false, held };
       rmSync(file, { force: true });
     }
@@ -1176,7 +1181,7 @@ async function runCommand(args) {
     const avoid = avoidSetOf(args.avoid);
     const provenance = { ...loadTrustedProvenance(tryGit), git: tryGit, routeId: args.provenance };
     // PICKER-claim-task (D-353 (2)): --task restricts the pick to that one task.
-    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, release, now, claimant: who, avoid, register, ...(args.task ? { only: args.task } : {}) });
+    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, release, now, claimant: who, avoid, register, ...(args.task ? { only: args.task } : {}) });
     if (args.provenance) pick.provenanceRoute = args.provenance;
     // D-085: every agent starts from the same picture — the priorities top down, green or not (in summary, D-358).
     const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now, register });
