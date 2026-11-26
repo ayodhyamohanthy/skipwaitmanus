@@ -126,7 +126,7 @@ describe("D-406 emailed link", () => {
     const { container } = render(<GoalSignInPage emailLinkEnabled />);
     expect(screen.getByRole("alert").textContent).toContain("This sign-in link is invalid.");
     expect(screen.getAllByRole("button", { name: "Send a new link" })).toHaveLength(1);
-    expect(screen.queryByRole("button", { name: "Sign in", exact: true })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Sign in$/ })).toBeNull();
     expect(container.querySelectorAll("[data-g-primary]")).toHaveLength(1);
     expect(screen.getByRole("button", { name: referrer ? /Give a referral/ : /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
     expect(replace).toHaveBeenCalledExactlyOnceWith(expect.anything(), "", `/sign-in${search}`);
@@ -179,7 +179,7 @@ describe("D-406 emailed link", () => {
     const replace = vi.spyOn(window.history, "replaceState");
     const calls = stubFetch(() => ({ status: 200, body: {} }));
     render(<GoalSignInPage emailLinkEnabled />);
-    expect(screen.getByRole("button", { name: "Sign in", exact: true })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /^Sign in$/ })).toBeTruthy();
     expect(replace).toHaveBeenCalledExactlyOnceWith(expect.anything(), "", `/sign-in${search}`);
     expect(calls).toEqual([]);
   });
