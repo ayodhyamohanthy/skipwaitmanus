@@ -4,8 +4,8 @@
 // so a mail scanner that opens the link spends nothing. Packet: docs/plans/AUTH-email-link-code.md.
 import { z } from "zod";
 
-/** Off until AUTH-email-link-release turns it on after a live check (D-223). Server and client read this one value. */
-export const EMAIL_SIGN_IN_LINK_ENABLED = false;
+/** AUTH-email-link-release switch (D-223). Server and client read this one value. */
+export const EMAIL_SIGN_IN_LINK_ENABLED = true;
 
 /** Which verify endpoint the link finishes on: "s" seeker email code, "r" referrer work-email code. */
 export type EmailLinkPlane = "s" | "r";
