@@ -15,7 +15,8 @@ import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { PLAN_FAMILY, type PlanFamilyId } from "../shared/planFamily";
 import { REFERRER_PURCHASE_REFUSED_CODE, REFERRER_PURCHASE_REFUSED_ERROR, isReferrerPurchaseRefused } from "../shared/referrerPurchases";
 import { BANDED_REFUSALS, bandedOfferResponseSchema, bandedPlanCheckoutRequestSchema, bandedReferralCheckoutRequestSchema, type BandedReferralCheckoutRequest } from "../shared/subscriptionManagement";
-import { BANDED_NOT_ON_SALE, bandedRuntime, bandedSalesEnabled, startBandedPlanCheckout, startBandedReferralCheckout, type BandedCheckoutDeps, type BandedRefusal } from "./bandedCheckout";
+import { BANDED_NOT_ON_SALE, bandedRuntime, bandedSalesEnabled, startBandedPlanCheckout, startBandedReferralCheckout, type BandedCheckoutDeps, type BandedRefusal, type BandedRuntime } from "./bandedCheckout";
+import { demoTestBillingEnabled, isDemoTestBillingAccount, resolveBillingRuntimeForAccount } from "./demoTestBilling";
 import type { ChargebeeIdentity } from "./chargebeeRoutes";
 
 type Activity = { actorUserId?: number; action: string; outcome: "success" | "failure" | "denied"; resourceType?: string; resourceId?: string | number; metadata?: Record<string, string | number | boolean | null | undefined> };
@@ -65,15 +66,24 @@ export async function beginBandedReferralCheckout(input: {
   customer: Customer;
   urls: ReturnUrls;
   checkout: BandedCheckoutDeps | undefined;
+  /** QA-demo-test-billing (D-393): the reviewer demo seeker on the TEST site. */
+  demo?: boolean;
+  runtime?: BandedRuntime;
 }): Promise<ReferralCheckoutStart> {
   if (!input.checkout) return { ok: false, status: 503, error: notConfigured.error };
-  const started = await startBandedReferralCheckout({ userId: input.userId, request: input.request, customer: input.customer, urls: input.urls, deps: input.checkout });
+  const started = await startBandedReferralCheckout({ userId: input.userId, request: input.request, customer: input.customer, urls: input.urls, deps: input.checkout, demo: input.demo, runtime: input.runtime });
   return started.ok ? { ok: true, started } : { ok: false, status: started.status, code: started.code, error: started.error };
 }
 
 export function registerBandedCheckoutRoutes(app: Express, deps: BandedRouteDeps) {
   const record = (input: Activity) => { void deps.recordActivity?.(input).catch(() => undefined); };
   const onSale = () => (deps.checkout?.salesEnabled ?? bandedSalesEnabled)();
+  // QA-demo-test-billing (D-393): only while the switch is on is identity read
+  // before the sale gate, so the default path still answers 409 before any read.
+  const demoIdentity = async (req: Request) => {
+    if (!demoTestBillingEnabled()) return undefined;
+    return deps.resolveIdentity(req).catch(() => undefined);
+  };
   const urlsFor = (req: Request) => {
     const origin = publicOutboundOrigin(req);
     return { redirectUrl: `${origin}/plans?payment=pending`, cancelUrl: `${origin}/plans?payment=cancelled` };
@@ -83,12 +93,21 @@ export function registerBandedCheckoutRoutes(app: Express, deps: BandedRouteDeps
 
   app.get("/api/chargebee/banded/offer", async (req, res) => {
     res.setHeader("Cache-Control", "private, no-store");
-    if (!onSale()) return res.json(bandedOfferResponseSchema.parse({ onSale: false }));
+    // QA-demo-test-billing (D-393): the demo seeker sees the offer as on sale
+    // even while BANDED_SALES_ENABLED is off for everyone else.
+    const probe = await demoIdentity(req);
+    const demo = probe ? isDemoTestBillingAccount(probe.account) : false;
+    if (!onSale() && !demo) return res.json(bandedOfferResponseSchema.parse({ onSale: false }));
+    const identity = probe ?? await deps.resolveIdentity(req).catch(() => undefined);
     const checkout = deps.checkout;
-    const runtime = checkout ? bandedRuntime(checkout) : null;
+    let runtime: BandedRuntime | null = null;
+    try {
+      runtime = demo ? resolveBillingRuntimeForAccount(identity?.account) : checkout ? bandedRuntime(checkout) : null;
+    } catch {
+      runtime = null;
+    }
     if (!checkout || !runtime) return res.status(503).json(notConfigured);
     try {
-      const identity = await deps.resolveIdentity(req).catch(() => undefined);
       const now = (checkout.now ?? (() => new Date()))();
       const [left, membership] = await Promise.all([checkout.foundingPlacesLeft(runtime.environment, now), identity ? checkout.membership(identity.account.id) : Promise.resolve(null)]);
       return res.json(bandedOfferResponseSchema.parse({
@@ -103,9 +122,11 @@ export function registerBandedCheckoutRoutes(app: Express, deps: BandedRouteDeps
   });
 
   app.post("/api/chargebee/banded/plan-checkout", async (req, res) => {
-    if (!onSale()) return res.status(409).json(notOnSaleBody);
     try {
-      const identity = await deps.resolveIdentity(req);
+      const probe = await demoIdentity(req);
+      const demo = probe ? isDemoTestBillingAccount(probe.account) : false;
+      if (!onSale() && !demo) return res.status(409).json(notOnSaleBody);
+      const identity = probe ?? await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before choosing a plan" });
       const userId = identity.account.id;
       if (isReferrerPurchaseRefused(req.body?.role)) {
@@ -115,7 +136,8 @@ export function registerBandedCheckoutRoutes(app: Express, deps: BandedRouteDeps
       const parsed = bandedPlanCheckoutRequestSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Choose a plan on a supported billing route. Nothing has been charged." });
       if (!deps.checkout || !deps.createSubscriptionIntent) return res.status(503).json(notConfigured);
-      const started = await startBandedPlanCheckout({ userId, request: parsed.data, customer: customerOf(identity), urls: urlsFor(req), deps: deps.checkout });
+      const runtime = demo ? resolveBillingRuntimeForAccount(identity.account) : undefined;
+      const started = await startBandedPlanCheckout({ userId, request: parsed.data, customer: customerOf(identity), urls: urlsFor(req), deps: deps.checkout, demo, runtime });
       if (!started.ok) {
         refused(userId, "plan", started);
         return res.status(started.status).json(refusalBody(started));
@@ -123,7 +145,7 @@ export function registerBandedCheckoutRoutes(app: Express, deps: BandedRouteDeps
       // Written after the page exists, as for every plan checkout; if this write fails the
       // reservation simply expires, and a retry with the same key reopens the same page.
       await deps.createSubscriptionIntent({ hostedPageId: started.checkout.hostedPageId, checkoutIntentId: started.checkoutIntentId, userId, role: "job_seeker", plan: started.price.plan, itemPriceId: started.price.itemPriceId, amount: started.price.amount, currency: started.price.currency });
-      record({ actorUserId: userId, action: "billing.banded_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: started.checkout.hostedPageId, metadata: { kind: "plan", plan: started.price.plan, amount: started.price.amount, currency: started.price.currency, site: started.site } });
+      record({ actorUserId: userId, action: "billing.banded_checkout_started", outcome: "success", resourceType: "subscription_intent", resourceId: started.checkout.hostedPageId, metadata: { kind: "plan", plan: started.price.plan, amount: started.price.amount, currency: started.price.currency, site: started.site, demoTest: demo } });
       return res.json({ checkoutUrl: started.checkout.checkoutUrl, hostedPageId: started.checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] banded plan checkout error", error);
@@ -132,9 +154,11 @@ export function registerBandedCheckoutRoutes(app: Express, deps: BandedRouteDeps
   });
 
   app.post("/api/chargebee/banded/referral-checkout", async (req, res) => {
-    if (!onSale()) return res.status(409).json(notOnSaleBody);
     try {
-      const identity = await deps.resolveIdentity(req);
+      const probe = await demoIdentity(req);
+      const demo = probe ? isDemoTestBillingAccount(probe.account) : false;
+      if (!onSale() && !demo) return res.status(409).json(notOnSaleBody);
+      const identity = probe ?? await deps.resolveIdentity(req);
       if (!identity) return res.status(401).json({ error: "Sign in before buying referral requests" });
       const userId = identity.account.id;
       if (isReferrerPurchaseRefused(req.body?.role)) {
@@ -143,12 +167,13 @@ export function registerBandedCheckoutRoutes(app: Express, deps: BandedRouteDeps
       }
       const parsed = bandedReferralCheckoutRequestSchema.safeParse(req.body);
       if (!parsed.success) return res.status(400).json({ error: "Choose referral levels and whole quantities on a supported billing route. Nothing has been charged." });
-      const started = await beginBandedReferralCheckout({ userId, request: parsed.data, customer: customerOf(identity), urls: urlsFor(req), checkout: deps.checkout });
+      const runtime = demo ? resolveBillingRuntimeForAccount(identity.account) : undefined;
+      const started = await beginBandedReferralCheckout({ userId, request: parsed.data, customer: customerOf(identity), urls: urlsFor(req), checkout: deps.checkout, demo, runtime });
       if (!started.ok) {
         refused(userId, "referral", started);
         return res.status(started.status).json(refusalBody(started));
       }
-      record({ actorUserId: userId, action: "billing.banded_checkout_started", outcome: "success", resourceType: "banded_referral_checkout", resourceId: started.started.checkout.hostedPageId, metadata: { kind: "referral", quantity: started.started.quote.quantity, subtotal: started.started.quote.subtotal, discount: started.started.quote.discount, total: started.started.quote.total, currency: started.started.quote.currency, levels: started.started.quote.lines.map(line => `${line.level}:${line.quantity}`).join(","), site: started.started.site, checkoutIntentId: started.started.checkoutIntentId } });
+      record({ actorUserId: userId, action: "billing.banded_checkout_started", outcome: "success", resourceType: "banded_referral_checkout", resourceId: started.started.checkout.hostedPageId, metadata: { kind: "referral", quantity: started.started.quote.quantity, subtotal: started.started.quote.subtotal, discount: started.started.quote.discount, total: started.started.quote.total, currency: started.started.quote.currency, levels: started.started.quote.lines.map(line => `${line.level}:${line.quantity}`).join(","), site: started.started.site, checkoutIntentId: started.started.checkoutIntentId, demoTest: demo } });
       return res.json({ checkoutUrl: started.started.checkout.checkoutUrl, hostedPageId: started.started.checkout.hostedPageId });
     } catch (error) {
       console.error("[Chargebee] banded referral checkout error", error);

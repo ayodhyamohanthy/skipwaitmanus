@@ -3,6 +3,8 @@ import { ASK_RECONFIRM_ENABLED, askReconfirmBodySchema, askReconfirmParamsSchema
 import { ASK_RECONFIRM_ERROR } from "../shared/moneyCopy";
 import { AskReconfirmError, countWaitingPoolRequestsForReferrer as defaultCountWaitingPoolRequestsForReferrer, reconfirmWaitingAsk } from "./db";
 import { POOL_NUDGES_ENABLED } from "../shared/poolNudges";
+import { REQUEST_INBOX_LINK_ENABLED, publicScreenName, screenNameInputSchema, screenNameRefusalFor, type PublicReferralLinkPayload } from "../shared/requestInboxLink";
+import { ScreenNameRefusedError, screenNameRefusalStatus } from "./referrerScreenName";
 import { publicOutboundOrigin } from "./_core/authPostGuard";
 import { dispatchReferralReviewDeliveries } from "./referralReviewDispatch";
 import { buildClaimedAskDetailView, claimResponseView } from "./referrerAskView";
@@ -48,6 +50,7 @@ import { landedJourneyRequestSchema, type LandedJourneyRequest, type LandedJourn
 import { isOpportunityExpired, myOpportunitiesResponseSchema, opportunityAskSelectionSchema, OPPORTUNITY_TTL_MS } from "../shared/companyOpportunities";
 import type { AskInviteMine } from "../shared/askInvites";
 import { registerAdminActivityRoutes, type ActivityListInput, type AdminActivityDeps } from "./adminActivity";
+import { registerAdminSupportRoutes } from "./adminSupportRoutes";
 
 type Account = { id: number; openId: string; role?: "user" | "admin" };
 type EmailAddress = { emailAddress: string; verification?: { status?: string } | null };
@@ -89,9 +92,13 @@ export type PrivateReferralRouteDeps = {
   getCompanyDirectoryEntry?: (slug: string) => Promise<{ name: string; domains: string[] } | undefined>;
   createCompanyReferralRequest: (userId: number, input: { expectedCost?: AcceptedAskCost; selectedCompany?: { name: string; domains: string[] }; targetRoleUrl?: string; personalPitch: string; attachmentIds: number[]; idempotencyKey: string; confirmedCompanyDomain?: string; compensation?: string; fastTrackCode?: string; fastTrackCompanySlug?: string; fastTrackAlias?: string; jobFunction?: JobFunction; submittedTargetRoleUrl?: string; opportunityId?: number; catalogJobId?: number; workItemIds?: number[]; expectedCoverage?: "waiting_for_company_coverage" }) => Promise<{ requestId: number; companyDomain: string; jobFunction?: string | null; notifiedEmployees: number; coverageStatus?: "covered" | "waiting_for_company_coverage"; remainingTokens?: number; coverageInviteCode?: string; creditSummary?: unknown; slots?: OpenAskSlots; fastTrack?: boolean; fromPost?: boolean; firstLook?: boolean; chargedCost?: AcceptedAskCost; replayed?: boolean }>;
   getOrCreateReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean }>;
-  getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
-  getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<{ companyDomain: string; isActive: true } | undefined>;
+  getPublicReferrerFastTrackLink?: (linkCode: string) => Promise<PublicReferralLinkPayload | undefined>;
+  getPublicReferrerFastTrackVanityLink?: (companySlug: string, vanityAlias: string) => Promise<PublicReferralLinkPayload | undefined>;
   deactivateReferrerFastTrackLink?: (userId: number) => Promise<{ deactivated: boolean }>;
+  /** D-089.server (§4.3): set the link's screen name; refusals throw ScreenNameRefusedError. */
+  setReferrerScreenName?: (userId: number, input: { screenName: string }) => Promise<{ vanityAlias: string; renamed: boolean }>;
+  /** D-089.server (§4.5): turn a paused link back on with a fresh code and the same alias. */
+  resumeReferrerFastTrackLink?: (userId: number) => Promise<{ linkCode: string; vanityAlias: string; companyDomain: string; isActive: boolean; resumed: boolean }>;
   openCompanyReferralAvailability?: (userId: number, input: { slotCount?: number }) => Promise<{ companyDomain: string; requestedSlotCount: number; allocatedRequestIds: number[]; allocatedCount: number }>;
   getSlotOpenedAlertRecipients?: (referrerId: number, requestIds: number[]) => Promise<Array<{ requestId: number; jobSeekerId: number; email: string | null; companyDomain: string }>>;
   sendSlotOpenedAlertEmail?: (input: { to: string; companyDomain: string; requestsUrl: string }) => Promise<{ sent: boolean; reason: string }>;
@@ -1054,8 +1061,46 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       const vanityUrl = `${origin}/refer/${encodeURIComponent(link.companyDomain.split(".")[0] || link.companyDomain)}/${encodeURIComponent(link.vanityAlias)}`;
       record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_accessed", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { active: link.isActive } });
       res.set("Cache-Control", "private, no-store");
-      res.json({ link: { ...link, url, vanityUrl, suggestedBioCopy: `Private referral requests at ${link.companyDomain} via skipwait.me.` } });
+      // D-089.server (§4.6): the screen name the referrer chose, only while the switch is on.
+      const screenName = REQUEST_INBOX_LINK_ENABLED ? { screenName: publicScreenName(link.vanityAlias) } : {};
+      res.json({ link: { ...link, url, vanityUrl, suggestedBioCopy: `Private referral requests at ${link.companyDomain} via skipwait.me.`, ...screenName } });
     } catch (error) { res.status(/verify your company email/i.test(error instanceof Error ? error.message : "") ? 403 : 500).json({ error: error instanceof Error ? error.message : "We could not create your link" }); }
+  });
+  // D-089.server (§4.3, D-398): choose the link's screen name. 404 while REQUEST_INBOX_LINK_ENABLED is off.
+  app.put("/api/referrer-fast-track/me/screen-name", async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
+    if (!REQUEST_INBOX_LINK_ENABLED) return res.status(404).json({ error: "Not found" });
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in with your verified company email to name your link" });
+      if (!deps.setReferrerScreenName) return res.status(503).json({ error: "Your link is unavailable right now" });
+      const parsed = screenNameInputSchema.safeParse(req.body);
+      if (!parsed.success) return res.status(422).json(screenNameRefusalFor("screen_name_invalid"));
+      const result = await deps.setReferrerScreenName(identity.account.id, parsed.data);
+      // §7: no name or alias in the metadata.
+      record({ actorUserId: identity.account.id, action: "referrer_fast_track.screen_name_set", outcome: "success", resourceType: "referrer_fast_track", metadata: { renamed: result.renamed } });
+      res.json({ screenName: publicScreenName(result.vanityAlias), renamed: result.renamed });
+    } catch (error) {
+      if (error instanceof ScreenNameRefusedError) return res.status(screenNameRefusalStatus(error.code)).json(screenNameRefusalFor(error.code));
+      if (/verify your company email/i.test(error instanceof Error ? error.message : "")) return res.status(403).json({ error: "Verify your company email before naming your link" });
+      res.status(500).json({ error: "We could not save your screen name" });
+    }
+  });
+  // D-089.server (§4.5): turn a paused link back on. 404 while REQUEST_INBOX_LINK_ENABLED is off.
+  app.post("/api/referrer-fast-track/me/resume", async (req, res) => {
+    res.set("Cache-Control", "private, no-store");
+    if (!REQUEST_INBOX_LINK_ENABLED) return res.status(404).json({ error: "Not found" });
+    try {
+      const identity = await deps.resolveIdentity(req);
+      if (!identity) return res.status(401).json({ error: "Sign in to turn your link back on" });
+      if (!deps.resumeReferrerFastTrackLink) return res.status(503).json({ error: "Your link is unavailable right now" });
+      const result = await deps.resumeReferrerFastTrackLink(identity.account.id);
+      record({ actorUserId: identity.account.id, action: "referrer_fast_track.link_resumed", outcome: "success", resourceType: "referrer_fast_track", companyDomain: result.companyDomain, metadata: { resumed: result.resumed } });
+      res.json({ resumed: result.resumed, isActive: result.isActive });
+    } catch (error) {
+      if (/verify your company email/i.test(error instanceof Error ? error.message : "")) return res.status(403).json({ error: "Verify your company email before turning your link back on" });
+      res.status(500).json({ error: "We could not turn your link back on" });
+    }
   });
   app.post("/api/referrer-fast-track/me/deactivate", async (req, res) => {
     try {
@@ -1073,7 +1118,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.getPublicReferrerFastTrackLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const link = await deps.getPublicReferrerFastTrackLink(req.params.linkCode);
       if (!link) return res.status(404).json({ error: "This private referral link is no longer active" });
-      record({ action: "referrer_fast_track.link_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true } });
+      record({ action: "referrer_fast_track.link_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true, ...("screenName" in link ? { named: link.screenName !== null } : {}) } });
       res.set("Cache-Control", "no-store");
       res.json({ link });
     } catch { res.status(500).json({ error: "We could not open this private referral link" }); }
@@ -1083,7 +1128,7 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (!deps.getPublicReferrerFastTrackVanityLink) return res.status(503).json({ error: "Your link is unavailable right now" });
       const link = await deps.getPublicReferrerFastTrackVanityLink(req.params.companySlug, req.params.vanityAlias);
       if (!link) return res.status(404).json({ error: "This private referral link is no longer active" });
-      record({ action: "referrer_fast_track.vanity_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true } });
+      record({ action: "referrer_fast_track.vanity_resolved", outcome: "success", resourceType: "referrer_fast_track", companyDomain: link.companyDomain, metadata: { public: true, ...("screenName" in link ? { named: link.screenName !== null } : {}) } });
       res.set("Cache-Control", "no-store");
       res.json({ link });
     } catch { res.status(500).json({ error: "We could not open this private referral link" }); }
@@ -1689,6 +1734,8 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
     } catch { res.status(500).json({ error: "We could not export the referral ledger" }); }
   });
   registerAdminActivityRoutes(app, { resolveIdentity: deps.resolveIdentity, listOperationalActivity: deps.listOperationalActivity, resolveActivityPerson: deps.resolveActivityPerson, listPersonRequestTransitions: deps.listPersonRequestTransitions, record });
+  // ADMIN-support-view (D-393): one person's whole state on one admin page. Read-only and admin-gated.
+  registerAdminSupportRoutes(app, { resolveIdentity: deps.resolveIdentity, record });
   app.get("/api/admin/approval-queue", async (req, res) => {
     try {
       const identity = await deps.resolveIdentity(req);
@@ -1745,7 +1792,11 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       record({ actorUserId: identity.account.id, action: req.body.suspended ? "admin.user_suspended" : "admin.user_unsuspended", outcome: "success", resourceType: "user", resourceId: userId, metadata: { note: typeof note === "string" ? note : null } });
       res.set("Cache-Control", "private, no-store");
       res.json({ user });
-    } catch { res.status(500).json({ error: "We could not update this user account" }); }
+    } catch (error) {
+      // D-400: the founder's account is protected; say so plainly instead of a generic failure.
+      if (error instanceof Error && error.name === "FounderProtectedError") return res.status(403).json({ error: "The founder's account cannot be suspended" });
+      res.status(500).json({ error: "We could not update this user account" });
+    }
   });
   app.get("/api/admin/payments/review", async (req, res) => {
     try {

@@ -4,8 +4,9 @@
 // be tested against a fixture source without a database. Every row here is an
 // aggregate or a timestamp: no names, emails, domains-of-people or request text
 // leave this layer.
-import { and, count, eq, gte, inArray, isNull } from "drizzle-orm";
+import { and, count, eq, gte, inArray, isNull, ne } from "drizzle-orm";
 import { isReferrerExclusionCode } from "../shared/passReasons";
+import { SANDBOX_SEEKER_EMAIL } from "../shared/sandboxRequests";
 import { canonicalPeople, companyDomains, jobs, profiles, referralAvailabilitySlots, referralRequests, referralRequestPasses, referralTransitionEvents, tokenBalances, users } from "../drizzle/schema";
 import type { getDb } from "./db";
 
@@ -30,8 +31,13 @@ export type FlowBaselineSource = {
 export function drizzleFlowBaselineSource(db: Db): FlowBaselineSource {
   return {
     // Statuses, timestamps and company domains only; a seeker's note never enters this query.
-    loadRequests: () => db.select({ id: referralRequests.id, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, createdAt: referralRequests.createdAt, coverageVisibleAt: referralRequests.coverageVisibleAt })
-      .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id)),
+    // D-393 (a): a sandbox request is invisible to the weekly baseline's real totals.
+    loadRequests: async () => {
+      const sandboxSeekerId = (await db.select({ id: users.id }).from(users).where(eq(users.email, SANDBOX_SEEKER_EMAIL)).limit(1))[0]?.id ?? null;
+      const base = db.select({ id: referralRequests.id, companyDomain: jobs.company, status: referralRequests.status, referrerId: referralRequests.referrerId, createdAt: referralRequests.createdAt, coverageVisibleAt: referralRequests.coverageVisibleAt })
+        .from(referralRequests).innerJoin(jobs, eq(referralRequests.jobId, jobs.id));
+      return sandboxSeekerId === null ? base : base.where(ne(referralRequests.jobSeekerId, sandboxSeekerId));
+    },
     // D-038-A/B (§4.2): a lapse writes a pass row so every exclusion applies, but it is not a pass the
     // referrer chose: counting it would credit the referrer with a decision they never made.
     loadPassedRequestIds: async () => (await db.select({ id: referralRequestPasses.referralRequestId, reasonCode: referralRequestPasses.reasonCode }).from(referralRequestPasses))
