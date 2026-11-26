@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 // FOUNDER-LOCKED login rule (owner, Oct 16 2026; AGENTS.md "Login rule", docs/DECISIONS.md D-030, amended by
-// D-049 on Oct 18 2026 with the owner's explicit say-so):
-//   job seeker login = social logins + personal email with a password (no emailed sign-in code);
+// D-049 on Oct 18 and D-406 on Nov 25 2026 with the owner's explicit say-so):
+//   job seeker login = personal email link + code by default, with password, social and passkeys retained;
 //   referrer login = work email OTP verification ONLY (never personal email, social or password).
 // If this file fails, the rule drifted. Do not edit these expectations without the owner's explicit say-so.
 import React from "react";
@@ -58,14 +58,16 @@ describe("login rule: job seeker", () => {
     for (const item of SEEKER_SOCIAL) expect(seekerSocialUrl(item.id, "/explore")).toContain(`provider=${item.id}`);
   });
 
-  // D-049 (owner, Oct 18 2026) replaced the emailed six-digit sign-in code with email + password for seekers.
-  it("the seeker email path is email + password against /api/auth/password/* and never calls /api/auth/workos/email-code/*", async () => {
+  // D-406 keeps D-049's password path one tap away from the default email link + code.
+  it("the seeker password fallback uses /api/auth/password/* and never calls /api/auth/workos/email-code/*", async () => {
     const calls: Array<[string, unknown]> = [];
     vi.stubGlobal("fetch", vi.fn(async (url: string, init: { body: string }) => { calls.push([url, JSON.parse(init.body)]); return { ok: true, status: 200, json: async () => ({ ok: true, step: "signed_in", redirectTo: "/explore" }) }; }));
     const assign = vi.fn();
     vi.stubGlobal("location", { ...window.location, assign, search: "" });
     render(<SignIn />);
     fireEvent.click(screen.getByRole("button", { name: /Continue with email/ }));
+    expect(screen.getByRole("button", { name: "Email me a sign-in link" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Use a password instead" }));
     expect(screen.queryByRole("button", { name: /Send sign-in code/ })).toBeNull();
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " Asha@Gmail.com " } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "correct horse 1" } });
@@ -75,7 +77,7 @@ describe("login rule: job seeker", () => {
     expect(calls.every(([url]) => !url.startsWith("/api/auth/workos/email-code/"))).toBe(true);
     const seekerSource = readFileSync("client/src/components/SeekerSignIn.tsx", "utf8") + readdirSync("client/src/components/seeker-sign-in").map(file => readFileSync(`client/src/components/seeker-sign-in/${file}`, "utf8")).join("\n");
     expect(seekerSource).not.toContain("/api/auth/workos/email-code/");
-    // D-049 / D-078 ruling 2: no six-digit code of any kind for seekers, WorkOS's included.
+    // The retained legacy password implementation never uses a six-digit code, WorkOS's included.
     expect(seekerSource).not.toMatch(/one-time-code|\/api\/auth\/password\/verify-email|Six-digit code/);
   });
 });

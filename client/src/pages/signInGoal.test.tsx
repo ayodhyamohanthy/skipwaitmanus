@@ -3,9 +3,9 @@
 // /reviewer-sign-in (packet docs/plans/D-048-auth.md sections 4, 6, 7 and the
 // November 11 correction). Every case renders the real page module after
 // retirement of its legacy body and surface switch.
-// The login rule (D-030 as amended by D-049/D-057) is
-// re-asserted on the goal path: seekers keep the five social providers plus
-// the six-digit email code, referrers get the work-email code only.
+// The login rule (D-030 as amended by D-049/D-057/D-406) is
+// re-asserted on the goal path: seekers start with email link + code and keep
+// password, five social providers and passkeys; referrers get the work-email code only.
 import React from "react";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -91,14 +91,19 @@ describe("goal /sign-in: the retired route", () => {
   });
 });
 
-describe("goal /sign-in: job seeker (login rule, D-030/D-049, D-095)", () => {
-  it("opens with the goal line and one next step whose only commit signs in with email and password", () => {
+describe("goal /sign-in: job seeker (login rule, D-030/D-049/D-406, D-095)", () => {
+  it("opens with one email-link commit and keeps the password form one tap away", () => {
     stubFetch({ "/api/auth/passkey/availability": { status: 200, body: { enabled: false } } });
     stubLocation();
     const { container } = render(<SignIn />);
     assertGoalPage(container, SIGN_IN_PAGE);
     expect(container.querySelector('[data-skipwait-screen="sign-in"]')).not.toBeNull();
+    expect(primary(container)?.textContent).toBe("Email me a sign-in link");
+    expect(screen.queryByLabelText("Password")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Use a password instead" }));
     expect(primary(container)?.textContent).toBe("Sign in");
+    expect(screen.getByLabelText("Password")).toBeTruthy();
+    assertGoalPage(container, SIGN_IN_PAGE);
     expect(screen.getByRole("button", { name: /Find a referral/ }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByRole("button", { name: /Give a referral/ }).getAttribute("aria-pressed")).toBe("false");
   });
@@ -110,6 +115,7 @@ describe("goal /sign-in: job seeker (login rule, D-030/D-049, D-095)", () => {
     const form = screen.getByTestId("seeker-sign-in");
     expect(form.querySelectorAll<HTMLElement>("input, button")[0]).toBe(screen.getByLabelText("Email address"));
     for (const provider of ["Google", "Microsoft", "GitHub", "LinkedIn", "Slack"]) expect(screen.getByRole("button", { name: `Continue with ${provider}` })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Use a password instead" }));
     expect(document.querySelector("input[type=password]")).not.toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Continue with GitHub" }));
     expect(assign).toHaveBeenCalledWith("/api/auth/workos/sign-in?returnTo=%2Fexplore&provider=github");
@@ -138,6 +144,7 @@ describe("goal /sign-in: job seeker (login rule, D-030/D-049, D-095)", () => {
     });
     const assign = stubLocation();
     const { container } = render(<SignIn />);
+    fireEvent.click(screen.getByRole("button", { name: "Use a password instead" }));
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: " Asha@Example.com " } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "Secret!Pass123" } });
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
@@ -155,6 +162,7 @@ describe("goal /sign-in: job seeker (login rule, D-030/D-049, D-095)", () => {
     });
     stubLocation();
     const { container } = render(<SignIn />);
+    fireEvent.click(screen.getByRole("button", { name: "Use a password instead" }));
     fireEvent.change(screen.getByLabelText("Email address"), { target: { value: "asha@example.com" } });
     fireEvent.change(screen.getByLabelText("Password"), { target: { value: "WrongPassword" } });
     fireEvent.click(screen.getByRole("button", { name: "Sign in" }));

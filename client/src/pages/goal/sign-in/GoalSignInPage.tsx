@@ -7,7 +7,7 @@
 // referrers use the work-email code only (GoalReferrerCodeForm), never personal
 // email, social or passkey. Return targets are the kit page's, unchanged.
 import { Check, ShieldCheck, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { BetaNoticeLine } from "@/components/BetaNotice";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
@@ -17,7 +17,7 @@ import { safeSignInReturnTo } from "@shared/authReturnTo";
 import { cn } from "@/lib/utils";
 import { MONEY_SENTENCE_SHORT } from "@shared/moneyCopy";
 import { PASSWORD_AUTH_COPY, USE_PASSWORD_SIGN_IN_COPY, USE_PASSWORD_SIGN_IN_REASON, USE_WORK_EMAIL_CODE_REASON } from "@shared/passwordAuth";
-import { EMAIL_SIGN_IN_LINK_ENABLED, parseEmailSignInHash, type EmailSignInLink } from "@shared/emailSignIn";
+import { EMAIL_LINK_MARKER, EMAIL_SIGN_IN_LINK_ENABLED, parseEmailSignInHash, type EmailLinkPlane, type EmailSignInLink } from "@shared/emailSignIn";
 import { GoalEmailLinkConfirm } from "./GoalEmailLinkConfirm";
 import { GoalReferrerCodeForm } from "./GoalReferrerCodeForm";
 import { GoalAuthFrame } from "./GoalAuthFrame";
@@ -53,13 +53,28 @@ function searchParam(name: string): string | null {
 }
 
 /** D-406: an emailed sign-in link opens /sign-in with the email and code in the fragment. */
-function emailedLink(enabled: boolean): EmailSignInLink | null {
-  return enabled && typeof window !== "undefined" ? parseEmailSignInHash(window.location.hash) : null;
+type EmailedLinkState = { status: "absent" } | { status: "invalid"; plane: EmailLinkPlane } | { status: "valid"; link: EmailSignInLink };
+
+function emailedLink(enabled: boolean): EmailedLinkState {
+  if (!enabled || typeof window === "undefined") return { status: "absent" };
+  const hash = window.location.hash;
+  const body = hash.startsWith("#") ? hash.slice(1) : hash;
+  if (body !== EMAIL_LINK_MARKER && !body.startsWith(`${EMAIL_LINK_MARKER}&`)) return { status: "absent" };
+  const link = parseEmailSignInHash(hash);
+  if (link) return { status: "valid", link };
+  const params = new URLSearchParams(body.slice(EMAIL_LINK_MARKER.length + 1));
+  return { status: "invalid", plane: params.get("p") === "r" ? "r" : "s" };
 }
 
 export default function GoalSignInPage({ emailLinkEnabled = EMAIL_SIGN_IN_LINK_ENABLED }: { emailLinkEnabled?: boolean } = {}) {
-  const [link, setLink] = useState<EmailSignInLink | null>(() => emailedLink(emailLinkEnabled));
-  const [intent, setIntent] = useState<Intent>(() => (link?.plane === "r" || searchParam("intent") === "referrer" ? "referrer" : "seeker"));
+  const [link, setLink] = useState<EmailedLinkState>(() => emailedLink(emailLinkEnabled));
+  const linkPlane = link.status === "valid" ? link.link.plane : link.status === "invalid" ? link.plane : null;
+  const [intent, setIntent] = useState<Intent>(() => (linkPlane === "r" || searchParam("intent") === "referrer" ? "referrer" : "seeker"));
+  useEffect(() => {
+    if (link.status === "absent") return;
+    // Clear every marked link, including malformed ones, without changing the path or query.
+    try { window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search); } catch { /* best effort */ }
+  }, [link.status]);
   const requestedReturnTo = searchParam("returnTo");
   const referrerReturnTo = safeReturnTo(requestedReturnTo, INTENT_RETURN_TO.referrer);
   const origin = typeof window === "undefined" ? "https://skipwait.me" : window.location.origin;
@@ -107,8 +122,8 @@ export default function GoalSignInPage({ emailLinkEnabled = EMAIL_SIGN_IN_LINK_E
         <GoalNextStep reason={copy.reason}>
           {workEmailRefused ? <p role="status" className="mt-2 text-g-meta text-g-crimson">{PASSWORD_AUTH_COPY.use_work_email_code}</p> : null}
           {passwordElsewhere ? <p role="status" className="mt-2 text-g-meta text-g-crimson">{USE_PASSWORD_SIGN_IN_COPY}</p> : null}
-          {link
-            ? <GoalEmailLinkConfirm link={link} returnTo={link.plane === "r" ? referrerReturnTo : seekerReturnTo} onRestart={() => { setLink(null); setIntent(link.plane === "r" ? "referrer" : "seeker"); }} />
+          {link.status !== "absent"
+            ? <GoalEmailLinkConfirm link={link.status === "valid" ? link.link : null} returnTo={linkPlane === "r" ? referrerReturnTo : seekerReturnTo} onRestart={() => { setLink({ status: "absent" }); if (link.status === "valid") setIntent(link.link.plane === "r" ? "referrer" : "seeker"); }} />
             : intent === "referrer"
               ? <div data-testid="referrer-work-email-otp" className="mt-4"><GoalReferrerCodeForm onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
               : <GoalSeekerForm returnTo={seekerReturnTo} emailLinkEnabled={emailLinkEnabled} />}
