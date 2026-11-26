@@ -424,7 +424,7 @@
       "lane": "live-qa-journeys",
       "branch": "agent/queue/ops-live-qa-journeys-sandbox",
       "status": "todo",
-      "syncedTo": "D-398",
+      "syncedTo": "D-407",
       "dependsOn": [
         "OPS-live-qa-hardening",
         "QA-sandbox-requests",
@@ -8749,7 +8749,7 @@
       "lane": "d178-release",
       "branch": "agent/queue/d178-release",
       "status": "todo",
-      "syncedTo": "D-405",
+      "syncedTo": "D-407",
       "epic": "D-178",
       "owns": [
         "docs/plans/D-178-agent-portal-access.md"
@@ -9472,10 +9472,10 @@
       "tier": 2,
       "lane": "picker-blocked-wait-fallthrough",
       "branch": "agent/queue/picker-blocked-wait-fallthrough-build-902e",
-      "status": "todo",
-      "syncedTo": "D-406",
+      "status": "done",
+      "syncedTo": "D-407",
       "dependsOn": [],
-      "note": "Implementation complete on branch, GPT-6.1 Sol · 4e55, 2026-11-26; registry stays todo for primary PR handling. Added 14 production-default characterizations and one CLI preview at 0c14c9be8/main c6c63a627; no source defect demonstrated or source change. Five suites: 225 passed/1 existing core timeout; isolated core retry 183/183 passed, so every requested suite has a current pass. pnpm check, assignment validation and diff check pass. PR #1661 registration/#1663 status-only merge/#1671 requeue observations retain a qualified diagnosis. D-406 checked. Commit/push, protected PR and required CI pending; no landed/deployed claim.",
+      "note": "Implementation complete on branch; final protected CI/PR pending. GPT-6.1 Sol · 4e55, 2026-11-26: published a7043ffa8 integrated with main d9c69998f in the pending automatic merge. Serial six-suite run passed 235/235 in 46.37s; pnpm check passed. D-407 quiet withheld-draft refresh fallback preserves these running-CI/no-behind characterizations; no task source repair demonstrated or added. Earlier five-suite run had 225 passes/1 core timeout, followed by 183/183 core retry; distinct from latest integrated pass. PR #1661/#1663/#1671 diagnosis remains qualified. Done in this PR only; merge commit/push and required CI pending, no landed/deployed claim.",
       "epic": "D-212",
       "owns": [
         "scripts/nextTaskCore.mjs",
@@ -9484,6 +9484,27 @@
         "docs/plans/PICKER-blocked-wait-fallthrough.md",
         "docs/plans/assignments.json"
       ]
+    },
+    {
+      "id": "PICKER-refresh-drafts",
+      "title": "With nothing left to build, the picker hands out keeping a quiet built-ahead draft current (merge main, make CI green, never land) instead of WAIT (D-407 (4))",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-refresh-drafts.md",
+      "tier": 2,
+      "lane": "picker-refresh-drafts",
+      "branch": "agent/queue/picker-refresh-drafts",
+      "status": "todo",
+      "syncedTo": "D-407",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskRefreshDrafts.test.ts",
+        "docs/plans/PICKER-refresh-drafts.md"
+      ],
+      "note": "Owner, Nov 26: agents must not get WAIT while tasks are pending. Picker-only; no landing, block, review, red-main or owner rule is relaxed.",
+      "epic": "D-212"
     },
     {
       "id": "SYNC-auto-pull",
@@ -9671,7 +9692,7 @@
       "lane": "group-provider",
       "branch": "agent/queue/group-provider",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-contracts"
       ],
@@ -9715,7 +9736,7 @@
       "lane": "group-schema",
       "branch": "agent/queue/group-schema",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-migration"
       ],
