@@ -529,7 +529,13 @@ describe("dependsOn holds a landing, not only a build (D-134)", () => {
     const red = pick(tasks, { branches: [quietB], prs: [prB], prCi: [["agent/queue/b", "red"]], claimant: "Kimi · s2" });
     expect(red).toMatchObject({ kind: "build", task: { id: "A" } });
     const writingA: [string, Branch] = ["agent/queue/a", claimBy("Mistral · s5", "A", 0.5)];
-    const none = pick(tasks, { branches: [writingA, quietB], prs: [prB], prCi: [["agent/queue/b", "red"]], claimant: "Kimi · s2" });
+    // D-407 (4) amends D-134 here: with nothing else free, a QUIET withheld draft whose CI is red is handed out to be
+    // kept current (never landed); its normal stages stay withheld until A is done.
+    expect(pick(tasks, { branches: [writingA, quietB], prs: [prB], prCi: [["agent/queue/b", "red"]], claimant: "Kimi · s2" }))
+      .toMatchObject({ kind: "takeover", task: { id: "B" }, refresh: "its draft's required CI is red" });
+    // While B's own holder is active, B is still theirs and nothing is handed out.
+    const activeB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 0.5)];
+    const none = pick(tasks, { branches: [writingA, activeB], prs: [prB], prCi: [["agent/queue/b", "red"]], claimant: "Kimi · s2" });
     expect(none).toMatchObject({ kind: "none" });
     expect(none.kind === "none" && none.skipped.find(x => x.id === "B")?.reason).toBe("waits for A");
   });
