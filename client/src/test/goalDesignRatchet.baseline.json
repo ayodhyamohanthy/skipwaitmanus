@@ -220,19 +220,7 @@
       "decision": "D-332"
     },
     {
-      "file": "client/src/pages/AdminPrivacyRequests.tsx",
-      "kitImport": false,
-      "surfaceSwitch": true,
-      "decision": "D-332"
-    },
-    {
       "file": "client/src/pages/AdminTokenRecovery.tsx",
-      "kitImport": false,
-      "surfaceSwitch": true,
-      "decision": "D-332"
-    },
-    {
-      "file": "client/src/pages/AdminUsers.tsx",
       "kitImport": false,
       "surfaceSwitch": true,
       "decision": "D-332"
