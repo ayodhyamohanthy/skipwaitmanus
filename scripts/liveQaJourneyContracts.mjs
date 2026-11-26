@@ -3,6 +3,32 @@ import { z } from "zod";
 import { ACCOUNTS } from "./live-qa-signed-in.mjs";
 
 export const DEMO = Object.freeze({ seeker: ACCOUNTS.seeker.email, referrer: ACCOUNTS.referrer.email });
+export const SANDBOX_COMPANY = Object.freeze({
+  slug: "wipro", domain: "wipro.com", jobUrl: "https://careers.wipro.com/job/Software-Engineer/213488-en_US",
+});
+const positiveId = z.number().int().positive();
+const successReply = body => z.object({ status: z.literal(200), body });
+const directoryProjection = z.object({ company: z.object({
+  slug: z.literal(SANDBOX_COMPANY.slug), name: z.literal("Wipro"),
+  domains: z.array(z.string().min(1)).refine(domains => domains.includes(SANDBOX_COMPANY.domain)),
+}) });
+const uploadProjection = z.object({ status: z.literal(201), body: z.object({
+  id: positiveId, fileName: z.literal("qa-demo-resume.png"), mimeType: z.literal("image/png"),
+  fileSize: z.number().int().positive(), url: z.string(),
+}) }).refine(reply => reply.body.url === `/api/documents/${reply.body.id}`);
+const createdProjection = z.object({ status: z.union([z.literal(200), z.literal(201)]), body: z.object({
+  requestId: positiveId, companyDomain: z.literal(SANDBOX_COMPANY.domain), coverageStatus: z.literal("covered"),
+}) });
+const claimProjection = successReply(z.object({
+  requestId: positiveId, claimed: z.literal(true), companyDomain: z.literal(SANDBOX_COMPANY.domain),
+  revision: z.number().int().nonnegative(), replayed: z.boolean(),
+}));
+const transitionProjections = Object.freeze({
+  accepted: successReply(z.object({ status: z.literal("approved") })),
+  passed: successReply(z.object({ status: z.literal("passed"), declineReason: z.literal("cannot_support") })),
+  steppedBack: successReply(z.object({ steppedBack: z.literal(true), reason: z.literal("stepped_back") })),
+  withdrawn: successReply(z.object({ withdrawn: z.literal(true) })),
+});
 const object = value => value !== null && typeof value === "object" && !Array.isArray(value);
 const nonempty = value => typeof value === "string" && value.trim().length > 0;
 const count = z.number().int().min(0).max(3);
@@ -23,6 +49,38 @@ const moneyExpectation = z.object({ spend: z.boolean(), refund: z.boolean(), wal
 const lockedAttachment = z.strictObject({
   mimeType: z.string().nullish(), fileSize: z.number().int().nonnegative().nullish(), availability: z.literal("after_claim"),
 });
+
+/** Only the confirmed directory company may receive sandbox requests. */
+export function directoryCompany(body) {
+  const parsed = directoryProjection.safeParse(body);
+  return parsed.success ? parsed.data.company : null;
+}
+
+/** Take an upload id only after its metadata and exact private URL validate. */
+export function uploadedAttachment(reply) {
+  const parsed = uploadProjection.safeParse(reply);
+  return parsed.success ? parsed.data.body.id : null;
+}
+
+/** Both a fresh create and an idempotent replay must prove covered routing. */
+export function createdRequest(reply) {
+  const parsed = createdProjection.safeParse(reply);
+  return parsed.success ? parsed.data.body : null;
+}
+
+/** The public claim has no seeker id; its validated request id must match. */
+export function claimProblems(reply, requestId) {
+  const parsed = claimProjection.safeParse(reply);
+  const expected = positiveId.safeParse(requestId);
+  return parsed.success && expected.success && parsed.data.body.requestId === expected.data
+    ? [] : ["the claim response is missing, malformed or for another request"];
+}
+
+/** Check actual transition outcomes without echoing received bodies or values. */
+export function transitionProblems(reply, kind) {
+  if (typeof kind !== "string" || !Object.hasOwn(transitionProjections, kind)) return ["unknown transition kind"];
+  return transitionProjections[kind].safeParse(reply).success ? [] : ["the transition response is missing or malformed"];
+}
 
 /** Fail closed without copying an unexpected received identity into output. */
 export function identityProblem(role, email) {

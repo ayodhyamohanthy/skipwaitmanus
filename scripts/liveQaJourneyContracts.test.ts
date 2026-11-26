@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  DEMO, freeWallet, identityProblem, ledgerEntries, ledgerFor, moneyProblems,
-  privacyProblems, revealProblems, trpcJson, walletTotal,
+  DEMO, SANDBOX_COMPANY, claimProblems, createdRequest, directoryCompany, freeWallet,
+  identityProblem, ledgerEntries, ledgerFor, moneyProblems, privacyProblems, revealProblems,
+  transitionProblems, trpcJson, uploadedAttachment, walletTotal,
 } from "./liveQaJourneyContracts.mjs";
 
 interface LedgerRow {
@@ -181,6 +182,75 @@ describe("privacy and accepted-file proof", () => {
 
   it.each([[], null, {}, [null], ["file"], [{ ...open, fileName: " " }], [{ ...open, url: null }], [{ ...open, url: " " }]].map(attachments => [attachments] as const))("rejects absent or malformed accepted files %j", attachments => {
     expect(revealProblems({ request: { candidateName: "Demo seeker", attachments } })).not.toEqual([]);
+  });
+});
+
+describe("sandbox mutation response projections", () => {
+  const company = { slug: "wipro", name: "Wipro", domains: ["wipro.com"] };
+  const upload = { ...open, mimeType: "image/png", fileSize: 70 };
+  const created = { requestId: 71, companyDomain: "wipro.com", coverageStatus: "covered" };
+  const claim = { requestId: 71, claimed: true, companyDomain: "wipro.com", revision: 0, replayed: false };
+  const transitions = [
+    ["accepted", { status: "approved" }], ["passed", { status: "passed", declineReason: "cannot_support" }],
+    ["steppedBack", { steppedBack: true, reason: "stepped_back" }], ["withdrawn", { withdrawn: true }],
+  ] as const;
+
+  it("rejects absent, malformed or mismatched directory companies", () => {
+    for (const body of [null, [], {}, company, { company: null }, { company: [] },
+      ...[{ slug: "other" }, { name: "Other" }, { domains: [] }, { domains: ["other.com"] }, { domains: "wipro.com" }, { domains: [1, "wipro.com"] }]
+        .map(overrides => ({ company: { ...company, ...overrides } }))]) expect(directoryCompany(body)).toBeNull();
+  });
+
+  it("returns only validated directory fields and the confirmed public posting", () => {
+    expect(SANDBOX_COMPANY).toEqual({ slug: "wipro", domain: "wipro.com", jobUrl: "https://careers.wipro.com/job/Software-Engineer/213488-en_US" });
+    expect(directoryCompany({ company: { ...company, unused: true }, unused: true })).toEqual(company);
+  });
+
+  it("rejects invalid upload metadata, ids, private paths and non-201 replies", () => {
+    for (const body of [null, [], {}, { attachment: upload },
+      ...[{ id: 0 }, { id: 1.5 }, { id: "501" }, { fileName: "other.png" }, { mimeType: "application/pdf" },
+        { fileSize: 0 }, { fileSize: 0.5 }, { fileSize: "70" }, { url: "/api/documents/502" },
+        { url: "https://example.invalid/resume.png" }, { url: "/api/documents/501?token=private" }].map(overrides => ({ ...upload, ...overrides }))]) {
+      expect(uploadedAttachment({ status: 201, body })).toBeNull();
+    }
+    for (const reply of [null, {}, { status: 201 }, ...[200, 202, 400, "201"].map(status => ({ status, body: upload }))]) expect(uploadedAttachment(reply)).toBeNull();
+    expect(uploadedAttachment({ status: 201, body: { ...upload, unused: true } })).toBe(501);
+  });
+
+  it("rejects invalid creation ids, company, coverage and statuses", () => {
+    for (const body of [null, [], {}, { request: created },
+      ...[{ requestId: 0 }, { requestId: 1.5 }, { requestId: "71" }, { companyDomain: "other.com" },
+        { coverageStatus: "waiting" }, { coverageStatus: null }].map(overrides => ({ ...created, ...overrides }))]) expect(createdRequest({ status: 201, body })).toBeNull();
+    for (const reply of [null, {}, { status: 201 }, ...[202, 400, "201"].map(status => ({ status, body: created }))]) expect(createdRequest(reply)).toBeNull();
+    for (const status of [200, 201]) expect(createdRequest({ status, body: { ...created, remainingTokens: 2 } })).toEqual(created);
+  });
+
+  it("rejects malformed claims, wrong ids and non-200 replies without requiring a seeker id", () => {
+    for (const body of [null, [], {}, ...[{ requestId: 72 }, { requestId: 0 }, { requestId: "71" }, { claimed: false },
+      { companyDomain: "other.com" }, { revision: -1 }, { revision: 0.5 }, { revision: "0" }, { revision: undefined },
+      { replayed: "false" }, { replayed: undefined }].map(overrides => ({ ...claim, ...overrides }))]) expect(claimProblems({ status: 200, body }, 71)).not.toEqual([]);
+    for (const reply of [null, {}, { status: 200 }, ...[201, 400, "200"].map(status => ({ status, body: claim }))]) expect(claimProblems(reply, 71)).not.toEqual([]);
+    for (const id of [0, -1, 1.5, "71", null]) expect(claimProblems({ status: 200, body: claim }, id)).not.toEqual([]);
+    for (const replayed of [false, true]) expect(claimProblems({ status: 200, body: { ...claim, replayed } }, 71)).toEqual([]);
+  });
+
+  it.each(transitions)("validates the actual %s contract with unconsumed extras", (kind, body) => {
+    expect(transitionProblems({ status: 200, body: { ...body, requestId: 71, creditSummary: {} } }, kind)).toEqual([]);
+    for (const reply of [null, {}, { status: 200 }, ...[201, 400, "200"].map(status => ({ status, body }))]) expect(transitionProblems(reply, kind)).not.toEqual([]);
+    for (const malformed of [null, [], {}, "ok", { status: "accepted" }, { withdrawn: false }]) expect(transitionProblems({ status: 200, body: malformed }, kind)).not.toEqual([]);
+    for (const [other, otherBody] of transitions) if (other !== kind) expect(transitionProblems({ status: 200, body: otherBody }, kind)).not.toEqual([]);
+  });
+
+  it("rejects missing reasons and unsupported kinds without returning received data", () => {
+    for (const [kind, body] of [["passed", { status: "passed" }], ["passed", { status: "passed", declineReason: "other" }],
+      ["steppedBack", { steppedBack: true }], ["steppedBack", { steppedBack: true, reason: "other" }]] as const) expect(transitionProblems({ status: 200, body }, kind)).not.toEqual([]);
+    const privateValue = "private-person@example.invalid";
+    for (const kind of ["unknown", "toString", "constructor", "__proto__", null, {}, privateValue]) {
+      const problems = transitionProblems({ status: 200, body: { withdrawn: true, email: privateValue } }, kind);
+      expect(problems).not.toEqual([]);
+      expect(JSON.stringify(problems)).not.toContain(privateValue);
+    }
+    expect(JSON.stringify(claimProblems({ status: 200, body: { ...claim, companyDomain: privateValue } }, 71))).not.toContain(privateValue);
   });
 });
 
