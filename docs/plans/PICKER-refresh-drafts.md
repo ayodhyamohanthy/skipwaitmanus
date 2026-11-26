@@ -21,4 +21,4 @@ This is separate from `PICKER-blocked-wait-fallthrough` (an early-return path wh
 
 ## Status
 
-- PICKER-refresh-drafts: todo — registered by Claude Code · 530c, Nov 26 2026 (D-407 (4)).
+- PICKER-refresh-drafts: in progress — Claude Code · 530c — 2026-11-26 — branch agent/queue/picker-refresh-drafts. Built red-first: `scripts/nextTaskRefreshDrafts.test.ts` (9 cases); all 41 picker suites (665 tests) pass; a live preview on main `c6c63a627` that returned WAIT now hands out TAKE OVER LAUNCH-live-qa to refresh its draft (168 behind). `nextTask.test.ts` D-134 case updated for the D-407 (4) amendment (active holder still gets nothing).
