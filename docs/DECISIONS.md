@@ -1297,3 +1297,37 @@ This execution receipt records implementation routing within existing authority,
 owner decision, price, plan content, login, legal text, refund promise or live switch. Required CI and
 protected auto-merge apply (D-370). Registration is not a shipped Group Plan; no runtime code, SQL,
 provider call, payment or recipient email is performed by this change.
+
+### November 26 GROUP-provider unblock receipt
+
+Execution ruling under D-407, D-373 (6), D-315 and D-370, not a new owner instruction. UNBLOCK
+`GROUP-provider`, exact session `GPT-6.1 Sol · f38e`, claim `1eb62e1d9aa212c45a829b548c38e15c26b9ad48`
+on `agent/architect/group-provider`, checked origin/main `d9c69998fed07f1fa619726ba545c2b2e337ba17`
+and its completed green [CI run](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/45743527998).
+D-407 clears only the unfinished-`GROUP-contracts` blocked-report reason; actual dependency completion
+still holds landing under D-315.
+
+[PR #1629](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1629), original builder
+`GPT-6.1 Sol · 9220`, merged as `8362b0b156fee0f02eaa979aee7be23009747c96` from
+`e83de90021bc83b9494f9129a87ffbf957583b52`. Its body records a docs ownership checkpoint with
+implementation/testing pending. Main has none of `shared/groupPlan.ts`, `shared/groupPlan.test.ts`,
+`server/groupPlanFlags.ts`, `server/groupPlanFlags.test.ts` or `docs/plans/GROUP-schema-contract.md`.
+D-373 (6)'s fresh-carrier correction therefore changes only the contracts row's branch to
+`agent/queue/group-contracts-implementation`: otherwise the picker counts merged #1629 as a completed
+dependency. Both old and proposed origin refs and open carrier PRs were absent at inspection; no branch
+is created or claimed here. Keep the same id, FIFO position, tier, lane, todo status, owns, dependencies
+and §6.1 scope; strict contracts/transitions, disabled flags/config passthrough, DDL blueprint and focused
+validation remain. D-401–D-407 were read: session/relay and MCP rulings change no contracts scope;
+D-406's existing sign-in/identity constraints remain, and D-407 changes build-ahead routing only.
+The contracts row is checked through D-407.
+
+[Draft #1631](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1631) remains open on
+`agent/queue/group-provider` at `88bdc54e7eb3069a79c30e32d51f05fded1ee4ba`, with provider source,
+tests and documentation built ahead against a locally declared input pending the shared contract.
+Its reported 22/22 mocked provider tests and typecheck are prior evidence, not rerun by this docs ruling;
+it reports no TEST/live I/O or deployment. Remaining work is actual §6.1 completion, adapter alignment
+with that output, the one-time checkout/event-type documentation and TEST-evidence gaps, and fresh
+focused/integrated validation under §6.2/§7. Preserve the draft and dependency edge; neither row is done.
+`GROUP-terms` §8 stays unanswered; no commercial default, real payment, recipient email, production
+readiness or activation is asserted. Protected auto-merge with green required CI (D-370), dependency
+completion (D-315), and separate commercial/QA/release gates all remain.

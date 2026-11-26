@@ -9662,9 +9662,9 @@
       "packet": "docs/plans/GROUP-plan-split.md",
       "tier": 1,
       "lane": "group-contracts",
-      "branch": "agent/queue/group-contracts",
+      "branch": "agent/queue/group-contracts-implementation",
       "status": "todo",
-      "syncedTo": "D-400",
+      "syncedTo": "D-407",
       "dependsOn": [
         "GROUP-recipients"
       ],
@@ -9680,7 +9680,7 @@
         "docs/plans/GROUP-schema-contract.md",
         "docs/plans/GROUP-plan-split.md"
       ],
-      "note": "Packet sections 4 and 6.1. Contract and DDL blueprint before SQL/business logic; consume the existing recipients parser. Declare GROUP_PLAN_ENABLED, GROUP_DELEGATED_SEND_ENABLED and VITE_GROUP_PLAN false, exact-true server readers and passthrough tests. No queries, identity linking, price policy, email or enabled route. Red-first strict/round-trip/state/privacy/config contracts."
+      "note": "Packet sections 4 and 6.1. Contract and DDL blueprint before SQL/business logic; consume the existing recipients parser. Declare GROUP_PLAN_ENABLED, GROUP_DELEGATED_SEND_ENABLED and VITE_GROUP_PLAN false, exact-true server readers and passthrough tests. No queries, identity linking, price policy, email or enabled route. Red-first strict/round-trip/state/privacy/config contracts. November 26 D-373 (6)/D-407 receipt: original GPT-6.1 Sol · 9220's #1629 (head e83de9002, merge 8362b0b15) was a docs ownership checkpoint; section 6.1 implementation and focused validation remain absent on main d9c69998f. Fresh carrier avoids false completion from the merged old branch; no new claim here. D-401–D-407 checked: scope unaffected apart from existing D-406 login constraints and build-ahead routing. Same row/FIFO/status/scope/dependencies; see DECISIONS.md's November 26 GROUP-provider unblock receipt."
     },
     {
       "id": "GROUP-provider",
@@ -9702,7 +9702,7 @@
         "docs/qa/group-provider-contract.md",
         "docs/plans/GROUP-plan-split.md"
       ],
-      "note": "Packet section 6.2. Current official source URLs/dates, mock HTTP first: quantities, recurring/one-time components, fixed discounts, paid invoices/terms/refunds, timeouts and idempotency. No new SKU, live write, automated card attempt, copied API assumption or commercial default. TEST credentials remain Actions-only; unsupported composition is explicit, never a fixture-only success claim."
+      "note": "Packet section 6.2. Current official source URLs/dates, mock HTTP first: quantities, recurring/one-time components, fixed discounts, paid invoices/terms/refunds, timeouts and idempotency. No new SKU, live write, automated card attempt, copied API assumption or commercial default. TEST credentials remain Actions-only; unsupported composition is explicit, never a fixture-only success claim. November 26 UNBLOCK GPT-6.1 Sol · f38e under D-407 clears only the unfinished-contracts blocked-report reason. Preserve draft #1631 at 88bdc54e7eb3069a79c30e32d51f05fded1ee4ba; reported 22/22 mock tests/typecheck are prior evidence, not rerun by this ruling. Actual GROUP-contracts completion on its fresh carrier, shared-input alignment, documentation/TEST-evidence gaps and fresh section 6.2/7 validation remain; D-315 holds landing until dependencies complete, D-370 required CI/protected landing and GROUP-terms/QA/release gates remain. No TEST/live I/O, deployment or readiness claimed here."
     },
     {
       "id": "GROUP-migration",
