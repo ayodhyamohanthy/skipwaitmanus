@@ -32,6 +32,7 @@ describe("authenticationCodeOf", () => {
 describe("the callback 502 body", () => {
   it("is sent as plain text, so no error detail can ever be read as HTML", () => {
     const source = readFileSync(path.join(__dirname, "workosAuth.ts"), "utf8");
-    expect(source).toMatch(/res\.status\(502\)\.type\("text\/plain"\)\.send\(`Authentication could not be completed \(step/);
+    expect(source).toMatch(/res\.status\(502\)\.type\("text\/plain"\)\.send\(`Authentication could not be completed \(step \$\{safeStage\}, \$\{safeName\}/);
+    expect(source).not.toMatch(/`[^`]*\$\{errorName\}[^`]*`/);
   });
 });

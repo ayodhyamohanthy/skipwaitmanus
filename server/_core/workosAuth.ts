@@ -48,6 +48,15 @@ const WORKOS_ISSUER = "https://api.workos.com";
 const CLIENT_ID_PATTERN = /^client_[A-Za-z0-9]+$/;
 const workosJwksByClient = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
+/** The callback stages that can fail (this file and server/_core/workosSession.ts). */
+export const CALLBACK_STAGES = ["authenticate", "authorize", "standing", "resolve", "session"] as const;
+/** The error types the callback names on its 502; anything else reads "Error". */
+export const CALLBACK_ERROR_NAMES = [
+  "AuthenticationException", "OauthException", "GenericServerException", "BadRequestException", "UnauthorizedException",
+  "NotFoundException", "ConflictException", "UnprocessableEntityException", "RateLimitExceededException",
+  "NoApiKeyProvidedException", "SignatureVerificationException", "Error", "TypeError", "RangeError",
+] as const;
+
 /** The reasons WorkOS raises AuthenticationException for (@workos-inc/node AuthenticationErrorCode, plus sso_required). */
 export const WORKOS_AUTHENTICATION_REASONS = [
   "email_verification_required", "organization_selection_required", "mfa_enrollment", "mfa_challenge",
@@ -421,14 +430,15 @@ export function createWorkosAuthRoutesRegistrar(deps: { workos?: WorkOS; passwor
         authDiagnostics.set(correlationId,{stage,errorName,safeMessage,timestamp:new Date().toISOString()},15*60_000);
         console.error("[workos-callback]", { stage, code:errorName, correlationId });
         event("failure", { reason: "provider_error" });
-        const bootstrapDiagnostic = process.env.ENABLE_ADMIN_BOOTSTRAP === "true" && state === "skipwait-admin-bootstrap" ? ` (${stage}:${errorName}; ${correlationId})` : "";
         // FIX-founder-admin-role: name the step and error type (never the message, email, code or token) so a failed
-        // sign-in can be reported and matched to the server log.
-        const safeName = /^[A-Za-z][A-Za-z0-9_]{0,59}$/.test(errorName) ? errorName : "Error";
+        // sign-in can be reported and matched to the server log. Every word shown comes from a fixed list in this file.
+        const safeStage = CALLBACK_STAGES.find(known => known === stage) ?? "unknown";
+        const safeName = CALLBACK_ERROR_NAMES.find(known => known === errorName) ?? "Error";
+        const bootstrapDiagnostic = process.env.ENABLE_ADMIN_BOOTSTRAP === "true" && state === "skipwait-admin-bootstrap" ? ` (${safeStage}:${safeName}; ${correlationId})` : "";
         // WorkOS's AuthenticationException carries a fixed reason (email_verification_required, sso_required, ...):
         // a closed vocabulary word, never personal data, and the one fact needed to fix the sign-in path.
         const authCode = authenticationCodeOf(error);
-        res.status(502).type("text/plain").send(`Authentication could not be completed (step ${stage}, ${safeName}${authCode ? `: ${authCode}` : ""}). Please try again.${bootstrapDiagnostic}`);
+        res.status(502).type("text/plain").send(`Authentication could not be completed (step ${safeStage}, ${safeName}${authCode ? `: ${authCode}` : ""}). Please try again.${bootstrapDiagnostic}`);
       }
     });
     // Retired by D-049 (each code was a paid email): send answers 410, verify finishes an emailed code until SEEKER_CODE_VERIFY_UNTIL.
