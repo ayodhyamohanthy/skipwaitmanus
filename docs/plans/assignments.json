@@ -510,6 +510,27 @@
       "epic": "D-212"
     },
     {
+      "id": "FIX-founder-admin-role",
+      "title": "The founder (and the administrator seat) is an administrator on every verified sign-in, not only when the account was first created, and a failed WorkOS callback names its stage (D-400; owner report Nov 26)",
+      "row": "D-212",
+      "packet": "docs/plans/FIX-founder-admin-role.md",
+      "tier": 1,
+      "lane": "auth-admin-role",
+      "branch": "agent/queue/fix-founder-admin-role",
+      "status": "todo",
+      "syncedTo": "D-408",
+      "dependsOn": [],
+      "owns": [
+        "server/db.ts",
+        "server/founderAdminRole.test.ts",
+        "server/_core/workosAuth.ts",
+        "server/_core/workosCallbackDiagnostic.test.ts",
+        "docs/plans/FIX-founder-admin-role.md"
+      ],
+      "note": "Owner report Nov 26: /admin/catalog-sync refused and Google sign-in showed 'Authentication could not be completed' (502). resolveLoginIdentity sets the role only on account creation, so a founder account created before D-400 stays 'user'. Promote-only; never demotes; provider-verified email only.",
+      "epic": "D-212"
+    },
+    {
       "id": "DEVICE-SIGNIN-seeker-release",
       "title": "Release seeker passkey/biometric sign-in after a real phone and laptop check: PASSKEY_SIGNIN_ENABLED true, captures at 1280 and 390 (D-408 (1))",
       "row": "D-172",
