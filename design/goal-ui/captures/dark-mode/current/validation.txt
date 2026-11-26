@@ -1,0 +1,64 @@
+D-048-dark-mode: bounded validation receipt, 2026-11-26
+Code source: a3163a91be0394b17200f033d21a0efa53cee263
+Integrated main: eac7b8e4c544aef10ef7857a3369dea1e7cac50d
+Branch: agent/queue/d048-dark-mode
+Draft PR: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1691
+
+Sanitized excerpts from completed worker runs; local absolute paths omitted.
+COMMAND_EXIT values below are recorded in the source logs.
+
+Source: d048-dark-mode-5865-validation.log
+SHA-256: 9d28f6047e12d10d8fed09600b338b154cfd6bd739b453471126736b7de69eac
+Source HEAD: a3163a91be0394b17200f033d21a0efa53cee263; worktree clean at run start.
+
+COMMAND: pnpm vitest run scripts/designTokenAudit.test.ts client/src/contexts/themeContext.test.tsx client/src/components/goal/goalTheme.test.tsx client/src/components/goal/goalMoreMenu.test.tsx --maxWorkers=1
+RUN v4.1.12
+Test Files  4 passed (4)
+Tests       145 passed (145)
+Duration    17.37s (transform 673ms, setup 1.00s, import 3.15s, tests 3.94s, environment 6.90s)
+COMMAND_EXIT=0
+
+COMMAND: pnpm check
+> tsc --noEmit
+COMMAND_EXIT=0
+
+COMMAND: node scripts/design-token-audit.mjs
+design-token-audit: 486 files · 668 approved tokens · 3 third-party brand tokens
+OK — no legacy or off-brand hexes in the client surface.
+COMMAND_EXIT=0
+
+COMMAND: git diff --check
+No output.
+COMMAND_EXIT=0
+
+Source: d048-dark-mode-5865-remaining-gates-a3163a91b.log
+SHA-256: 3893b41299de9aa5d4bd609aa1403f8ae5317f849608ea7c7770e10189f3a73f
+START_UTC=2026-11-26T08:49:11.069441+00:00
+HEAD_BEFORE=HEAD_AFTER=a3163a91be0394b17200f033d21a0efa53cee263
+The absolute bash interpreter prefix is omitted below.
+
+COMMAND: bash scripts/lint-deploy-migrations.sh
+No output.
+COMMAND_EXIT=0
+
+COMMAND: node scripts/check-deploy-triggers.mjs
+workflow path filters cover every build input
+COMMAND_EXIT=0
+
+COMMAND: node scripts/scope-check.mjs D-048-dark-mode
+scope-check: 13 owned path(s), every change inside them.
+COMMAND_EXIT=0
+
+COMMAND: node scripts/queue-gate.mjs
+No output.
+COMMAND_EXIT=0
+END_UTC=2026-11-26T08:49:14.054044+00:00
+
+Full production build and local preview readiness: see build.txt.
+Full suite, visual acceptance, required CI, deployment and exact-release acceptance
+are PENDING / UNVERIFIED as of this bounded receipt. No full-suite log was read.
+
+D-399 draft build-ahead only. D-230/D-333 owner hold remains:
+DO NOT MERGE/AUTO-MERGE, mark ready, landed or done. Release requires
+D-048-K-kit to land or explicit earlier owner release, plus D-230 acceptance.
+These local checks do not clear the hold or establish product acceptance.
