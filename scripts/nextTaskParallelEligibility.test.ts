@@ -109,7 +109,7 @@ describe("D-309: the holds that stay unchanged", () => {
     expect(pick([task("A")], { ci: { state: "red", sha: "c".repeat(40), url: "https://ci/run/2" } })).toMatchObject({ kind: "fix-main" });
     // D-324: while main's CI re-runs after a failure, branch work goes on (marked), and with none left it is the wait.
     expect(pick([task("A")], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "build", mainRedNote: true });
-    expect(pick([task("A", { status: "owner" })], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "wait", mainRed: true });
+    expect(pick([task("A", { status: "owner", packet: null })], { ci: { state: "running-after-red" } })).toMatchObject({ kind: "wait", mainRed: true });
 
     // Same-model review independence: the builder is never handed its own review.
     const m = task("M", { tier: 1, lane: "money" });
@@ -124,7 +124,9 @@ describe("D-309: the holds that stay unchanged", () => {
     expect(outcome(reviewPick)).toEqual({ kind: "none", id: null });
 
     // Owner-parked work stays parked.
-    expect(outcome(pick([task("O", { status: "owner" })]))).toEqual({ kind: "none", id: null });
+    expect(outcome(pick([task("O", { status: "owner", packet: null })]))).toEqual({ kind: "none", id: null });
+    // D-399: an owner row with a packet is built ahead when nothing else is eligible; it is never landed from here.
+    expect(pick([task("O", { status: "owner" })])).toMatchObject({ kind: "build", task: { id: "O" }, parked: "it waits for the owner" });
 
     // An out-of-sync task is handed its re-sync, not its build.
     const register = [

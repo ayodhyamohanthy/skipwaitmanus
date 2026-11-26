@@ -1,17 +1,18 @@
 // @vitest-environment node
 import { execFileSync, spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { blockEvidenceFor, blockedReportBody } from "./nextTaskCore.mjs";
 
 const ME = "GPT-6.1 Sol · requested-task-test";
 const CLI = fileURLToPath(new URL("./next-task.mjs", import.meta.url));
 interface TaskOverrides { status?: string; }
 interface ClaimRace { realGit: string; rivalSha: string; markerPath: string; }
 
-function fixture(extra: TaskOverrides = {}, redMain = false) {
+function fixture(extra: TaskOverrides = {}, redMain = false, blockedPreview = false) {
   const dir = mkdtempSync(path.join(os.tmpdir(), "requested-task-cli-"));
   const work = path.join(dir, "work"), remote = path.join(dir, "origin.git"), mock = path.join(dir, "mock.mjs");
   mkdirSync(path.join(work, "docs/plans"), { recursive: true });
@@ -26,9 +27,10 @@ function fixture(extra: TaskOverrides = {}, redMain = false) {
     branch: `agent/queue/${id.toLowerCase()}`, status: "todo", dependsOn: [], syncedTo: "D-001",
     owns: [`scripts/${id}.mjs`],
   });
+  const a = task("A"), b = { ...task("B"), ...extra };
   writeFileSync(path.join(work, "docs/plans/test.md"), "# Fixture\n");
   writeFileSync(path.join(work, "docs/plans/assignments.json"), JSON.stringify({
-    version: 1, repo: "o/r", tasks: [task("A"), { ...task("B"), ...extra }],
+    version: 1, repo: "o/r", tasks: [a, b],
   }));
   writeFileSync(path.join(work, "docs/DECISIONS.md"), [
     "# Decisions", "| ID | Date | Decision | Evidence | Notes | Status |",
@@ -38,6 +40,17 @@ function fixture(extra: TaskOverrides = {}, redMain = false) {
   git("commit", "-m", "fixture");
   git("push", "-u", "origin", "main");
   const head = git("rev-parse", "HEAD");
+  let blockedHead = head;
+  if (blockedPreview) {
+    blockedHead = git("commit-tree", `${head}^{tree}`, "-p", head, "-m", "Claim A: Builder · blocked-preview");
+    git("push", "origin", `${blockedHead}:refs/heads/${a.branch}`);
+    const evidence = blockEvidenceFor({ task: a, tasks: [a, b], branches: new Map([[a.branch, { tipSha: blockedHead }]]) });
+    const report = git("commit-tree", `${head}^{tree}`, "-p", head, "-m", "Report A: blocked — Builder · blocked-preview",
+      "-m", blockedReportBody("Needs evidence", evidence));
+    git("push", "origin", `${report}:refs/heads/agent/reports/log`);
+    git("fetch", "origin");
+  }
+  const unexpectedNetwork = path.join(dir, "unexpected-network.txt");
   writeFileSync(mock, `
 import childProcess from 'node:child_process';
 import { existsSync, writeFileSync } from 'node:fs';
@@ -54,26 +67,46 @@ if (race) {
   };
   syncBuiltinESMExports();
 }
+if (${blockedPreview}) {
+  const policy = await import(${JSON.stringify(new URL("./sessionPolicy.mjs", import.meta.url).href)});
+  if (policy.INDEPENDENT_REVIEW_REQUIRED || policy.MODEL_ROUTES_ENFORCED) throw Error('expected production policy defaults');
+}
 const response = body => ({ ok: true, status: 200, json: async () => body });
 globalThis.fetch = async input => {
   const url = String(input);
-  if (url.includes('/runs?branch=main')) return response({ workflow_runs: [{
-    status: 'completed', conclusion: '${redMain ? "failure" : "success"}', head_sha: '${head}',
+  if (url.includes('/runs?branch=main') && url.includes('/ci.yml/')) return response({ workflow_runs: [{
+    status: '${blockedPreview ? "in_progress" : "completed"}', conclusion: ${JSON.stringify(blockedPreview ? null : redMain ? "failure" : "success")}, head_sha: '${head}',
     updated_at: '2026-11-17T12:00:00Z',
-  }] });
+  }, ...(${blockedPreview} ? [{ status: 'completed', conclusion: 'failure', head_sha: '${head}',
+    updated_at: '2026-11-17T11:00:00Z' }] : [])] });
+  if (${blockedPreview}) {
+    if (url.includes('/pulls?state=open')) return response([{ html_url: 'https://github.com/o/r/pull/1',
+      head: { ref: '${a.branch}', sha: '${blockedHead}', repo: { full_name: 'o/r' } } }]);
+    if (url.includes('/ci.yml/runs?')) return response({ workflow_runs: [{ status: 'in_progress', conclusion: null,
+      head_sha: '${blockedHead}', head_branch: '${a.branch}' }, { status: 'completed', conclusion: 'failure',
+      head_sha: '${blockedHead}', head_branch: '${a.branch}' }] });
+    if (url.includes('/deploy-api.yml/runs?') || url.includes('/deploy-pages.yml/runs?')) return response({ workflow_runs: [] });
+    if (url.includes('/git/ref/tags/api-runtime')) return response({});
+    if (url.includes('/issues?')) return response([]);
+    if (url.startsWith('https://skipwait.me/')) return { ok: false, status: 503, text: async () => '' };
+  }
   if (url.includes('/pulls?state=open') || url.includes('/pulls?state=closed')) return response([]);
+  if (${blockedPreview}) writeFileSync(${JSON.stringify(unexpectedNetwork)}, url);
   throw Error('unexpected fetch: ' + url);
 };
 `);
   const refs = () => git("ls-remote", "--heads", "origin");
-  const run = (id = "B", args: string[] = [], preview = false, race?: ClaimRace) => spawnSync(process.execPath,
-    ["--import", mock, CLI, preview ? "--as" : "--claim", ME, "--task", id, ...args], {
+  const localRefs = () => git("for-each-ref", "--format=%(refname) %(objectname)");
+  const inheritedEnv = { ...process.env };
+  if (blockedPreview) delete inheritedEnv.SKIPWAIT_LEGACY_REVIEW_RULES;
+  const run = (id: string | null = "B", args: string[] = [], preview = false, race?: ClaimRace) => spawnSync(process.execPath,
+    ["--import", mock, CLI, preview ? "--as" : "--claim", ME, ...(id ? ["--task", id] : []), ...args], {
       cwd: work, encoding: "utf8", env: {
-        ...process.env, NEXT_TASK_LIST_REF: "origin/main", NODE_USE_ENV_PROXY: "1", GH_TOKEN: "fixture-only",
+        ...inheritedEnv, NEXT_TASK_LIST_REF: "origin/main", NODE_USE_ENV_PROXY: "1", GH_TOKEN: "fixture-only",
         ...(race ? { CLAIM_RACE: JSON.stringify(race) } : {}),
       },
     });
-  return { dir, work, git, refs, run };
+  return { dir, work, git, refs, localRefs, run, unexpectedNetwork };
 }
 
 function withFixture(test: (f: ReturnType<typeof fixture>) => void, extra: TaskOverrides = {}, redMain = false) {
@@ -82,6 +115,25 @@ function withFixture(test: (f: ReturnType<typeof fixture>) => void, extra: TaskO
 }
 
 describe("actual --claim --task with local Git origins", () => {
+  it("default production preview passes an unchanged blocked PR and builds the owner without writing refs", () => {
+    const f = fixture({ status: "owner" }, false, true);
+    try {
+      const before = { remote: f.refs(), local: f.localRefs() };
+      const result = f.run(null, [], true);
+      expect(result.status, result.stdout + result.stderr).toBe(0);
+      expect(result.stdout).toContain("NEXT: BUILD B");
+      expect(result.stdout).toContain("BUILD AHEAD OF A HOLD (D-399)");
+      expect(result.stdout).toContain("never land it");
+      expect(result.stdout).toContain('Not claimed yet. To take it: node scripts/next-task.mjs --claim "<your model name>"\n');
+      const board = f.run(null, ["--status"], true);
+      expect(board.status, board.stdout + board.stderr).toBe(0);
+      expect(board.stdout).toContain("waiting for new evidence or 24h");
+      expect({ remote: f.refs(), local: f.localRefs() }).toEqual(before);
+      expect(existsSync(f.unexpectedNetwork)).toBe(false);
+      expect(existsSync(path.join(f.work, ".git/hooks/post-commit"))).toBe(false);
+    } finally { rmSync(f.dir, { recursive: true, force: true }); }
+  });
+
   it("a read-only preview preserves --task B in its follow-up claim command", () => withFixture(f => {
     const before = f.refs(), result = f.run("B", [], true);
     expect(result.status, result.stdout + result.stderr).toBe(0);
@@ -98,8 +150,17 @@ describe("actual --claim --task with local Git origins", () => {
     expect(f.refs()).not.toContain("refs/heads/agent/queue/a");
   }));
 
+  it("D-399: an owner row with a packet is claimed to build ahead, on its own branch, never landed", () => withFixture(f => {
+    const result = f.run("B");
+    expect(result.status, result.stdout + result.stderr).toBe(0);
+    expect(result.stdout).toContain("NEXT: BUILD B");
+    expect(result.stdout).toContain("BUILD AHEAD OF A HOLD (D-399)");
+    expect(result.stdout).toContain("never land it");
+    expect(f.git("log", "-1", "--format=%s", "origin/agent/queue/b")).toBe(`Claim B: ${ME}`);
+  }, { status: "owner" }));
+
   it.each([
-    { extra: { status: "owner" }, id: "B", args: [], reason: "waits for the owner" },
+    { extra: { status: "owner", packet: null }, id: "B", args: [], reason: "waits for the owner" },
     { extra: { status: "done" }, id: "B", args: [], reason: "done" },
     { extra: {}, id: "MISSING", args: [], reason: "no task MISSING" },
     { extra: {}, id: "B", args: ["--avoid", "B"], reason: "you asked to avoid it" },

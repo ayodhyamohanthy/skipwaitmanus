@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { eq } from "drizzle-orm";
 import { billingReviewOutbox, tokenBalances, tokenTransactions, paymentFulfillments, subscriptionEvents } from "../drizzle/schema";
 import { createInMemoryDrizzle } from "./inMemoryDrizzle.testkit";
 import { billingReviewKey, enqueueBillingReviewTx, runBillingReviewOutbox } from "./billingReviewOutbox";
@@ -29,9 +30,24 @@ it("sends through ZeptoMail when it is the only configured provider, accepts its
   const [url, init] = transport.mock.calls[0];
   expect(url).toBe("https://api.zeptomail.com/v1.1/email");
   expect(init?.headers).toMatchObject({ Authorization: "Zoho-enczapikey zepto_fixture" });
-  expect(JSON.parse(String(init?.body)).to[0].email_address.address).toBe("ayodhya@skipwait.me");
+  // D-400: the founder and the administrator mailboxes both receive the review.
+  expect(JSON.parse(String(init?.body)).to.map((r: { email_address: { address: string } }) => r.email_address.address)).toEqual(["ayodhya@skipwait.me", "admin@skipwait.me"]);
   const row = memory.rows(billingReviewOutbox)[0];
   expect(row.status).toBe("accepted"); expect(row.providerMessageId).toBe("req_zepto_1");
+});
+it("D-400: a review frozen before the switch (founder only) still sends; new reviews carry both mailboxes", async () => {
+  await enqueue();
+  const fail = vi.fn<typeof fetch>().mockResolvedValue(new Response("failure", { status: 503 }));
+  expect(await runBillingReviewOutbox({ now, fetchImpl: fail })).toEqual({ processed: 0, failed: 1 });
+  const frozen = JSON.parse(String(memory.rows(billingReviewOutbox)[0].envelope));
+  expect(JSON.parse(frozen.bytes).to).toEqual(["ayodhya@skipwait.me", "admin@skipwait.me"]);
+  const legacy = JSON.stringify({ version: 1, bytes: JSON.stringify({ ...JSON.parse(frozen.bytes), to: ["ayodhya@skipwait.me"] }) });
+  await memory.db.update(billingReviewOutbox).set({ envelope: legacy }).where(eq(billingReviewOutbox.id, memory.rows(billingReviewOutbox)[0].id));
+  expect(memory.rows(billingReviewOutbox)[0].envelope).toBe(legacy);
+  clock = new Date(clock.getTime() + 3 * 60 * 60_000); vi.setSystemTime(clock);
+  const transport = vi.fn<typeof fetch>().mockImplementation(async () => ok());
+  expect(await runBillingReviewOutbox({ now, fetchImpl: transport })).toEqual({ processed: 1, failed: 0 });
+  expect(JSON.parse(String(transport.mock.calls[0][1]?.body)).to).toEqual(["ayodhya@skipwait.me"]);
 });
 it("uses the same opaque identity for claim and webhook, different subscription events remain distinct", () => {
   expect(billingReviewKey({ giftId: "g", reason: "gift_claimed" })).toBe(billingReviewKey({ giftId: "g", reason: "gift_claim_refused", eventId: "e" }));
