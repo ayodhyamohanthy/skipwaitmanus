@@ -6,46 +6,6 @@
   "rules": "Order is priority. Any capable session adds, removes or reorders tasks (D-200 (2): say why in the pull request), except that a packet's pull request adds exactly the rows a CEO-written packet lists for it (docs/plans/D-048-phase-3-split.md, docs/plans/D-132-pricing-v2.md) and makes the dependsOn edits its note names (D-134). An agent changes only its own task's status, to done, in the pull request that lands it. Statuses: todo (pickable), in-review (a named session lands it), done, architect (any agent writes the packet first, D-109), owner (waits on the owner). A task whose dependency is not done gets no review, fix or landing until it is (D-134); when nothing else is eligible it is handed out to build ahead on its own branch (D-315). Run `node scripts/next-task.mjs`.",
   "tasks": [
     {
-      "id": "P0-goal-shell-sign-out",
-      "title": "P0: the goal shell's account avatar opens the account menu, so signed-in people can sign out on /explore, /requests, /ask, /inbox and the conversation views (D-019, D-412 (6))",
-      "row": "D-212",
-      "packet": "docs/plans/P0-goal-shell-sign-out.md",
-      "tier": 1,
-      "lane": "p0-goal-shell-sign-out",
-      "branch": "agent/queue/p0-goal-shell-sign-out",
-      "status": "todo",
-      "syncedTo": "D-412",
-      "dependsOn": [],
-      "owns": [
-        "client/src/components/goal/GoalAppShell.tsx",
-        "client/src/components/goal/goalAppShell.signOut.test.tsx",
-        "docs/plans/P0-goal-shell-sign-out.md"
-      ],
-      "note": "Owner report, Nov 27. GoalAppShell passes no account.menu, so the avatar is inert; pass the AppShell AccountMenu.",
-      "epic": "D-212"
-    },
-    {
-      "id": "PICKER-speed-fixes",
-      "title": "Picker: refresh only drafts that can land, a landed ruling's unblocker clears the block, a docs-only PR is never landed for a code row, quiet claims show as free (D-412)",
-      "row": "D-212",
-      "packet": "docs/plans/PICKER-speed-fixes.md",
-      "tier": 2,
-      "lane": "picker-speed-fixes",
-      "branch": "agent/queue/picker-speed-fixes",
-      "status": "todo",
-      "syncedTo": "D-412",
-      "dependsOn": [],
-      "owns": [
-        "scripts/nextTaskCore.mjs",
-        "scripts/nextTaskText.mjs",
-        "scripts/next-task.mjs",
-        "scripts/nextTaskSpeedFixes.test.ts",
-        "docs/plans/PICKER-speed-fixes.md"
-      ],
-      "note": "Owner, Nov 27: fix what slows the team. Picker only; no landing, block, review or owner rule is relaxed.",
-      "epic": "D-212"
-    },
-    {
       "id": "P0-ask-link-signin",
       "title": "P0: a personal-link ask from a signed-out seeker keeps its referrer across sign-in on /ask (live since #431)",
       "row": "LIVE-OCT22",
@@ -92,6 +52,46 @@
       "status": "done",
       "dependsOn": [],
       "note": "Landed as PR #514 (merge commit on main; independent review passed by Gemini 3.8 Flash · 8f37). Stale test fixture paths updated to 0100_billing_review_outbox.sql, schemaReconcile table match targeted, and MySQL 8.0.46 FK errno 1452 assertion aligned. Migration digest unchanged; 0 runtime or SQL changes."
+    },
+    {
+      "id": "P0-goal-shell-sign-out",
+      "title": "P0: the goal shell's account avatar opens the account menu, so signed-in people can sign out on /explore, /requests, /ask, /inbox and the conversation views (D-019, D-412 (6))",
+      "row": "D-212",
+      "packet": "docs/plans/P0-goal-shell-sign-out.md",
+      "tier": 1,
+      "lane": "p0-goal-shell-sign-out",
+      "branch": "agent/queue/p0-goal-shell-sign-out",
+      "status": "todo",
+      "syncedTo": "D-412",
+      "dependsOn": [],
+      "owns": [
+        "client/src/components/goal/GoalAppShell.tsx",
+        "client/src/components/goal/goalAppShell.signOut.test.tsx",
+        "docs/plans/P0-goal-shell-sign-out.md"
+      ],
+      "note": "Owner report, Nov 27. GoalAppShell passes no account.menu, so the avatar is inert; pass the AppShell AccountMenu.",
+      "epic": "D-212"
+    },
+    {
+      "id": "PICKER-speed-fixes",
+      "title": "Picker: refresh only drafts that can land, a landed ruling's unblocker clears the block, a docs-only PR is never landed for a code row, quiet claims show as free (D-412)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-speed-fixes.md",
+      "tier": 2,
+      "lane": "picker-speed-fixes",
+      "branch": "agent/queue/picker-speed-fixes",
+      "status": "todo",
+      "syncedTo": "D-412",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskSpeedFixes.test.ts",
+        "docs/plans/PICKER-speed-fixes.md"
+      ],
+      "note": "Owner, Nov 27: fix what slows the team. Picker only; no landing, block, review or owner rule is relaxed.",
+      "epic": "D-212"
     },
     {
       "id": "REL-plans-signed-out-token",
