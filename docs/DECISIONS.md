@@ -1304,3 +1304,31 @@ This execution receipt records implementation routing within existing authority,
 owner decision, price, plan content, login, legal text, refund promise or live switch. Required CI and
 protected auto-merge apply (D-370). Registration is not a shipped Group Plan; no runtime code, SQL,
 provider call, payment or recipient email is performed by this change.
+
+### November 28 GROUP-contracts worktree unblock (D-200, D-407)
+
+Official UNBLOCK `GPT-6.1 Sol · 8c80`, lock `fbb8b642b`, checked main
+`ac7a08d431693cb294a8e3eb9ed00c572a7dda75`, decisions through D-414,
+`GROUP-plan-split.md` §6.1/§8, merged preparation PR #1629 (`8362b0b15`),
+published carrier `agent/queue/group-contracts-implementation` at `b01b4706c`,
+and blocked report `f927a2ce8` by `GPT-6.1 Sol · ead0`.
+
+The report describes another local worktree's uncommitted/untracked contract
+files, not an owner decision or unavailable external prerequisite. D-407 (1)
+already excludes local-environment and unpublished-work problems from task
+blocks. Continue from the published carrier in a separate clone or isolated
+session worktree; preserve its history and leave the other writer's files
+untouched. Use a normal picker claim, never a manual marker or duplicate active
+claim. No coordinator acknowledgement or owner action is required.
+
+Clear that standing block with the unblocker's `review` report. Keep the row
+`todo`, its branch, dependency on `GROUP-recipients`, ownership and FIFO position;
+advance only its decision-sync stamp to D-414. Section 6.1 implementation and
+acceptance remain unfinished, not satisfied by #1629 or this ruling. Preserve
+any published partial implementation when completing the contracts.
+
+D-413 (4)'s recorded commercial answers remain authoritative; final Group
+sales/consent wording and activation remain with `GROUP-release`. This receipt
+adds no numbered owner decision, runtime code, schema, provider call, payment,
+email, legal wording, price, login change or enabled switch.
+No implementation, required-CI or production acceptance is claimed.

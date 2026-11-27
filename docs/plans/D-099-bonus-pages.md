@@ -160,5 +160,5 @@ Zod schemas, strict, so unknown keys fail.
 ## Status
 Two rows share this packet (D-134); each writes its own line.
 - D-099-bonus-pages: todo; waits for `D-090-BYOR`, `D-089-request-inbox`, `D-086-demand-list`, `D-048-F-flags` and `D-048-F-routes`.
-- D-099-bonus-line: unbuilt — GPT-6.1 Sol · 947c — 2026-11-27 — integrated main `d876aee4205ffd1561d9bb761711aa5db308f944`; [PR #1581](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1581) stays draft pending slice A; company-page implementation, feature tests and 1280/390 captures remain unverified.
+- D-099-bonus-line: feature unbuilt — GPT-6.1 Sol · a346 — 2026-11-28 — integrated main `3508530aaf046afe3145003feb2306169e617c5d`; [PR #1581](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1581) stays draft pending slice A; company-page implementation, feature tests and 1280/390 captures remain unverified.
 - D-099-bonus-pages and D-099-bonus-line: re-synced to D-378 — Claude Code · e969 — 2026-11-22. Entries naming them since D-227: D-219 and D-221 (pricing re-sync lists; this packet has no credit or price wording, and its honesty line agrees), D-366 (7) (the bonus hold) and D-374 (the owner's answer). Slice A keeps data, admin entry and the report path and drops the public pages and sitemap. Slice B is one neutral, sourced fact line on `/explore/:slug` only. Dependencies are unchanged.
