@@ -8363,18 +8363,21 @@
       "lane": "ask-flow",
       "branch": "agent/queue/d174-no-expiry-release",
       "status": "todo",
-      "syncedTo": "D-386",
+      "syncedTo": "D-411",
       "dependsOn": [
         "D-174-expiry-clock-removal",
         "D-174-held-ask-reconfirm"
       ],
-      "note": "D-385 packet section 7. QA preview first with fictional accounts and the test provider only (no real money): a 31-day-old held request with a fresh credit is not charged until the seeker confirms, then charged once. One PR flips both switches with the coupling test green. After deploy, read back ask-expiry-sweep skipped in /api/admin/jobs and countdown-free /requests at 1280 and 390 on the exact deployed SHA. Activation authority: D-174's launch rule after QA (D-097).",
+      "note": "D-385 packet section 7, as ruled by D-411. Legal wording is owner-approved (D-411 (2)): add the five approved no-expiry strings in shared/moneyCopy.ts, chosen by ASK_NO_EXPIRY_ENABLED, with verbatim pins and switch-off strings byte-identical. QA preview (D-411 (3)): a GATE-e2e-journeys journey (real server, MySQL, fictional accounts, no provider) on the release PR head with both switches on proves a 31-day-old waiting request with a fresh credit is not charged until the seeker confirms, then charged exactly once across retries. One PR flips ASK_RECONFIRM_ENABLED and ASK_NO_EXPIRY_ENABLED together with the coupling test green. After deploy, read back ask-expiry-sweep skipped in /api/admin/jobs and countdown-free /requests at 1280 and 390 on the exact deployed SHA (demo accounts, D-393/D-410). Activation authority: D-174's launch rule after QA (D-097).",
       "epic": "D-174",
       "owns": [
         "shared/askReconfirm.ts (switch only)",
         "shared/referral.ts (switch only)",
         "docs/BUGFREE_GATE.md",
-        "docs/plans/D-174-expiry-clock-removal.md"
+        "docs/plans/D-174-expiry-clock-removal.md",
+        "shared/moneyCopy.ts (D-411 approved additions only)",
+        "shared/moneyCopy.noExpiry.test.ts",
+        "e2e/reconfirm-money.e2e.ts"
       ]
     },
     {
