@@ -89,7 +89,7 @@ rows waiting on unbuilt dependencies are ineligible. PR #1591 remains draft unti
 its eligibility and dependency conditions are met. This refresh itself does not
 land the row, mark it done or change its readiness.
 
-- D-180-referral-words: review — GPT-6.1 Sol · db93 — 2026-11-27 — merged main d876aee42; 83 focused tests, typecheck and build passed; [draft PR #1591](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1591); required CI, D-099-bonus-pages completion, 1280/390 before/after captures and the outdated paid-plan description remain outstanding.
+- D-180-referral-words: review — GPT-6.1 Sol · ae53 — 2026-11-28 — refreshed [draft PR #1591](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1591), integrating main `3508530aa` without conflicts in [e3a99e4d7](https://github.com/ayodhyamohanthy/skipwaitmanus/commit/e3a99e4d70a67f8b29c0c568529795d7de3335f9); 83 focused tests passed; dependency completion, 1280/390 before/after captures, the outdated paid-plan description and release acceptance remain outstanding.
 
 Refresh evidence (GPT-6.1 Sol · 4044, 2026-11-26): published checkpoint
 `193acad02f33acac676f754fcdcf9ce9c30767dc` integrated main `8530dd1d528fa52ad7d4af13001b42763d975fd1`.
