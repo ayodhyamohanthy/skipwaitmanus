@@ -1,8 +1,10 @@
 // @vitest-environment node
 // D-389/D-393 journeys: injected fixtures only, never a live request or browser.
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { DEMO, SANDBOX_COMPANY } from "./liveQaJourneyContracts.mjs";
+import { parseMode } from "./live-qa-journeys.mjs";
 import { everything, harness, PASSWORDS, posts, PRIVATE, RELEASE, run, type Call } from "./liveQaJourneyHarness";
 
 const review = (call: Call, decision: string) => call.path.endsWith("/one-click-review") &&
@@ -269,5 +271,84 @@ describe("sandbox journeys", () => {
     expect((await run(h)).code).toBe(1);
     for (const password of Object.values(PASSWORDS)) expect(everything(h)).not.toContain(password);
     expect(posts(h)).toEqual([]);
+  });
+});
+
+// Safety stops before any state change (restored from the pre-sandbox suite, rewritten for the sandbox harness):
+// the journey mutates production state, so each refusal must happen before a single POST.
+describe("safety stops before any state change", () => {
+  it("fails before any call when a password secret is missing, and says nothing was changed", async () => {
+    for (const passwords of [{ ...PASSWORDS, seeker: "" }, { ...PASSWORDS, referrer: "" }]) {
+      const h = harness();
+      const { code, summary } = await run(h, { passwords });
+      expect(code).toBe(1);
+      expect(summary).toBeNull();
+      expect(h.calls).toEqual([]);
+      expect(h.lines.join("\n")).toContain("nothing was changed");
+    }
+  });
+
+  it("runs only on a manual dispatch, never after a release, on a schedule or a push", async () => {
+    for (const trigger of ["workflow_run", "schedule", "push", ""]) {
+      const h = harness();
+      const { code, summary } = await run(h, { trigger });
+      expect(code).toBe(1);
+      expect(summary).toBeNull();
+      expect(h.calls).toEqual([]);
+    }
+  });
+
+  it("stops before any mutation when a signed-in account is not the demo account for its role", async () => {
+    for (const role of ["seeker", "referrer"] as const) {
+      const h = harness({ identity: other => (other === role ? "someone@example.com" : DEMO[other]) });
+      const { code, summary } = await run(h);
+      expect(code).toBe(1);
+      expect(posts(h)).toEqual([]);
+      expect(h.requests.size).toBe(0);
+      expect(summary?.steps.find(step => step.name === `identity-${role}`)?.ok).toBe(false);
+    }
+  });
+
+  it("stops without buying or sending when the demo seeker has no free referral", async () => {
+    const h = harness({ wallet: { monthlyCreditsRemaining: 0, totalAvailable: 0, ledger: { balance: 0 } } });
+    const { code, summary } = await run(h);
+    expect(code).toBe(1);
+    expect(posts(h)).toEqual([]);
+    expect(h.calls.some(call => /checkout|chargebee|billing|plans/.test(call.path))).toBe(false);
+    expect(summary?.steps.find(step => step.name === "wallet-before")?.ok).toBe(false);
+  });
+});
+
+describe("mode input", () => {
+  it("parses the mode input and refuses anything else", () => {
+    expect(parseMode(undefined)).toBe("navigate");
+    expect(parseMode("")).toBe("navigate");
+    expect(parseMode("navigate")).toBe("navigate");
+    expect(parseMode("journeys")).toBe("journeys");
+    expect(() => parseMode("buy")).toThrow(/navigate or journeys/);
+  });
+});
+
+// Restored verbatim from the pre-sandbox suite: the workflow file is unchanged, and these pins keep the journeys
+// mode manual-only, one run at a time and masked.
+const WORKFLOW = readFileSync(path.join(path.resolve(__dirname, ".."), ".github/workflows/live-qa.yml"), "utf8");
+describe("workflow", () => {
+  it("adds a mode input that defaults to navigate and offers journeys", () => {
+    expect(WORKFLOW).toMatch(/mode:[\s\S]*options: \[navigate, journeys\][\s\S]*default: navigate/);
+  });
+
+  it("runs journeys only on a manual dispatch, never after a release", () => {
+    const step = WORKFLOW.slice(WORKFLOW.indexOf("node scripts/live-qa-journeys.mjs") - 600, WORKFLOW.indexOf("node scripts/live-qa-journeys.mjs"));
+    expect(step).toMatch(/if: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.mode == 'journeys' \}\}/);
+    expect(WORKFLOW).toContain("node scripts/live-qa-journeys.mjs");
+    expect(WORKFLOW).not.toMatch(/^\s+(push|pull_request|pull_request_target):/m);
+  });
+
+  it("keeps one run at a time across both modes and masks the passwords before either script", () => {
+    expect(WORKFLOW).toMatch(/concurrency:\n\s+group: live-qa\n\s+cancel-in-progress: false/);
+    const mask = WORKFLOW.indexOf("::add-mask::");
+    expect(mask).toBeGreaterThan(0);
+    expect(mask).toBeLessThan(WORKFLOW.indexOf("node scripts/live-qa-journeys.mjs"));
+    expect(WORKFLOW).not.toMatch(/run:[^\n]*secrets\./);
   });
 });
