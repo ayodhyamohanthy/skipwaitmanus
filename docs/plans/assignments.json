@@ -77,6 +77,51 @@
       "epic": "D-212"
     },
     {
+      "id": "P0-messages-account-menu",
+      "title": "P0: signed-in Messages keeps the shared account menu and Sign out in every page state (automated bug #1708)",
+      "row": "D-212",
+      "packet": "docs/plans/P0-account-menu-pages.md",
+      "tier": 1,
+      "lane": "p0-messages-account-menu",
+      "branch": "agent/queue/p0-messages-account-menu",
+      "status": "todo",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/Messages.tsx",
+        "client/src/pages/goal/messages/GoalMessages.tsx",
+        "client/src/pages/goal/messages/messagesAccountMenu.test.tsx",
+        "client/src/pages/goal/messages/messagesGoal.test.tsx",
+        "client/src/pages/goal/messages/messagesSignInButton.test.tsx",
+        "design/goal-ui/captures/messages/**",
+        "docs/plans/P0-account-menu-pages.md"
+      ],
+      "note": "D-019 P0, D-409/D-412 follow-through. Live run 46065479203 fails the menu check at 1280/390; GoalMessages has no app shell. Preserve DM privacy/idempotency and signed-out behavior; reuse the existing menu. Issue #1708 closes only after a passing live run, not on PR merge.",
+      "epic": "D-212"
+    },
+    {
+      "id": "P0-support-account-menu",
+      "title": "P0: signed-in Support offers the shared account menu and Sign out without changing public or policy pages (automated bug #1709)",
+      "row": "D-212",
+      "packet": "docs/plans/P0-account-menu-pages.md",
+      "tier": 1,
+      "lane": "p0-support-account-menu",
+      "branch": "agent/queue/p0-support-account-menu",
+      "status": "todo",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/Support.tsx",
+        "client/src/components/PolicyPageShell.tsx",
+        "client/src/pages/supportAccountMenu.test.tsx",
+        "client/src/pages/goal/policy/policyText.goal.test.tsx",
+        "design/goal-ui/captures/support/**",
+        "docs/plans/P0-account-menu-pages.md"
+      ],
+      "note": "D-019 P0, D-409/D-412 follow-through. Live run 46065479203 fails the menu check at 1280/390; Support uses the public PolicyPageShell fallback. Preserve signed-out support, actual policy frames and all text; avoid nested chrome. Issue #1709 closes only after a passing live run.",
+      "epic": "D-212"
+    },
+    {
       "id": "PICKER-speed-fixes",
       "title": "Picker: refresh only drafts that can land, a landed ruling's unblocker clears the block, a docs-only PR is never landed for a code row, quiet claims show as free (D-412)",
       "row": "D-212",
@@ -10527,6 +10572,26 @@
         "docs/plans/assignments.json"
       ],
       "syncedTo": "D-403"
+    },
+    {
+      "id": "PICKER-claim-cost",
+      "title": "Measure and remove redundant picker snapshot work so a contended official claim does not cost repeated minutes, without weakening freshness",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-claim-cost.md",
+      "tier": 2,
+      "lane": "picker-claim-cost",
+      "branch": "agent/queue/picker-claim-cost",
+      "status": "todo",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskClaimCost.test.ts",
+        "docs/plans/PICKER-claim-cost.md"
+      ],
+      "note": "D-321/D-324/D-412 technical follow-through; appended FIFO. Session 9186 observed 300/900-second deadlines and an 847-second official retry with lost races before CEO REVIEW. Attribute phases first, then prove lower reader cost and unchanged freshness/unknown/lease/hold semantics; no manual claim or optimistic evidence. Coordinate shared picker files, never duplicate PICKER-bug-issues.",
+      "epic": "D-212"
     }
   ]
 }

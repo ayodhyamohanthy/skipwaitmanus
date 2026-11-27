@@ -48,6 +48,14 @@ The product goal is in `docs/BRIEF.md`; current decisions are in `docs/DECISIONS
 
 **Queue status and order:** use the official picker and `docs/plans/assignments.json`; the table below is status/history, not a substitute for the picker. Every task is delegated through its packet (`docs/plans/`), with dependencies, scope, risk tier and evidence defined there. Follow the official picker and current packets; do not revive rejected refund or pass-sale work.
 
+November 28 CEO review: [P0-messages-account-menu and P0-support-account-menu](plans/P0-account-menu-pages.md)
+follow the original shell P0 under D-019, addressing automated issues #1708/#1709
+without changing existing rows' relative order or holders. Each needs a passing
+exact-release menu check at 1280 and 390 before its issue closes.
+[PICKER-claim-cost](plans/PICKER-claim-cost.md) appends FIFO: measure and remove
+redundant claim-state work without weakening authoritative freshness. These
+registrations are not repairs or release proof; status lives in their packets.
+
 | # | Task (audit feature names) | Depends on | Size | Status |
 |---|---|---|---|---|
 | P0-messages-account-menu | Restore the existing signed-in account menu on `/messages` in every DM state; observed live QA issue #1708. Tier 1; [packet](plans/P0-route-account-menus.md) §1. | — | S | Registered under D-019/D-412; runtime and live acceptance pending. Status in packet. |
