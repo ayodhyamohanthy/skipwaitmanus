@@ -58,4 +58,4 @@ The original owner questions above remain open: which ATSes and authorization pa
 
 D-179-ats-validation: Claude Code · 33aa, 2026-11-27 — owner said resume (D-413 (5)); packet brought to main; row back to todo from current main, reusing what applies from PR #608. The open questions above stay open.
 
-D-179-ats-validation: Claude Code, 2026-11-27 — restarted from current main (D-413 (5)): register status wording carried from #608, conflict-marker scanner not carried (unrelated), #608 closed; open questions above unchanged.
+D-179-ats-validation: Claude Code, 2026-11-27 — restarted from current main (D-413 (5)): register status wording carried from #608, conflict-marker scanner not carried (unrelated), #608 closed for #1717; open questions above unchanged.
