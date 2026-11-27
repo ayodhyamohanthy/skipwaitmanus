@@ -12,7 +12,7 @@
  * shared/referral.ts, server/db.ts and the sweep read one binding without an import cycle, and a
  * test can force either state with `vi.mock` instead of a test-only setter.
  */
-export const ASK_NO_EXPIRY_ENABLED = false;
+export const ASK_NO_EXPIRY_ENABLED = true;
 
 /** D-193 (5): the coupling the release must keep. Returns the failure, or null when the pair is allowed. */
 export function askNoExpiryCouplingError(noExpiry: boolean, reconfirm: boolean): string | null {

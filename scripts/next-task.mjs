@@ -31,7 +31,7 @@ import path from "node:path";
 import {
   chooseSessionName, modelOfSession, parseSessionRecords, recordSession,
   BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
-  mayReport, outOfSyncOf, packetFixHead, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
+  landedUnblocksOf, mayReport, outOfSyncOf, packetFixHead, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
 } from "./nextTaskCore.mjs";
 import { renderBoard, renderBoardSummary, renderPick, renderReleaseLights, renderResumeCommand, renderSessionChoice } from "./nextTaskText.mjs";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -693,6 +693,18 @@ function loadReports(context) {
   });
 }
 
+/**
+ * D-412 (2): the `Unblock` markers main already holds, as task id -> sessions. A lock's markers are read only beyond
+ * main (`origin/main..<lock>`), so once a ruling's pull request merges from the unblock lock its `Unblock` marker leaves
+ * the lock's list (and a merged lock may be deleted), and the unblocker's later report stopped clearing the block.
+ * One read of main's history, filtered by git on the marker subject (~0.1 s); only empty marker commits count, as on a
+ * lock (markersOn). Unreadable is empty: the lock's own markers still decide, as before.
+ */
+function loadLandedUnblocks() {
+  const raw = tryGit("log", "--no-merges", "-E", "--grep=^Unblock [^:]+: ", `--format=${PROVENANCE_LOG_FORMAT}`, "--name-only", "origin/main");
+  return landedUnblocksOf(markersOn(parseProvenanceLog(raw ?? "")));
+}
+
 const originRef = name => `refs/remotes/origin/${name}`;
 
 /**
@@ -940,7 +952,7 @@ async function state({ withRelease = false } = {}) {
       release = await readLiveRelease({ repo: doc.repo, github, mainCi, tryGit });
     } catch { console.error("next-task: release reader unavailable; live release is unknown, no added landing hold"); }
   }
-  return { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, release, reports: loadReports({ tasks: doc.tasks }) };
+  return { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, landedUnblocks: loadLandedUnblocks(), prCi, prFacts, prBehind, branches, release, reports: loadReports({ tasks: doc.tasks }) };
 }
 
 function claim(pick, who, branches, provenanceBody) {
@@ -1104,27 +1116,27 @@ async function runCommand(args) {
     return;
   }
   if (args.autoLand) {
-    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
-    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now: Date.now(), register });
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, landedUnblocks, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, landedUnblocks, prCi, prFacts, prBehind, reports, now: Date.now(), register });
     await autoLandFrom({ doc, mainCi, openPrs, prCi, board, release });
     return;
   }
   if (args.status) {
-    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, landedUnblocks, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
     const newest = register.at(-1);
     console.log(`Register: ${newest.id}, ${newest.date} — ${newest.title}`);
     console.log(`main CI: ${mainCi.state}${mainCi.url ? ` (${mainCi.url})` : ""}${openPrs === null || mergedHeads === null ? " · pull requests: UNKNOWN (GitHub read failed; the board may be wrong)" : ""}\n`);
     console.log(release ? renderReleaseLights(release) : "LIVE RELEASE: unknown (reader unavailable; no added landing hold)\n");
-    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now: Date.now(), register })));
+    console.log(renderBoard(statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, landedUnblocks, prCi, prFacts, prBehind, reports, now: Date.now(), register })));
     return;
   }
   if (args.report) {
-    const { doc, branches, register, reports, openPrs, mergedHeads, landedEvidence } = await state();
+    const { doc, branches, register, reports, openPrs, mergedHeads, landedEvidence, landedUnblocks } = await state();
     const task = doc.tasks.find(t => t.id === args.task) ?? fail(`no task ${args.task}`);
     // A report can hold or release every lower priority, so only the task's own people or the CEO send one (D-085).
-    if (!mayReport({ task, branches, claimant: args.as })) fail(`"${args.as}" holds no part of ${task.id}; only its builder, reviewer, fixer, lander, unblocker or the CEO reports on it`);
+    if (!mayReport({ task, branches, claimant: args.as, landedUnblocks })) fail(`"${args.as}" holds no part of ${task.id}; only its builder, reviewer, fixer, lander, unblocker or the CEO reports on it`);
     requireSynced(doc, branches, args.as);
-    const blockInput = { task, tasks: doc.tasks, branches, register, reports, openPrs: openPrs ?? new Map(), mergedHeads: mergedHeads ?? new Map(), landedEvidence, now: Date.now() };
+    const blockInput = { task, tasks: doc.tasks, branches, register, reports, openPrs: openPrs ?? new Map(), mergedHeads: mergedHeads ?? new Map(), landedEvidence, landedUnblocks, now: Date.now() };
     if (args.report === "blocked") {
       const duplicate = blockedReportError(blockInput);
       if (duplicate) fail(duplicate);
@@ -1142,13 +1154,13 @@ async function runCommand(args) {
     return;
   }
   if (args.heartbeat) {
-    const { doc, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, branches, reports } = await state();
+    const { doc, mainCi, openPrs, mergedHeads, landedEvidence, landedUnblocks, prCi, prFacts, branches, reports } = await state();
     // Without the pull requests, a Tier 1 branch under review would look like a build to keep alive, and a claim marker would land on it.
     if (openPrs === null || mergedHeads === null) fail("cannot read the pull requests from GitHub; a heartbeat now could push a claim onto a branch under review (D-085); run this again when GitHub answers", 2);
     const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
     // A heartbeat keeps what you hold alive whatever main's CI says (D-085).
     // D-134: every claim you hold stays alive, not only the first one in queue order.
-    const helds = heldAllBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, claimant: args.as, mainSha, now: Date.now() });
+    const helds = heldAllBy({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, landedUnblocks, prCi, prFacts, reports, claimant: args.as, mainSha, now: Date.now() });
     if (!helds.length) fail(`"${args.as}" holds no task, so there is nothing to keep alive; run --claim to take one`);
     // Commits only on this machine are the real heartbeat: push them first, or a marker on origin would leave your branch diverged.
     const { local, mainBehind } = localState();
@@ -1164,14 +1176,14 @@ async function runCommand(args) {
   let who = args.claim ?? args.as ?? null;
   // D-324: many sessions start at once and race for the same top pick; six tries let each fall through to its own.
   for (let attempt = 1; attempt <= 6; attempt++) {
-    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
+    const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, landedUnblocks, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
     const now = Date.now();
     // PICKER-short-session (D-401): chosen once per run, on the first loaded state; every retry keeps that name.
     if (args.claim && !args.named) {
       const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
       const choice = chooseSessionName({
         requested: args.requested, newSession: Boolean(args.newSession), records: readSessionRecords(), tag: args.tag, now, mainSha,
-        tasks: doc.tasks, branches, openPrs, prCi, prFacts, mergedHeads, landedEvidence, reports,
+        tasks: doc.tasks, branches, openPrs, prCi, prFacts, mergedHeads, landedEvidence, landedUnblocks, reports,
       });
       args.claim = who = choice.name;
       args.named = true;
@@ -1181,10 +1193,10 @@ async function runCommand(args) {
     const avoid = avoidSetOf(args.avoid);
     const provenance = { ...loadTrustedProvenance(tryGit), git: tryGit, routeId: args.provenance };
     // PICKER-claim-task (D-353 (2)): --task restricts the pick to that one task.
-    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, reports, release, now, claimant: who, avoid, register, ...(args.task ? { only: args.task } : {}) });
+    const pick = pickNextTask({ provenance, tasks: doc.tasks, mainCi, branches, openPrs, mergedHeads, landedEvidence, landedUnblocks, prCi, prFacts, prBehind, reports, release, now, claimant: who, avoid, register, ...(args.task ? { only: args.task } : {}) });
     if (args.provenance) pick.provenanceRoute = args.provenance;
     // D-085: every agent starts from the same picture — the priorities top down, green or not (in summary, D-358).
-    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, prCi, prFacts, prBehind, reports, now, register });
+    const board = statusBoard({ tasks: doc.tasks, branches, openPrs, mergedHeads, landedEvidence, landedUnblocks, prCi, prFacts, prBehind, reports, now, register });
     // PICKER-auto-land (D-371): every claim first lands the green, in-sync task pull requests the board shows.
     if (args.claim && attempt === 1) await autoLandFrom({ doc, mainCi, openPrs, prCi, board, release });
     if (pick.kind === "ceo") pick.board = board;
