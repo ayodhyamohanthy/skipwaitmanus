@@ -36,3 +36,4 @@ Prices, plan contents, money rules, legal text (Terms, Privacy, Refund wording, 
 
 ## Status
 - MOBILE-app-flow: Claude Code · 33aa, 2026-11-27 — packet written from the owner-approved mocks; rows registered (D-414); nothing built.
+- PRIVACY-own-employer-guard: in progress — GPT-6.1 Sol · 6425 — 2026-11-27 — branch `agent/queue/privacy-own-employer-guard`; current-employer guard and proof pending.
