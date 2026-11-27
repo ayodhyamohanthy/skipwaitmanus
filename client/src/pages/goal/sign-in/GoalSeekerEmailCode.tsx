@@ -4,6 +4,7 @@ import { CircleAlert, MailCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalField, GoalTextInput } from "@/components/goal/GoalField";
+import { PasskeyAutofill } from "@/components/goal/GoalPasskeySignIn";
 import { useOnlineStatus } from "@/components/goal/useOnlineStatus";
 import { apiFetch } from "@/lib/apiFetch";
 import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@/lib/rememberedSignInEmail";
@@ -26,7 +27,7 @@ async function postJson(path: string, payload: object): Promise<{ ok: boolean; s
   return { ok: res.ok, status: res.status, body: await res.json().catch(() => ({})) };
 }
 
-export function GoalSeekerEmailCode({ returnTo, emailFieldId, onUsePassword }: { returnTo: string; emailFieldId: string; onUsePassword: () => void }) {
+export function GoalSeekerEmailCode({ returnTo, emailFieldId, passkeysEnabled, onUsePassword }: { returnTo: string; emailFieldId: string; passkeysEnabled: boolean; onUsePassword: () => void }) {
   const online = useOnlineStatus();
   const [stage, setStage] = useState<"email" | "code">("email");
   const [email, setEmail] = useState(() => rememberedSignInEmail("seeker"));
@@ -85,8 +86,9 @@ export function GoalSeekerEmailCode({ returnTo, emailFieldId, onUsePassword }: {
 
   return (
     <form data-testid="seeker-sign-in" className="mt-4 grid gap-3" onSubmit={send} noValidate>
+      <PasskeyAutofill enabled={passkeysEnabled} returnTo={returnTo} />
       <GoalField label="Email address" htmlFor={emailFieldId} help="We'll email you a sign-in link and a code. New here? This creates your free account.">
-        <GoalTextInput id={emailFieldId} name="email" type="email" placeholder="you@example.com" autoComplete="email" autoCapitalize="none" spellCheck={false} required
+        <GoalTextInput id={emailFieldId} name="email" type="email" placeholder="you@example.com" autoComplete={passkeysEnabled ? "username webauthn" : "email"} autoCapitalize="none" spellCheck={false} required
           value={email} onChange={event => { setEmail(event.target.value); setError(""); setWorkEmail(false); }} />
       </GoalField>
       {remembered ? (

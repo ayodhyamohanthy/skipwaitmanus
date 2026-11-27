@@ -1,4 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { vi, describe, expect, it } from "vitest";
+// D-174-no-expiry-release: this suite pins the legacy ask clocks, so it forces the switch off; the
+// no-expiry path is pinned in the *.noExpiry tests and e2e/reconfirm-money.e2e.ts (D-411).
+vi.mock("../shared/askNoExpiry", async importOriginal => ({
+  ...await importOriginal<typeof import("../shared/askNoExpiry")>(),
+  ASK_NO_EXPIRY_ENABLED: false,
+}));
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { CATALOG_PLAN_IDS } from "../shared/planCatalog";
 import { COMPANY_CAP_REACHED, companyCapCopy, companyCapReachedSchema, nextSlotPlan, nextSlotPlanAmong, openAskSlots, openAskSlotsSchema, slotCapNudgeCopy, slotCapReachedSchema, slotsFullCopy } from "../shared/openAskSlots";

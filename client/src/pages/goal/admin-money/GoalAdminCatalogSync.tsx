@@ -20,9 +20,13 @@ export const GOAL_PAGE = { goalLine: MONEY_GOAL_LINE } as const;
 const DRY_RUN_PATH = "/api/admin/billing/catalog-sync";
 const APPLY_PATH = "/api/admin/billing/catalog-sync/apply";
 const LOAD_FALLBACK = "We could not read the Chargebee catalog.";
+/** The normal sign-in, returning here (same as /admin/money-check); the server decides who is an administrator. */
+const ADMIN_SIGN_IN_HREF = `/sign-in?${new URLSearchParams({ returnTo: "/admin/catalog-sync" })}`;
 const APPLY_FALLBACK = "We could not run the catalog sync.";
 export default function GoalAdminCatalogSync() {
-  const { isSignedIn, getToken, openSignIn } = useAuth();
+  const { isSignedIn, getToken } = useAuth();
+  // FIX-admin-catalog-signin: a session the server refuses (401/403) is not an administrator one.
+  const [notAdmin, setNotAdmin] = useState(false);
   const [dryRun, setDryRun] = useState<CatalogSyncDryRun | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -39,6 +43,8 @@ export default function GoalAdminCatalogSync() {
     try {
       const token = await getToken();
       const response = await fetch(DRY_RUN_PATH, { headers: token ? { Authorization: `Bearer ${token}` } : {}, credentials: "include" });
+      if (response.status === 401 || response.status === 403) { setNotAdmin(true); return; }
+      setNotAdmin(false);
       const payload = await readApiJson<Record<string, unknown>>(response, LOAD_FALLBACK);
       if (!response.ok) throw new Error(typeof payload.error === "string" ? payload.error : LOAD_FALLBACK);
       const parsed = catalogSyncDryRunSchema.safeParse(payload);
@@ -93,12 +99,14 @@ export default function GoalAdminCatalogSync() {
     }
   };
 
-  if (!isSignedIn) {
+  if (!isSignedIn || notAdmin) {
     return (
       <AdminMoneyGoalFrame screen="admin-catalog-sync-sign-in" current="/admin/catalog-sync">
         <AdminMoneyHeading current="/admin/catalog-sync" />
-        <GoalNextStep reason="Sign in with the designated administrator account before reading the catalog dry run.">
-          <GoalButton variant="primary" className="mt-3" onClick={() => openSignIn()}>Sign in</GoalButton>
+        <GoalNextStep reason={notAdmin
+          ? "You are signed in, but not as an administrator. Sign in with the founder or administrator account to read the catalog dry run."
+          : "Sign in with the designated administrator account before reading the catalog dry run."}>
+          <GoalButton variant="primary" className="mt-3" asChild><a href={ADMIN_SIGN_IN_HREF}>Sign in as administrator</a></GoalButton>
         </GoalNextStep>
       </AdminMoneyGoalFrame>
     );
