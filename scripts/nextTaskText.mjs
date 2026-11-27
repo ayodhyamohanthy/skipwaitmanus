@@ -56,7 +56,9 @@ const statusAt = task => task.sharedRow ? `its line in the Status section of ${t
 const parkedLines = pick => (pick.parked ? [`BUILD AHEAD OF A HOLD (D-399): ${pick.task.id} is not landable now because ${pick.parked}, and nothing else was free, so you build it now instead of waiting. Build only what the packet already decides, on its own branch from current origin/main, and open a draft pull request; never land it, never mark it done, never clear the block yourself. Do not make an owner call in code or docs: prices, plan contents, legal text, the login rule, settings, secrets, spending, a production switch or anything posted in the owner's name stay as written, and each such question goes in ${statusAt(pick.task)} as a question. When the row returns to todo or its block clears, the picker hands its landing out as usual; then merge origin/main into the branch first. If the packet has nothing left to build without the owner's answer, push what you have, report it with \`${CMD} --report review\`, and run the picker again.`] : []);
 // D-407 (4): a quiet built-ahead draft handed out to be kept current; it never lands from here.
 const refreshLines = pick => (pick.refresh ? [`KEEP A BUILT-AHEAD DRAFT CURRENT (D-407 (4)): ${pick.task.id} cannot land yet (a dependency, an owner call or a block holds it) and ${pick.refresh}, and nothing else was free, so you keep it ready instead of waiting. In its own branch: merge origin/main, keep both sides of any conflict, make required CI green on the draft and push; then \`${CMD} --report review\` with the new head. never land it, never mark it done, never clear a block and never make an owner call (prices, plan contents, legal text, the login rule, settings, secrets, spending, a production switch). Do not take on new packet work here unless the packet already decides it.`] : []);
-const aheadLines = pick => (pick.ahead?.length ? [`AHEAD OF ITS DEPENDENCIES (D-315): ${pick.ahead.join(", ")} ${pick.ahead.length === 1 ? "is" : "are"} not done yet, and nothing else was free, so you start this now instead of waiting. Work only on its own branch from current origin/main and open a draft pull request; never land it, never mark it done and never edit a dependency's files to make it pass. The picker withholds its review and landing until every dependency is done; then merge origin/main into the branch and adapt to what they changed. If the packet truly needs a dependency's output to go further, push what you have, report it with \`${CMD} --report review\`, and run the picker again for your next task.`] : []);
+// D-412 (3): a pull request holding only status notes is unbuilt; it is never reviewed or landed as it is.
+const statusOnlyLines = pick => (pick.statusOnly ? [`STATUS NOTES ARE NOT THE BUILD (D-412): pull request ${pick.pr ?? "on this branch"} changes only documentation (the packet, the task list or other Markdown) while ${pick.task.id} owns code. Build the implementation the packet describes on this branch first; the picker hands out no review or landing for it until the pull request carries that code, and never mark the row done from status notes.`] : []);
+const aheadLines = pick =>(pick.ahead?.length ? [`AHEAD OF ITS DEPENDENCIES (D-315): ${pick.ahead.join(", ")} ${pick.ahead.length === 1 ? "is" : "are"} not done yet, and nothing else was free, so you start this now instead of waiting. Work only on its own branch from current origin/main and open a draft pull request; never land it, never mark it done and never edit a dependency's files to make it pass. The picker withholds its review and landing until every dependency is done; then merge origin/main into the branch and adapt to what they changed. If the packet truly needs a dependency's output to go further, push what you have, report it with \`${CMD} --report review\`, and run the picker again for your next task.`] : []);
 const holding = pick => (pick.holds ? [`You also hold ${pick.holds.id} (${pick.holds.branch}). This higher priority needs hands first (D-085): your own work is pushed (the picker checked), and it stays yours for 2 hours; come back to it with \`${CMD} --claim\` as soon as this is done.`] : []);
 
 function workSteps(task, who) {
@@ -251,8 +253,12 @@ export function renderBoard(rows) {
     const bits = [`${i + 1}. ${r.id} — ${r.title}`, r.role, `Tier ${r.tier}`, HEALTH[r.health] ?? r.state, r.state];
     if (r.review) bits.push(`review ${r.review}${r.stage ? ` by ${r.stage}` : ""}`);
     else if (r.stage) bits.push(`unblocking: ${r.stage}`);
-    if (r.holder) bits.push(r.holder);
-    if (r.quietHours !== null && r.quietHours !== undefined) bits.push(`quiet ${r.quietHours}h`);
+    // D-412 (4): a claim quiet past the 2-hour lease is free (D-085); name its last holder only as history.
+    if (r.holder && r.free) bits.push(`free (last: ${r.holder}, quiet ${r.quietHours ?? "?"}h)`);
+    else {
+      if (r.holder) bits.push(r.holder);
+      if (r.quietHours !== null && r.quietHours !== undefined) bits.push(`quiet ${r.quietHours}h`);
+    }
     if (r.pr) bits.push(r.pr);
     if (r.pr && r.state !== "done") bits.push(`behind main ${Number.isSafeInteger(r.behindMain) && r.behindMain >= 0 ? r.behindMain : "unknown"}`);
     if (r.report) {
@@ -386,7 +392,7 @@ function pickText(pick, { who, date, claimed, register = null, requestedTask = n
         case "architect": return head(`CONTINUE: WRITE THE PACKET FOR ${pick.task.id} — ${pick.task.title}`, [intro, `Lock ${pick.lock}.`, architectSteps({ ...pick, lockExists: true }, who, true)]);
         case "resync": return head(`CONTINUE: RESYNC ${pick.task.id} — ${pick.task.title}`, [intro, `Lock ${pick.lock}.`, resyncSteps({ ...pick, lockExists: true }, who, register)]);
         case "unblock": return head(`CONTINUE: UNBLOCK ${pick.task.id} — ${pick.task.title}`, [intro, `${pick.report.who} reported it ${pick.report.status}${pick.report.note ? `: ${pick.report.note}` : ""}. Lock ${pick.lock}.`, unblockSteps(pick, who)]);
-        default: return head(`CONTINUE ${pick.task.id} — ${pick.task.title}`, [intro, `Tier ${pick.task.tier} · lane ${pick.task.lane} · packet ${pick.task.packet} · branch ${pick.work}`, resumeSteps(pick.task, who, pick.work)]);
+        default: return head(`CONTINUE ${pick.task.id} — ${pick.task.title}`, [intro, `Tier ${pick.task.tier} · lane ${pick.task.lane} · packet ${pick.task.packet} · branch ${pick.work}`, ...statusOnlyLines(pick), resumeSteps(pick.task, who, pick.work)]);
       }
     }
     default: throw new Error(`unknown pick kind ${pick.kind}`);

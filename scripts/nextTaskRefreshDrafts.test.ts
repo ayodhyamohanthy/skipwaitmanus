@@ -37,8 +37,9 @@ const busyA = claimed("A", "Qwen · q1", 0.5);
 const tasks = () => [task("A"), task("B", { dependsOn: ["A"] })];
 
 describe("D-407 (4): keep built-ahead drafts current instead of WAIT", () => {
+  // D-412 (1): a draft is refreshed only when its unmet dependency (A) already has an open pull request with green CI.
   it("hands a quiet draft that is far behind main as a refresh takeover, and says it must never land", () => {
-    const got = pick(tasks(), { branches: [busyA, claimed("B", "Gemini · g1", 5)], prs: ["B"], prCi: [["B", "green"]], behind: [["B", 40]] });
+    const got = pick(tasks(), { branches: [busyA, claimed("B", "Gemini · g1", 5)], prs: ["A", "B"], prCi: [["A", "green"], ["B", "green"]], behind: [["B", 40]] });
     expect(got).toMatchObject({ kind: "takeover", task: { id: "B" }, work: branchOf("B"), refresh: "its draft is 40 commits behind main" });
     const text = renderPick(got, ctx);
     expect(text).toContain("KEEP A BUILT-AHEAD DRAFT CURRENT (D-407 (4))");
@@ -47,7 +48,7 @@ describe("D-407 (4): keep built-ahead drafts current instead of WAIT", () => {
   });
 
   it("hands a quiet draft whose required CI is red even when it is current", () => {
-    const got = pick(tasks(), { branches: [busyA, claimed("B", "Gemini · g1", 5)], prs: ["B"], prCi: [["B", "red"]], behind: [["B", 0]] });
+    const got = pick(tasks(), { branches: [busyA, claimed("B", "Gemini · g1", 5)], prs: ["A", "B"], prCi: [["A", "green"], ["B", "red"]], behind: [["B", 0]] });
     expect(got).toMatchObject({ kind: "takeover", task: { id: "B" }, refresh: "its draft's required CI is red" });
   });
 
