@@ -5,6 +5,12 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// D-174-no-expiry-release: this suite pins the legacy ask clocks, so it forces the switch off; the
+// no-expiry path is pinned in the *.noExpiry tests and e2e/reconfirm-money.e2e.ts (D-411).
+vi.mock("../../../shared/askNoExpiry", async importOriginal => ({
+  ...await importOriginal<typeof import("../../../shared/askNoExpiry")>(),
+  ASK_NO_EXPIRY_ENABLED: false,
+}));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyCompanyInbox from "./MyCompanyInbox";
 

@@ -1,4 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
+// D-174-no-expiry-release: this suite pins the legacy ask clocks, so it forces the switch off; the
+// no-expiry path is pinned in the *.noExpiry tests and e2e/reconfirm-money.e2e.ts (D-411).
+vi.mock("../shared/askNoExpiry", async importOriginal => ({
+  ...await importOriginal<typeof import("../shared/askNoExpiry")>(),
+  ASK_NO_EXPIRY_ENABLED: false,
+}));
 import { SCHEDULED_JOB_NAMES } from "../shared/scheduledJobs";
 import { ASK_TTL_MS, COVERAGE_WAIT_MS } from "../shared/referral";
 import { ASK_EXPIRY_SWEEP_BATCH, createAskExpirySweep, type StaleAsk } from "./askExpirySweep";
