@@ -44,9 +44,14 @@ const jobs = [
   { id: 12, title: "Backend Engineer", company: "Example Labs", location: "Remote", seniority: "Mid", workMode: "Remote", targetRoleUrl: null },
 ];
 
-function stubJobs({ list = jobs, jobsStatus = 200, saved = [] as number[], toggleStatus = 200 } = {}) {
+// FIX-jobs-catalog-search (issue 1706): the universal search's answer (shared/search.ts), synthetic rows only.
+const catalogHit = (over: Json = {}) => ({ id: 901, companySlug: "synthetic", companyName: "Synthetic Co", title: "Platform Engineer", locations: ["Remote"], applyUrl: "https://careers.synthetic.example/jobs/901", publishedAt: "2026-11-19T00:00:00.000Z", level: 5, referrerPresence: "none", ...over });
+const searchAnswer = (query: string, hits: Json[] = []) => ({ kind: "job-title", query, companies: [], discovered: [], discoveryState: "ok", jobLink: null, jobs: hits, catalogState: "ok" });
+
+function stubJobs({ list = jobs, jobsStatus = 200, saved = [] as number[], toggleStatus = 200, catalog = [] as Json[], searchStatus = 200 } = {}) {
   const fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
+    if (url.startsWith("/api/search?")) return searchStatus === 200 ? ok(searchAnswer(new URL(url, "https://x.example").searchParams.get("q") ?? "", catalog)) : fail({ error: "We could not search right now" }, searchStatus);
     if (url.startsWith("/api/saved-roles/")) return toggleStatus === 200 ? ok({ saved: init?.method === "PUT" }) : fail({ error: "We could not update your saved roles" });
     if (url === "/api/saved-roles") return ok({ saved: saved.map(jobId => ({ jobId })) });
     return jobsStatus === 200 ? ok({ jobs: list }) : fail({ error: "We could not load the job list" }, jobsStatus);
@@ -305,6 +310,71 @@ describe("goal /jobs", () => {
     expect(fetch).toHaveBeenCalledWith("/api/jobs?query=designer");
     expect(window.location.search).toBe("?q=designer");
     expect((screen.getByRole("searchbox", { name: "Search roles" }) as HTMLInputElement).value).toBe("designer");
+  });
+
+  // FIX-jobs-catalog-search (issue 1706): /api/jobs holds only employer-posted roles; with none for a
+  // search, the page answers it from company careers sites through /api/search (D-360, D-394).
+  it("with no posted roles, answers the search from company careers sites and hands the role to /start", async () => {
+    window.history.replaceState(null, "", "/jobs?q=engineer");
+    const fetch = stubJobs({ list: [], catalog: [catalogHit(), catalogHit({ id: 902, title: "Data Engineer", companyName: "Example Labs", companySlug: "example-labs", locations: ["Bengaluru"], applyUrl: "https://jobs.example.org/data-engineer", referrerPresence: "present" })] });
+    const { container } = render(<GoalJobs />);
+    expect(await screen.findByRole("heading", { level: 3, name: "Platform Engineer" })).toBeTruthy();
+    expect(fetch).toHaveBeenCalledWith("/api/jobs?query=engineer");
+    expect(fetch.mock.calls.some(([url]) => String(url) === "/api/search?q=engineer")).toBe(true);
+    expect(screen.queryByText("No jobs match. Try a broader search.")).toBeNull();
+    expect(screen.getByText("No referrers yet")).toBeTruthy();
+    expect(screen.getByText("Referrers here")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Apply on the careers site for Platform Engineer" }).getAttribute("href")).toBe("https://careers.synthetic.example/jobs/901");
+    assertGoalPage(container, JOBS_GOAL);
+    // Careers-site rows are never published as JobPosting markup (D-193).
+    expect(document.head.innerHTML).not.toContain("Platform Engineer");
+    expect(document.head.innerHTML).not.toContain("Data Engineer");
+    fireEvent.click(screen.getAllByRole("button", { name: "Ask for a referral" })[1]);
+    expect(readReferralDraft()?.targetUrl).toBe("https://jobs.example.org/data-engineer");
+    expect(localStorage.getItem("bridge-target-url")).toBe("https://jobs.example.org/data-engineer");
+    expect(go).toHaveBeenCalledWith("/start");
+  });
+
+  it("with no search yet, asks for a role or company instead of saying no jobs match", async () => {
+    const fetch = stubJobs({ list: [] });
+    const { container } = render(<GoalJobs />);
+    expect(await screen.findByText("Search a role or company to see open roles.")).toBeTruthy();
+    expect(screen.queryByText("No jobs match. Try a broader search.")).toBeNull();
+    expect(fetch.mock.calls.some(([url]) => String(url).startsWith("/api/search"))).toBe(false);
+    assertGoalPage(container, JOBS_GOAL);
+  });
+
+  it("keeps only careers-site roles in the entered location and names the location only when one was entered", async () => {
+    window.history.replaceState(null, "", "/jobs?q=engineer&location=bengaluru");
+    stubJobs({ list: [], catalog: [catalogHit(), catalogHit({ id: 902, title: "Data Engineer", locations: ["Bengaluru"] })] });
+    render(<GoalJobs />);
+    expect(await screen.findByRole("heading", { level: 3, name: "Data Engineer" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 3, name: "Platform Engineer" })).toBeNull();
+    cleanup();
+    window.history.replaceState(null, "", "/jobs?q=engineer&location=paris");
+    stubJobs({ list: [], catalog: [catalogHit()] });
+    render(<GoalJobs />);
+    expect(await screen.findByText("No jobs match. Try a broader search.")).toBeTruthy();
+    expect(screen.getByText("Clear the location or search for a role title instead.")).toBeTruthy();
+    cleanup();
+    window.history.replaceState(null, "", "/jobs?q=astronaut");
+    stubJobs({ list: [] });
+    render(<GoalJobs />);
+    expect(await screen.findByText("No jobs match. Try a broader search.")).toBeTruthy();
+    expect(screen.queryByText(/Clear the location/)).toBeNull();
+    expect(screen.getByText("Search for a role title or a company name instead.")).toBeTruthy();
+  });
+
+  it("says plainly when the careers-site search fails, with a retry, never as no match", async () => {
+    window.history.replaceState(null, "", "/jobs?q=engineer");
+    const fetch = stubJobs({ list: [], searchStatus: 500 });
+    render(<GoalJobs />);
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("We could not search company careers sites");
+    expect(screen.queryByText("No jobs match. Try a broader search.")).toBeNull();
+    const before = fetch.mock.calls.filter(([url]) => String(url).startsWith("/api/search")).length;
+    fireEvent.click(within(alert).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(fetch.mock.calls.filter(([url]) => String(url).startsWith("/api/search")).length).toBeGreaterThan(before));
   });
 
   it("at 390px deep-link, selects job 12 of 12 and places its commit action in view above the list", async () => {

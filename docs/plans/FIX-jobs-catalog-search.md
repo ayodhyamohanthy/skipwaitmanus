@@ -22,4 +22,4 @@ Red first: four new cases in `client/src/pages/goal/discovery/discovery.goal.tes
 
 ## Status
 
-- FIX-jobs-catalog-search: registered (D-200) — Claude Code · 3770, 2026-11-27. Implementation in PR #1724 on the row's branch; unverified until it lands and live `/jobs?q=engineer` is checked.
+- FIX-jobs-catalog-search: done — 68856c594 — Claude Code · 3770, 2026-11-27. Four new cases red on main then green, 296 focused tests pass; 10 synthetic captures at 1280/390 (no page errors, no overflow, no careers-site row in JSON-LD; `design/goal-ui/captures/jobs/fix-1706/results.json`). Unverified: live `/jobs?q=engineer` after the web deploy; issue 1706 closes then.

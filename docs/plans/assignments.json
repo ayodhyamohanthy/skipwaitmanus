@@ -129,7 +129,7 @@
       "tier": 2,
       "lane": "fix-jobs-catalog-search",
       "branch": "agent/queue/fix-jobs-catalog-search",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-414",
       "dependsOn": [],
       "owns": [
