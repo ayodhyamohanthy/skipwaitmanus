@@ -87,7 +87,7 @@ Under picker/D-407 rules, PR #1591 remains draft until the other eligibility and
 dependency conditions are met. This refresh itself does not land the row, mark
 it done or change its readiness.
 
-- D-180-referral-words: review — agent/queue/referral-words-sweep — GPT-6.1 Sol · 4044 (takeover/build-ahead draft refresh, 2026-11-26; origin/main eac7b8e4c544aef10ef7857a3369dea1e7cac50d merged without conflicts; PR #1591 stays draft; no landing or completion).
+- D-180-referral-words: review — GPT-6.1 Sol · 3a1f — 2026-11-27 — merged main d6162887 and preserved referral-label and AccountMenu regression pins; 105 focused tests, typecheck and build passed; [draft PR #1591](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1591); full-suite verification, dependency completion and 1280/390 captures remain outstanding.
 
 Refresh evidence (GPT-6.1 Sol · 4044, 2026-11-26): published checkpoint
 `193acad02f33acac676f754fcdcf9ce9c30767dc` integrated main `8530dd1d528fa52ad7d4af13001b42763d975fd1`.

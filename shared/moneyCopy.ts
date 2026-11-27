@@ -9,6 +9,7 @@
  */
 import { FREE_PLAN } from "./planCatalog";
 import { ASK_NO_EXPIRY_ENABLED } from "./askNoExpiry";
+import { RECONFIRM_AFTER_DAYS } from "./askReconfirm";
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS, REFERRED_DEADLINE_ENABLED } from "./referral";
 
 /** Free asks every account gets each UTC calendar month (D-039). */
@@ -69,7 +70,14 @@ const REFERRED_REOPEN_SENTENCE = REFERRED_DEADLINE_ENABLED
   ? " If an accepted referral request is not marked Referred in time, or the referrer steps back, the referral request reopens to other employees with its charge still on it, and the charge is refunded if it is then withdrawn or expires unclaimed, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund."
   : "";
 
-export const CREDIT_RULE = `A referral request at a company where no verified employee is available yet waits at no cost. The moment one can see your referral request, 1 is deducted from your balance; if your balance is empty then, we hold the referral request until you add to it. The charge is refunded once if you withdraw before someone picks it up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. A referral request that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the referral request up, it stays charged, even if they pass.${REFERRED_REOPEN_SENTENCE}`;
+const CREDIT_RULE_EXPIRING = `A referral request at a company where no verified employee is available yet waits at no cost. The moment one can see your referral request, 1 is deducted from your balance; if your balance is empty then, we hold the referral request until you add to it. The charge is refunded once if you withdraw before someone picks it up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. A referral request that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the referral request up, it stays charged, even if they pass.${REFERRED_REOPEN_SENTENCE}`;
+/** D-411 (owner-approved legal wording, Nov 27): the reopen promise with the ask clocks off. */
+const REFERRED_REOPEN_SENTENCE_NO_EXPIRY = REFERRED_DEADLINE_ENABLED
+  ? " If an accepted referral request is not marked Referred in time, or the referrer steps back, the referral request reopens to other employees with its charge still on it, and the charge is refunded if it is then withdrawn, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund."
+  : "";
+/** D-411 (owner-approved legal wording, Nov 27): the credit rule with the ask clocks off (D-174). */
+export const CREDIT_RULE_NO_EXPIRY = `A referral request at a company where no verified employee is available yet waits at no cost, and it does not expire. If it has waited more than ${RECONFIRM_AFTER_DAYS} days when one becomes able to see it, we ask you to confirm it once before it is sent or charged. The moment a verified employee can see your referral request, 1 is deducted from your balance; if your balance is empty then, we hold the referral request until you add to it. It stays open until someone answers it or you withdraw it. The charge is refunded once if you withdraw before someone picks it up, only if its original balance or allowance has not expired, ended or been revoked and has room for the refund. Once someone picks the referral request up, it stays charged, even if they pass.${REFERRED_REOPEN_SENTENCE_NO_EXPIRY}`;
+export const CREDIT_RULE = ASK_NO_EXPIRY_ENABLED ? CREDIT_RULE_NO_EXPIRY : CREDIT_RULE_EXPIRING;
 
 /**
  * D-132 (frozen Oct 21 18:42 IST): PAID credits never expire; free monthly
@@ -83,7 +91,14 @@ const REFERRED_REOPEN_SENTENCE_V2 = REFERRED_DEADLINE_ENABLED
   ? " If an accepted ask is not marked Referred in time, or the referrer steps back, the ask reopens to other employees with those credits still on it, and the credits come back if the ask is then withdrawn or expires unclaimed."
   : "";
 
-export const CREDIT_RULE_V2 = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, credits are used by the role's level; if you do not have enough then, we hold the ask until you add more. Credits used on an ask come back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee - paid credits never expire, so they always come back; free monthly credits come back only if their month has not ended. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credits stay spent, even if they pass.${REFERRED_REOPEN_SENTENCE_V2}`;
+const CREDIT_RULE_V2_EXPIRING = `An ask at a company where no verified employee is available yet waits at no cost. The moment one can see your ask, credits are used by the role's level; if you do not have enough then, we hold the ask until you add more. Credits used on an ask come back once if you withdraw before someone picks the ask up, or if it expires unclaimed ${ASK_TTL_DAYS} days after it first reached a verified employee - paid credits never expire, so they always come back; free monthly credits come back only if their month has not ended. An ask that never reaches one closes after ${COVERAGE_WAIT_DAYS} days and costs nothing. Once someone picks the ask up, the credits stay spent, even if they pass.${REFERRED_REOPEN_SENTENCE_V2}`;
+/** D-411: the V2 reopen promise with the ask clocks off. */
+const REFERRED_REOPEN_SENTENCE_V2_NO_EXPIRY = REFERRED_DEADLINE_ENABLED
+  ? " If an accepted ask is not marked Referred in time, or the referrer steps back, the ask reopens to other employees with those credits still on it, and the credits come back if the ask is then withdrawn."
+  : "";
+/** D-411 (owner-approved, Nov 27): the off-flag V2 rule with the ask clocks off, kept truthful should it ever render. */
+export const CREDIT_RULE_V2_NO_EXPIRY = `An ask at a company where no verified employee is available yet waits at no cost, and it does not expire. If it has waited more than ${RECONFIRM_AFTER_DAYS} days when one becomes able to see it, we ask you to confirm it once before it is sent or credits are used. The moment one can see your ask, credits are used by the role's level; if you do not have enough then, we hold the ask until you add more. It stays open until someone answers it or you withdraw it. Credits used on an ask come back once if you withdraw before someone picks the ask up - paid credits never expire, so they always come back; free monthly credits come back only if their month has not ended. Once someone picks the ask up, the credits stay spent, even if they pass.${REFERRED_REOPEN_SENTENCE_V2_NO_EXPIRY}`;
+export const CREDIT_RULE_V2 = ASK_NO_EXPIRY_ENABLED ? CREDIT_RULE_V2_NO_EXPIRY : CREDIT_RULE_V2_EXPIRING;
 
 export const CREDIT_ENDED_CAVEAT_V2 = "paid credits never expire; free monthly credits end with the month";
 
@@ -91,7 +106,10 @@ export const CREDIT_ENDED_CAVEAT_V2 = "paid credits never expire; free monthly c
 export const CREDIT_ENDED_CAVEAT = "only if its original balance or allowance has not expired, ended or been revoked and has room for the refund";
 
 /** The same rule as a footnote clause, after "Uses 1 credit and 1 open slot when a verified employee can see it". */
-export const CREDIT_RULE_SHORT = `nothing is used while it waits for coverage, and the charge is refunded once if you withdraw before pickup or it expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
+const CREDIT_RULE_SHORT_EXPIRING = `nothing is used while it waits for coverage, and the charge is refunded once if you withdraw before pickup or it expires unclaimed, ${CREDIT_ENDED_CAVEAT}`;
+/** D-411 (owner-approved, Nov 27): the footnote clause with the ask clocks off. */
+export const CREDIT_RULE_SHORT_NO_EXPIRY = `nothing is used while it waits for coverage, it does not expire, and the charge is refunded once if you withdraw before pickup, ${CREDIT_ENDED_CAVEAT}`;
+export const CREDIT_RULE_SHORT = ASK_NO_EXPIRY_ENABLED ? CREDIT_RULE_SHORT_NO_EXPIRY : CREDIT_RULE_SHORT_EXPIRING;
 
 export type AskCostLine = { line: string; detail: string; blockedReason: string | null };
 

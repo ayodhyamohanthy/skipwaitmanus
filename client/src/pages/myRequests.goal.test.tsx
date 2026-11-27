@@ -25,6 +25,9 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/requests", go],
 }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
+// P0-goal-shell-sign-out: the shell's account menu has its own tests (accountMenu.test.tsx,
+// goalAppShell.signOut.test.tsx); here it is a stub so this page's fetch counts stay its own.
+vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <button type="button" aria-label="Account menu">AB</button> }));
 
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
@@ -110,9 +113,9 @@ describe("My referrals on the goal shell", () => {
     await waitFor(() => expect(screen.getAllByTestId("goal-credits-pill")[0].textContent).toBe("4 referrals left"));
     const pill = screen.getAllByTestId("goal-credits-pill");
     expect(pill[0].getAttribute("href")).toBe("/plans");
-    // My referrals is the current destination; the avatar identifies the account.
+    // My referrals is the current destination; the account menu identifies the signed-in account.
     expect(screen.getAllByRole("link", { name: "My referrals" }).some(link => link.getAttribute("aria-current") === "page")).toBe(true);
-    expect(screen.getAllByTestId("goal-avatar")[0].textContent).toBe("AB");
+    expect(screen.getAllByRole("button", { name: "Account menu" })[0].textContent).toBe("AB");
     // The list comes from one endpoint; the balance from the credits summary. Nothing else is fetched.
     const urls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls.map(([url]) => String(url));
     expect(urls).toContain("/api/company-referrals/mine");
