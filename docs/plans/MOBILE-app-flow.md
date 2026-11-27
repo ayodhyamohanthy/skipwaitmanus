@@ -35,4 +35,5 @@ Built as packet `docs/plans/D-089-request-inbox.md` §4.8, §4.9 and §5.2 speci
 Prices, plan contents, money rules, legal text (Terms, Privacy, Refund wording, cookie wording), the login rule's methods, referrer fairness. No switch goes on without its comparison and real-phone check.
 
 ## Status
+- MOBILE-landing-choice: GPT-6.1 Sol · 19b8, 2026-11-28 — took over the unbuilt carrier and integrated current main ([44ddc660b](https://github.com/ayodhyamohanthy/skipwaitmanus/commit/44ddc660bb4145240ab2db61ea8f346369cb28db)); implementation, responsive captures and comparison remain unverified.
 - MOBILE-app-flow: Claude Code · 33aa, 2026-11-27 — packet written from the owner-approved mocks; rows registered (D-414); nothing built.
