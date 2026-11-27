@@ -94,6 +94,25 @@
       "epic": "D-212"
     },
     {
+      "id": "QA-live-interactions",
+      "title": "Signed-in live QA opens the account menu on every signed-in route at 1280 and 390 and fails when Sign out is not offered, so dead controls file a bug issue (D-412 (7)(a), D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-live-interactions.md",
+      "tier": 2,
+      "lane": "qa-live-interactions",
+      "branch": "agent/queue/qa-live-interactions",
+      "status": "todo",
+      "syncedTo": "D-412",
+      "dependsOn": [],
+      "owns": [
+        "scripts/live-qa-signed-in.mjs",
+        "scripts/liveQaSignedIn.test.ts",
+        "docs/plans/QA-live-interactions.md"
+      ],
+      "note": "Owner, Nov 27: QA must catch bugs and file issues for agents. Clicks only the account menu and Escape; never signs out, never /admin, no money.",
+      "epic": "D-212"
+    },
+    {
       "id": "REL-plans-signed-out-token",
       "title": "Release repair: signed-out /plans never asks WorkOS for a token, so live verification passes again and the landing hold lifts (incident #1439)",
       "row": "D-212",
@@ -651,7 +670,7 @@
       "lane": "picker-bug-issues",
       "branch": "agent/queue/picker-bug-issues",
       "status": "todo",
-      "syncedTo": "D-409",
+      "syncedTo": "D-412",
       "dependsOn": [
         "QA-auto-issues"
       ],
@@ -663,7 +682,7 @@
         "scripts/nextTaskBugIssues.test.ts",
         "docs/plans/QA-automated-testers.md"
       ],
-      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them. D-412 (7)(c) (Nov 27): scope unchanged; build it next so automated and ai-tester bug issues reach agents.",
       "epic": "D-212"
     },
     {
