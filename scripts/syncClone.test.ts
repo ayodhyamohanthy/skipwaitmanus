@@ -10,8 +10,9 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
-  HOOK_MARKER, NEVER_PUSH, PRIVATE_PREFIXES, addedLines, autoSetupAllowed, exitCodeOf, findSensitive, hookScript, planBranch, planHook, planMain, sideBranchForMain,
+  HOOK_MARKER, NEVER_PUSH, PRIVATE_PREFIXES, addedLines, autoSetupAllowed, exitCodeOf, findSensitive, hookScript, planBranch, planHook, planMain, pullMethod, sideBranchForMain,
 } from "./syncCloneCore.mjs";
+import { crontabWith, crontabWithout, nextDelay, parseRemoteHeads, remoteMoved, watchInterval, watchLoop } from "./syncCloneWatch.mjs";
 
 const root = path.resolve(__dirname, "..");
 const SCRIPT = path.join(root, "scripts/sync-clone.mjs");
@@ -363,5 +364,141 @@ describe("SYNC-auto-push as a process", () => {
     expect(first.out).toContain("auto-push on");
     expect(readFileSync(hookFile(f.clone), "utf8")).toContain(HOOK_MARKER);
     expect(auto(f.clone, local)).toEqual({ code: 0, out: "" });
+  }, 60_000);
+});
+
+// SYNC-auto-pull: branches that are strictly behind are fast-forwarded, and --watch pulls without anyone fetching.
+describe("SYNC-auto-pull rules", () => {
+  it("pulls a branch that is strictly behind, and still reports a diverged one", () => {
+    expect(planBranch(branch({ remoteSha: sha("b"), remoteIsAncestor: false, localIsAncestor: true }))).toEqual({ action: "pull", reason: "behind origin; fast-forwarded" });
+    expect(planBranch(branch({ remoteSha: sha("b"), remoteIsAncestor: false, localIsAncestor: false }))).toMatchObject({ action: "report", reason: expect.stringContaining("diverged") });
+    expect(planBranch(branch({ remoteSha: sha("b"), remoteIsAncestor: true }))).toEqual({ action: "push", reason: "ahead of origin" });
+    expect(planBranch(branch({ remoteSha: sha("a") })).action).toBe("none");
+    // The tracked-elsewhere and never-push rules still win over a pull.
+    expect(planBranch(branch({ upstream: "origin/other", remoteSha: sha("b"), localIsAncestor: true })).action).toBe("report");
+    expect(planBranch(branch({ name: "agent/reports/log", remoteSha: sha("b"), localIsAncestor: true })).action).toBe("none");
+  });
+  it("fast-forwards in a clean worktree or by a checked ref update, and never touches a dirty worktree", () => {
+    expect(pullMethod({ worktree: null, worktreeDirty: false }).action).toBe("update-ref");
+    expect(pullMethod({ worktree: "/w", worktreeDirty: false }).action).toBe("merge");
+    expect(pullMethod({ worktree: "/w", worktreeDirty: true })).toMatchObject({ action: "report", reason: expect.stringContaining("uncommitted") });
+  });
+  it("counts only main and this clone's own branches as moved, including new and deleted ones", () => {
+    const remoteHeads = parseRemoteHeads(`${sha("a")}\trefs/heads/main\n${sha("b")}\trefs/heads/agent/queue/x\n${sha("c")}\trefs/heads/agent/heartbeat/y\n`);
+    expect(remoteHeads.get("agent/queue/x")).toBe(sha("b"));
+    const trackingRefs = new Map([["main", sha("a")], ["agent/queue/x", sha("b")], ["agent/heartbeat/y", sha("d")]]);
+    expect(remoteMoved({ remoteHeads, trackingRefs, localBranches: ["main", "agent/queue/x"] })).toEqual([]);
+    expect(remoteMoved({ remoteHeads, trackingRefs: new Map([...trackingRefs, ["main", sha("e")]]), localBranches: [] })).toEqual(["main moved"]);
+    expect(remoteMoved({ remoteHeads, trackingRefs: new Map([["main", sha("a")]]), localBranches: ["agent/queue/x"] })).toEqual(["agent/queue/x is new"]);
+    expect(remoteMoved({ remoteHeads: new Map([["main", sha("a")]]), trackingRefs, localBranches: ["agent/queue/x"] })).toEqual(["agent/queue/x is gone"]);
+  });
+  it("polls every 30 s by default, never below 10 s, and backs off 30 s, 1, 2 then 5 minutes after failures", () => {
+    expect(watchInterval(null)).toBe(30);
+    expect(watchInterval("abc")).toBe(30);
+    expect(watchInterval("3")).toBe(10);
+    expect(watchInterval("45")).toBe(45);
+    expect([0, 1, 2, 3, 4, 9].map(n => nextDelay(n, 30))).toEqual([30, 30, 60, 120, 300, 300]);
+    expect(() => nextDelay(-1, 30)).toThrow();
+  });
+  it("adds the @reboot line once, keeps every other crontab line and removes only its own", () => {
+    const line = "@reboot cd /c && node /c/scripts/sync-clone.mjs --watch --timestamps";
+    const table = "MAILTO=me\n0 1 * * * backup.sh\n*/15 * * * * cd /c && node /c/scripts/sync-clone.mjs --timestamps\n";
+    const next = crontabWith(table, line);
+    expect(next).toBe(`MAILTO=me\n0 1 * * * backup.sh\n${line}\n`);
+    expect(crontabWith(next, line)).toBeNull();
+    expect(crontabWith(null, line)).toBe(`${line}\n`);
+    expect(crontabWithout(next)).toBe("MAILTO=me\n0 1 * * * backup.sh\n");
+    expect(crontabWithout("0 1 * * * backup.sh\n")).toBeNull();
+  });
+});
+
+describe("watchLoop", () => {
+  const harness = (script: { ls: (string | null)[]; stamps?: string[] }, opts: { fullEvery?: number } = {}) => {
+    let clock = 0, i = 0, reads = 0;
+    const calls = { syncs: 0, sleeps: [] as number[], logs: [] as string[] };
+    const tracking = new Map([["main", sha("a")]]);
+    const deps = {
+      interval: 30, fullEvery: opts.fullEvery ?? 900, rounds: script.ls.length,
+      lsRemote: () => script.ls[i++] ?? null,
+      readClone: () => ({ trackingRefs: new Map(tracking), localBranches: ["main"], localStamp: script.stamps?.[Math.min(reads++, script.stamps.length - 1)] ?? "s" }),
+      sync: () => { calls.syncs++; tracking.set("main", /^([0-9a-f]{40})\trefs\/heads\/main$/m.exec(script.ls[i - 1] ?? "")?.[1] ?? tracking.get("main")!); return 0; },
+      sleep: (s: number) => { calls.sleeps.push(s); clock += s * 1000; },
+      now: () => clock,
+      log: (l: string) => calls.logs.push(l),
+    };
+    return { deps, calls };
+  };
+  const at = (c: string) => `${sha(c)}\trefs/heads/main\n`;
+
+  it("syncs once at start, then only when origin moved, one sync per change", async () => {
+    const { deps, calls } = harness({ ls: [at("a"), at("a"), at("b"), at("b"), at("b"), at("c")] });
+    expect(await watchLoop(deps)).toEqual({ rounds: 6, syncs: 3 });
+    expect(calls.logs.filter(l => l.startsWith("sync ("))).toEqual(["sync (first run)", "sync (origin: main moved)", "sync (origin: main moved)"]);
+    expect(calls.sleeps).toEqual([30, 30, 30, 30, 30]);
+  });
+  it("syncs when this clone's own branches changed (a hand pull, merge or checkout)", async () => {
+    // reads: round1 before, after-sync; round2; round3 (changed); after-sync
+    const { deps, calls } = harness({ ls: [at("a"), at("a"), at("a")], stamps: ["s1", "s1", "s1", "s2", "s2"] });
+    expect((await watchLoop(deps)).syncs).toBe(2);
+    expect(calls.logs).toContain("sync (this clone's branches changed)");
+  });
+  it("backs off while origin is unreachable and returns to the interval after one success", async () => {
+    const { deps, calls } = harness({ ls: [null, null, null, null, null, at("a"), at("a")] });
+    await watchLoop(deps);
+    expect(calls.sleeps).toEqual([30, 60, 120, 300, 300, 30]);
+    expect(calls.logs.filter(l => l.includes("unreachable"))).toHaveLength(1);
+  });
+  it("runs a periodic full sync even when nothing moved", async () => {
+    const { deps } = harness({ ls: [at("a"), at("a"), at("a"), at("a")] }, { fullEvery: 60 });
+    expect((await watchLoop(deps)).syncs).toBe(2);
+  });
+});
+
+describe("SYNC-auto-pull as a process", () => {
+  it("fast-forwards a clean behind branch in its worktree and one checked out nowhere, and leaves a dirty one and a diverged one alone", () => {
+    const f = simple();
+    const elsewhere = path.join(f.dir, "elsewhere");
+    git(f.dir, "clone", "-q", f.origin, elsewhere);
+    for (const name of ["agent/queue/clean", "agent/queue/nowhere", "agent/queue/dirty", "agent/queue/both"]) {
+      git(elsewhere, "push", "-q", "origin", `main:refs/heads/${name}`);
+    }
+    git(f.clone, "fetch", "-q", "origin");
+    for (const name of ["agent/queue/nowhere", "agent/queue/both"]) git(f.clone, "branch", "-q", "--track", name, `origin/${name}`);
+    const clean = path.join(f.dir, "clean"), dirty = path.join(f.dir, "dirty");
+    git(f.clone, "worktree", "add", "-q", "--track", "-b", "agent/queue/clean", clean, "origin/agent/queue/clean");
+    git(f.clone, "worktree", "add", "-q", "--track", "-b", "agent/queue/dirty", dirty, "origin/agent/queue/dirty");
+    writeFileSync(path.join(dirty, "draft.txt"), "unsaved\n");
+    git(f.clone, "checkout", "-q", "agent/queue/both"); commit(f.clone, "mine.txt", "mine\n"); git(f.clone, "checkout", "-q", "main");
+    const mineBoth = git(f.clone, "rev-parse", "agent/queue/both"), dirtyBefore = git(f.clone, "rev-parse", "agent/queue/dirty");
+    for (const name of ["agent/queue/clean", "agent/queue/nowhere", "agent/queue/dirty", "agent/queue/both"]) {
+      git(elsewhere, "checkout", "-q", "-B", name, `origin/${name}`); commit(elsewhere, `${name.split("/").at(-1)}.txt`, "theirs\n"); git(elsewhere, "push", "-q", "origin", name);
+    }
+    const { out } = run(f.clone);
+    expect(git(f.clone, "rev-parse", "agent/queue/clean")).toBe(remoteTip(f.origin, "agent/queue/clean"));
+    expect(readFileSync(path.join(clean, "clean.txt"), "utf8")).toBe("theirs\n");
+    expect(git(f.clone, "rev-parse", "agent/queue/nowhere")).toBe(remoteTip(f.origin, "agent/queue/nowhere"));
+    expect(out).toMatch(/fast-forwarded agent\/queue\/clean: .* \(behind origin\)/);
+    expect(git(f.clone, "rev-parse", "agent/queue/dirty")).toBe(dirtyBefore);
+    expect(readFileSync(path.join(dirty, "draft.txt"), "utf8")).toBe("unsaved\n");
+    expect(out).toContain("agent/queue/dirty: behind origin, but its worktree");
+    expect(git(f.clone, "rev-parse", "agent/queue/both")).toBe(mineBoth);
+    expect(out).toContain("agent/queue/both: origin has commits this branch lacks and the branch has its own (diverged)");
+  }, 60_000);
+
+  it("--watch pulls a change pushed to GitHub without anyone fetching, and stops when opted out", () => {
+    const f = simple();
+    const elsewhere = path.join(f.dir, "elsewhere");
+    git(f.dir, "clone", "-q", f.origin, elsewhere);
+    const theirs = commit(elsewhere, "new.txt", "new\n");
+    git(elsewhere, "push", "-q", "origin", "main");
+    const r = spawnSync(process.execPath, [SCRIPT, "--watch"], { cwd: f.clone, encoding: "utf8", env: { ...ENV, SKIPWAIT_WATCH_ROUNDS: "1" } });
+    expect(r.status).toBe(0);
+    expect(r.stdout).toContain("sync (origin: main moved)");
+    expect(r.stdout).toMatch(/main: fast-forwarded/);
+    expect(git(f.clone, "rev-parse", "main")).toBe(theirs);
+    expect(readFileSync(path.join(f.clone, "new.txt"), "utf8")).toBe("new\n");
+    git(f.clone, "config", "skipwait.autoSync", "false");
+    const off = spawnSync(process.execPath, [SCRIPT, "--watch"], { cwd: f.clone, encoding: "utf8", env: { ...ENV, SKIPWAIT_WATCH_ROUNDS: "1" } });
+    expect(off.stdout).toContain("watch: off");
   }, 60_000);
 });

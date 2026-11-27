@@ -2,25 +2,30 @@
 // SYNC-clone-guard (D-373 (5), D-205) and SYNC-auto-push (D-375): this clone and GitHub stay in sync without
 // anyone pushing by hand.
 //
-//   node scripts/sync-clone.mjs                   # fetch, fast-forward main, push committed branch work, delete merged branches
+//   node scripts/sync-clone.mjs                   # fetch, fast-forward main and branches that are behind, push committed branch work, delete merged branches
+//   node scripts/sync-clone.mjs --watch           # SYNC-auto-pull: check GitHub every ~30 s and run that sync whenever something moved
 //   node scripts/sync-clone.mjs --dry-run         # print what it would do; only the fetch runs
 //   node scripts/sync-clone.mjs --no-publish-new  # report, never publish, a branch that was never pushed
 //   node scripts/sync-clone.mjs --current         # push only the checked-out branch (what the post-commit hook runs)
 //   node scripts/sync-clone.mjs --install-hook    # push every commit right after it is made (--uninstall-hook removes it)
-//   node scripts/sync-clone.mjs --install-timer   # the hook, plus the full sync every 15 minutes (macOS LaunchAgent; elsewhere a cron line)
+//   node scripts/sync-clone.mjs --install-timer   # the hook, plus --watch as a service that restarts itself (macOS LaunchAgent,
+//                                                 #   Linux systemd user unit or an @reboot crontab line, Windows: printed instructions)
 //   node scripts/sync-clone.mjs --uninstall-timer # remove both
 //   node scripts/sync-clone.mjs --auto-setup      # what the picker runs on --claim: install whichever is missing (scripts/syncCloneSetup.mjs)
 //
-// It never pushes main, never force-pushes, never commits, stashes, resets or deletes uncommitted work,
+// A branch strictly behind its origin branch is fast-forwarded (in its clean worktree, or by a checked ref update
+// when no worktree has it); a diverged branch or a dirty worktree is reported and left alone.
+// It never pushes main, never force-pushes, never rebases or resets, never commits, stashes, resets or deletes uncommitted work,
 // and never publishes a branch named local/*, private/* or wip/*. Local main's own commits are saved to a
 // sync/main-<sha> branch instead, for a session to bring in through a queue row (D-166). A branch whose new
 // commits add a sensitive file or a likely secret is reported instead of pushed (D-059: this repository is public).
 // Exit 0: in sync. 1: something is left for a person (each item is listed). 2: it could not run.
 import { execFileSync, spawnSync } from "node:child_process";
-import { closeSync, openSync, rmSync, statSync } from "node:fs";
+import { closeSync, openSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { addedLines, exitCodeOf, findSensitive, planBranch, planMain, sideBranchForMain } from "./syncCloneCore.mjs";
+import { addedLines, exitCodeOf, findSensitive, planBranch, planMain, pullMethod, sideBranchForMain } from "./syncCloneCore.mjs";
+import { watchInterval, watchLoop } from "./syncCloneWatch.mjs";
 import { autoSetup, hook, timer } from "./syncCloneSetup.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -37,7 +42,7 @@ const tryGit = (args, cwd) => { try { return git(args, cwd); } catch { return nu
 const isAncestor = (a, b, cwd) => spawnSync("git", ["merge-base", "--is-ancestor", a, b], { cwd, env: ENV, stdio: "ignore" }).status === 0;
 const haveCommit = (sha, cwd) => spawnSync("git", ["cat-file", "-e", `${sha}^{commit}`], { cwd, env: ENV, stdio: "ignore" }).status === 0;
 
-const MODES = { "--install-timer": "install", "--uninstall-timer": "uninstall", "--install-hook": "hook", "--uninstall-hook": "unhook", "--auto-setup": "auto", "--current": "current" };
+const MODES = { "--watch": "watch", "--install-timer": "install", "--uninstall-timer": "uninstall", "--install-hook": "hook", "--uninstall-hook": "unhook", "--auto-setup": "auto", "--current": "current" };
 function parseArgs(argv) {
   const out = { dryRun: false, publishNew: true, timestamps: false, mode: "sync" };
   for (const a of argv) {
@@ -109,11 +114,13 @@ function facts(top) {
 }
 
 /** Plan one branch and push it when the rules allow. `src` is what the push sends (a ref or a SHA). */
-function pushBranch(top, b, { src, setUpstream, base, inMain }, args, say, out) {
+function pushBranch(top, b, { src, setUpstream, base, inMain, tree = null }, args, say, out) {
   const remoteIsAncestor = b.remoteSha ? isAncestor(b.remoteSha, b.sha, top) : false;
+  const localIsAncestor = b.remoteSha && b.remoteSha !== b.sha && !remoteIsAncestor ? isAncestor(b.sha, b.remoteSha, top) : false;
   const wouldSend = b.remoteSha !== b.sha && !inMain && (!b.remoteSha || remoteIsAncestor);
-  const plan = planBranch({ ...b, inMain, remoteIsAncestor, sensitive: wouldSend ? sensitiveFor(b.remoteSha ?? base, b.sha, top) : [] }, { publishNew: args.publishNew });
+  const plan = planBranch({ ...b, inMain, remoteIsAncestor, localIsAncestor, sensitive: wouldSend ? sensitiveFor(b.remoteSha ?? base, b.sha, top) : [] }, { publishNew: args.publishNew });
   if (plan.action === "report") out.reports.push(`${b.name}: ${plan.reason}`);
+  if (plan.action === "pull") return pullBranch(top, b, tree, args, say, out, plan);
   if (plan.action !== "push") return plan;
   if (args.dryRun) { say(`would push ${b.name} (${plan.reason})`); return plan; }
   const pushed = spawnSync("git", ["push", "-q", ...(setUpstream ? ["-u"] : []), "origin", `${src}:refs/heads/${b.name}`], { cwd: top, env: ENV, encoding: "utf8" });
@@ -122,11 +129,28 @@ function pushBranch(top, b, { src, setUpstream, base, inMain }, args, say, out) 
   return plan;
 }
 
-/** A local branch other than main: pushed to its own name on origin, never forced. */
-function syncBranch(top, b, originMain, args, say, out) {
+/**
+ * SYNC-auto-pull: a branch strictly behind origin moves to origin's tip the way main does. Never a rebase, reset,
+ * force or merge commit; a dirty worktree is reported and untouched.
+ */
+function pullBranch(top, b, tree, args, say, out, plan) {
+  const how = pullMethod({ worktree: tree?.path ?? null, worktreeDirty: Boolean(tree && (tree.files === null || tree.files > 0)) });
+  if (how.action === "report") { out.reports.push(`${b.name}: ${how.reason}`); return { action: "report", reason: how.reason }; }
+  const step = `${b.name}: ${b.sha.slice(0, 8)} -> ${b.remoteSha.slice(0, 8)}`;
+  if (args.dryRun) { say(`would fast-forward ${step} (behind origin)`); return plan; }
+  const ok = how.action === "merge"
+    ? tryGit(["merge", "-q", "--ff-only", b.remoteSha], tree.path) !== null
+    : tryGit(["update-ref", `refs/heads/${b.name}`, b.remoteSha, b.sha], top) !== null;
+  if (ok) say(`fast-forwarded ${step} (behind origin)`);
+  else out.failures.push(`${b.name}: the fast-forward was refused; nothing was forced`);
+  return plan;
+}
+
+/** A local branch other than main: pushed to its own name on origin, or fast-forwarded when it is behind; never forced. */
+function syncBranch(top, b, originMain, args, say, out, tree = null) {
   const base = (originMain && tryGit(["merge-base", originMain, b.sha], top)) ?? originMain ?? EMPTY_TREE;
   const inMain = originMain ? isAncestor(b.sha, originMain, top) : false;
-  return pushBranch(top, b, { src: `refs/heads/${b.name}`, setUpstream: !b.upstream, base, inMain }, args, say, out);
+  return pushBranch(top, b, { src: `refs/heads/${b.name}`, setUpstream: !b.upstream, base, inMain, tree }, args, say, out);
 }
 
 /** SYNC-auto-push (D-375): local main's own commits are saved on origin as sync/main-<sha>; main itself never is. */
@@ -169,7 +193,7 @@ function sync(top, args, say) {
     }
   } else say(`main: ${main.reason}`);
 
-  for (const b of branches.filter(x => x.name !== "main")) syncBranch(top, b, originMain, args, say, out);
+  for (const b of branches.filter(x => x.name !== "main")) syncBranch(top, b, originMain, args, say, out, trees.find(t => t.branch === b.name) ?? null);
 
   if (!args.dryRun) {
     tryGit(["worktree", "prune"], top);
@@ -216,9 +240,71 @@ function current(top, args, say) {
   const remoteSha = remoteTipOf(top, name);
   // A configured upstream that origin no longer has: its pull request probably merged and the branch was deleted.
   const branch = { ...b, remoteSha, upstreamGone: b.upstreamGone || (b.upstream === `origin/${name}` && remoteSha === null) };
-  const plan = syncBranch(top, branch, tryGit(["rev-parse", "--verify", "-q", "refs/remotes/origin/main"], top), args, say, out);
+  const tree = worktrees(top).find(t => t.branch === name) ?? null;
+  const plan = syncBranch(top, branch, tryGit(["rev-parse", "--verify", "-q", "refs/remotes/origin/main"], top), args, say, out, tree);
   if (plan.action === "none") say(`${name}: ${plan.reason}`);
   return finish(out, say);
+}
+
+/** Lines a watched sync always logs; "left for you" lines only when they differ from the previous sync's. */
+const QUIET = [/^fetched origin/, /^main: up to date$/, /^cleanup: nothing to delete$/, /^cleanup: deleted 0 of /, /^in sync$/, /^not fully in sync/];
+
+/** --watch (SYNC-auto-pull): poll origin and run the full sync whenever something this clone cares about moved. */
+async function watch(top, args, say) {
+  const optedOut = () => process.env.SKIPWAIT_AUTO_SYNC === "off" || tryGit(["config", "--bool", "--get", "skipwait.autoSync"], top) === "false";
+  if (optedOut()) { say("watch: off (git config skipwait.autoSync false or SKIPWAIT_AUTO_SYNC=off)"); return 0; }
+  // One watcher per clone: a second one (a reinstall, an @reboot line plus a manual start) exits quietly.
+  const pidFile = path.join(path.resolve(top, git(["rev-parse", "--git-common-dir"], top)), "skipwait-sync-watch.pid");
+  try {
+    const other = Number.parseInt(readFileSync(pidFile, "utf8"), 10);
+    if (other && other !== process.pid) { process.kill(other, 0); say(`watch: already running for this clone (pid ${other})`); return 0; }
+  } catch { /* no pid file, or that process is gone */ }
+  writeFileSync(pidFile, String(process.pid));
+  const interval = watchInterval(tryGit(["config", "--get", "skipwait.syncInterval"], top));
+  const refsOf = prefix => git(["for-each-ref", "--format=%(refname:strip=" + (prefix === "refs/heads" ? 2 : 3) + ")%09%(objectname)", prefix], top)
+    .split("\n").filter(Boolean).map(line => line.split("\t"));
+  let lastReports = "";
+  say(`watch: checking origin every ${interval} s (git config skipwait.syncInterval <seconds> changes it)`);
+  // SKIPWAIT_WATCH_ROUNDS bounds the loop (tests and one-off checks); unset, it runs until stopped.
+  const bound = Number.parseInt(process.env.SKIPWAIT_WATCH_ROUNDS ?? "", 10);
+  const result = await watchLoop({
+    interval,
+    ...(bound > 0 ? { rounds: bound } : {}),
+    lsRemote: () => {
+      const r = spawnSync("git", ["ls-remote", "--heads", "origin"], { cwd: top, env: ENV, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, timeout: 60_000 });
+      return r.status === 0 ? r.stdout : null;
+    },
+    readClone: () => {
+      const heads = refsOf("refs/heads");
+      return {
+        trackingRefs: new Map(refsOf("refs/remotes/origin").filter(([name]) => name !== "HEAD")),
+        localBranches: heads.map(([name]) => name),
+        localStamp: heads.map(row => row.join(" ")).join("\n"),
+      };
+    },
+    sync: () => {
+      const lines = [];
+      let code;
+      try { code = withLock(top, () => sync(top, args, line => lines.push(line))); }
+      catch (error) { lines.push(`sync could not run: ${error instanceof Stop ? error.message : String(error?.message ?? error)}`); code = 2; }
+      const reports = lines.filter(l => l.startsWith("left for you:")).join("\n");
+      for (const l of lines) {
+        if (QUIET.some(re => re.test(l))) continue;
+        if (l.startsWith("left for you:") && reports === lastReports) continue;
+        say(l);
+      }
+      lastReports = reports;
+      say(code === 0 ? "in sync" : code === 2 ? "sync failed; retrying with backoff" : "in sync except what is left for you above");
+      return code;
+    },
+    sleep: seconds => new Promise(resolve => setTimeout(resolve, seconds * 1000)),
+    now: () => Date.now(),
+    log: say,
+    stopped: optedOut,
+  });
+  try { if (readFileSync(pidFile, "utf8") === String(process.pid)) rmSync(pidFile, { force: true }); } catch { /* already gone */ }
+  say(`watch: stopped after ${result.rounds} checks and ${result.syncs} syncs`);
+  return 0;
 }
 
 function main() {
@@ -231,12 +317,13 @@ function main() {
     case "hook": case "unhook": return hook(top, args.mode === "hook", say);
     case "auto": return autoSetup(top, say);
     case "current": return withLock(top, () => current(top, args, say));
+    case "watch": return watch(top, args, say);
     default: return withLock(top, () => sync(top, args, say));
   }
 }
 
 try {
-  process.exitCode = main();
+  process.exitCode = await main();
 } catch (error) {
   console.error(`sync-clone: ${error instanceof Stop ? error.message : error?.stack ?? String(error)}`);
   process.exitCode = 2;

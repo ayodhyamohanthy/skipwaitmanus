@@ -39,12 +39,13 @@ export function planMain({ local, origin, localIsAncestor, worktree, worktreeDir
 /**
  * What to do with one local branch other than the checked-out detached heads.
  * @param {{ name: string, sha: string, upstream: string|null, upstreamGone: boolean, remoteSha: string|null,
- *           remoteIsAncestor: boolean, inMain: boolean, sensitive: string[] }} b
+ *           remoteIsAncestor: boolean, localIsAncestor?: boolean, inMain: boolean, sensitive: string[] }} b
  *   `upstream`: the configured upstream (for example `origin/agent/queue/x`) or null. `remoteSha`: the tip of
- *   `origin/<name>` or null. `remoteIsAncestor`: that tip is an ancestor of `sha`. `inMain`: `sha` is in `origin/main`.
- *   `sensitive`: findings from `findSensitive` for the commits a push would send.
+ *   `origin/<name>` or null. `remoteIsAncestor`: that tip is an ancestor of `sha`. `localIsAncestor`: `sha` is an
+ *   ancestor of that tip, so the branch is strictly behind and a fast-forward loses nothing (SYNC-auto-pull).
+ *   `inMain`: `sha` is in `origin/main`. `sensitive`: findings from `findSensitive` for the commits a push would send.
  * @param {{ publishNew?: boolean }} [opts] publishNew: push a branch that was never pushed (default true).
- * @returns {{ action: "push"|"none"|"report", reason: string }}
+ * @returns {{ action: "push"|"pull"|"none"|"report", reason: string }}
  */
 export function planBranch(b, { publishNew = true } = {}) {
   if (typeof b?.name !== "string" || !b.name) throw new Error("planBranch: a branch needs a name");
@@ -56,7 +57,8 @@ export function planBranch(b, { publishNew = true } = {}) {
   if (b.upstream && b.upstream !== `origin/${b.name}`) return { action: "report", reason: `tracks ${b.upstream}, not origin/${b.name}; push it yourself` };
   if (b.remoteSha === b.sha) return { action: "none", reason: "in sync" };
   if (b.remoteSha) {
-    if (!b.remoteIsAncestor) return { action: "report", reason: "origin has commits this branch lacks (it moved or diverged); pull in its worktree, never force" };
+    if (!b.remoteIsAncestor && b.localIsAncestor === true) return { action: "pull", reason: "behind origin; fast-forwarded" };
+    if (!b.remoteIsAncestor) return { action: "report", reason: "origin has commits this branch lacks and the branch has its own (diverged); merge in its worktree, never force" };
   } else {
     if (b.inMain) return { action: "none", reason: "already in main" };
     if (b.upstreamGone) return { action: "report", reason: "its origin branch was deleted (its pull request probably merged) and it has commits main lacks; open a new pull request if they matter" };
@@ -200,4 +202,15 @@ export function autoSetupAllowed({ env, optedOut }) {
   if (env.CLAUDE_CODE_REMOTE === "true") return { allowed: false, reason: "a cloud session container" };
   if (env.SKIPWAIT_AUTO_SYNC === "off" || optedOut) return { allowed: false, reason: "opted out" };
   return { allowed: true, reason: "local clone" };
+}
+
+
+/**
+ * SYNC-auto-pull: how a branch that is strictly behind origin is fast-forwarded, the same way `main` is.
+ * @param {{ worktree: string|null, worktreeDirty: boolean }} facts the worktree that has the branch checked out
+ * @returns {{ action: "merge"|"update-ref"|"report", reason: string }}
+ */
+export function pullMethod({ worktree, worktreeDirty }) {
+  if (worktree && worktreeDirty) return { action: "report", reason: `behind origin, but its worktree (${worktree}) has uncommitted changes, so it was not moved; commit them and the next sync pulls` };
+  return worktree ? { action: "merge", reason: "fast-forwarded in its worktree" } : { action: "update-ref", reason: "fast-forwarded" };
 }
