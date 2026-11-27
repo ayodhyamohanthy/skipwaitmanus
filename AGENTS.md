@@ -212,6 +212,7 @@ pnpm check            # tsc --noEmit
 pnpm test             # vitest (unit + component + route regressions)
 pnpm build            # client PWA + server bundle -> dist/
 ./scripts/sync-check.sh   # two-way clone sync (D-373): push committed branch work, fast-forward main, delete merged branches; every commit also pushes itself once the post-commit hook is in (the picker installs it on --claim, with the 15-min Mac timer; or --install-hook / --install-timer by hand, D-375)
+node scripts/sync-tidy.mjs   # SYNC-tidy: list leftover worktrees and local branches that hold nothing unsaved (every commit on GitHub, idle 24 h); --apply removes exactly those, never --force
 ```
 
 ## Plan and inspect before edits
