@@ -530,8 +530,10 @@ describe("dependsOn holds a landing, not only a build (D-134)", () => {
     expect(red).toMatchObject({ kind: "build", task: { id: "A" } });
     const writingA: [string, Branch] = ["agent/queue/a", claimBy("Mistral · s5", "A", 0.5)];
     // D-407 (4) amends D-134 here: with nothing else free, a QUIET withheld draft whose CI is red is handed out to be
-    // kept current (never landed); its normal stages stay withheld until A is done.
-    expect(pick(tasks, { branches: [writingA, quietB], prs: [prB], prCi: [["agent/queue/b", "red"]], claimant: "Kimi · s2" }))
+    // kept current (never landed); its normal stages stay withheld until A is done. D-412 (1): only once A itself has
+    // an open pull request with green required CI (B is about to become landable).
+    const prA: [string, string] = ["agent/queue/a", "https://github.com/o/r/pull/7"];
+    expect(pick(tasks, { branches: [writingA, quietB], prs: [prA, prB], prCi: [["agent/queue/a", "green"], ["agent/queue/b", "red"]], claimant: "Kimi · s2" }))
       .toMatchObject({ kind: "takeover", task: { id: "B" }, refresh: "its draft's required CI is red" });
     // While B's own holder is active, B is still theirs and nothing is handed out.
     const activeB: [string, Branch] = ["agent/queue/b", claimBy("Qwen · s1", "B", 0.5)];
