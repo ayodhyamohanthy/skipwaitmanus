@@ -40,6 +40,13 @@ For `D-048-K-admin-money`, `docs/DECISIONS.md` is also declared for the bounded 
 
 For `D-048-K-post-opportunity`, the same one-path declaration is limited to the D-200 ruling on the missing hiring-now required-link constraint recorded in PR #1297. The scope prerequisite alone neither dispatches the source repair nor clears the retirement hold; the ruling follows separately on the official architect branch.
 
+For `D-048-K-home`, `docs/DECISIONS.md` and `docs/plans/D-048-phase-3-split.md` are declared
+only for the bounded D-200/D-373/D-407 ruling on its obsolete credential block and unfinished
+signed-in root-release acceptance in PR #1721. This prerequisite widens no runtime path and
+changes no status, holder, dependency, release gate or acceptance result. Publish it on main
+before the architect ruling because scope-check reads main's ownership declarations.
+
+
 `D-048-K-system` also owns `scripts/r7ReleaseAcceptance.test.ts` solely to retire its obsolete Kit/goal source-text and wording comparison once the old Emails implementation is removed. Its useful consumer guarantees stay in public Emails/goal tests and the Ported assertions table; policy assertions are not part of that source-only file. This one-path declaration is published on main before deletion because test-integrity rule 1 reads main's owns even for GPT/Claude scope-exempt builders. No gate exception, status, dependency, runtime or assertion weakening is authorized.
 
 1. Confirm the release row in `dependsOn` is `done`, the id is in `RELEASED` on `origin/main`, and the soak has ended. Record the release commit, the date, and the Sentry check (query and result, no personal data) in the pull request.
