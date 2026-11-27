@@ -17,8 +17,13 @@ const { getToken, openSignIn, authState } = vi.hoisted(() => ({
   authState: { isSignedIn: true },
 }));
 vi.mock("@/_core/auth", () => ({
-  useAuth: () => ({ isSignedIn: authState.isSignedIn, getToken, openSignIn }),
+  useAuth: () => ({ isLoaded: true, isSignedIn: authState.isSignedIn, getToken, openSignIn }),
+  useUser: () => ({ user: null }),
 }));
+// Keep the real app shell/menu, with only its unrelated data sources isolated from the DM fixtures.
+vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "unverified" }) }));
+vi.mock("@/hooks/useCreditBalance", () => ({ useCreditBalance: () => null }));
+vi.mock("@/components/NotificationBell", () => ({ NotificationBell: () => null }));
 vi.mock("wouter", () => ({
   useLocation: () => ["/messages", vi.fn()],
   Link: ({ children, href, ...rest }: { children: React.ReactNode; href: string } & Record<string, unknown>) => <a href={href} {...rest}>{children}</a>,
@@ -76,7 +81,7 @@ const primaries = () => document.querySelectorAll("[data-g-primary]");
 /** Opens a chat from its row in the list (the next-step button names the same person). */
 async function openChat(name: RegExp) {
   fireEvent.click(within(await screen.findByRole("list", { name: "Chats" })).getByRole("button", { name }));
-  return screen.findByRole("heading", { level: 1 });
+  return within(screen.getByRole("main")).findByRole("heading", { level: 1 });
 }
 
 // Assert the page contract only on inbox states with its single next-step block.
@@ -85,17 +90,17 @@ describe("goal /messages: inbox", () => {
   it("renders the released goal page when the surface flag is off", async () => {
     vi.stubEnv("VITE_GOAL_SURFACES", "");
     server.threads = [];
-    const { container } = render(<Messages />);
+    render(<Messages />);
     expect(await screen.findByRole("heading", { level: 1, name: "Your chats." })).toBeTruthy();
-    assertGoalPage(container, GOAL_PAGE);
+    assertGoalPage(screen.getByRole("main"), GOAL_PAGE);
     expect(screen.queryByText("Your chats live here.")).toBeNull();
   });
 
   it("opens on the goal with the chat waiting on you first and one black commit to answer it", async () => {
-    const { container } = render(<Messages />);
+    render(<Messages />);
     expect(await screen.findByRole("heading", { level: 1, name: "Your chats." })).toBeTruthy();
     const rows = await screen.findAllByTestId("goal-chat-row");
-    assertGoalPage(container, GOAL_PAGE);
+    assertGoalPage(screen.getByRole("main"), GOAL_PAGE);
     expect(rows[0]?.textContent).toMatch(/Member · Asha/);
     expect(rows[0]?.textContent).toMatch(/Waiting on you/);
     expect(rows[1]?.textContent).toMatch(/Referrer · acme\.com/);
@@ -120,12 +125,12 @@ describe("goal /messages: inbox", () => {
 
   it("an empty inbox points at a referral request and names where those conversations live", async () => {
     server.threads = [];
-    const { container } = render(<Messages />);
+    render(<Messages />);
     expect(await screen.findByText("No chats yet.")).toBeTruthy();
-    assertGoalPage(container, GOAL_PAGE);
+    assertGoalPage(screen.getByRole("main"), GOAL_PAGE);
     expect(screen.getByText(/Referral-request conversations stay in/)).toBeTruthy();
     expect(screen.getByText(/Messages with a referrer open after they accept your request\./)).toBeTruthy();
-    expect(screen.getByRole("link", { name: "My requests" }).getAttribute("href")).toBe("/requests");
+    expect(within(screen.getByRole("main")).getByRole("link", { name: "My requests" }).getAttribute("href")).toBe("/requests");
     expect(primaries()).toHaveLength(1);
     expect(screen.getByRole("link", { name: /Ask for a referral/ }).getAttribute("href")).toBe("/ask");
     expect(screen.queryByRole("link", { name: /Find referrers/ })).toBeNull();
@@ -174,7 +179,7 @@ describe("goal /messages: inbox", () => {
     authState.isSignedIn = false;
     const { container } = render(<Messages />);
     expect(await screen.findByRole("heading", { level: 1, name: "Your chats." })).toBeTruthy();
-    assertGoalPage(container, GOAL_PAGE);
+    assertGoalPage(screen.getByRole("main"), GOAL_PAGE);
     expect(screen.getByText("Messages with a referrer open after they accept your request.")).toBeTruthy();
     expect(screen.getByText("Sign in to see your messages.")).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Upgrade to Pro" })).toBeNull();

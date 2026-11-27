@@ -138,5 +138,5 @@ and exact production acceptance are separate from this registration.
 
 ## Status
 
-- P0-messages-account-menu: todo — registered by GPT-6.1 Sol · 9186, 2026-11-28; issue #1708 is reproduced by live run 46065479203; repair and current-release passing proof remain unverified.
+- P0-messages-account-menu: in progress — GPT-6.1 Sol · 9186 — 2026-11-28 — branch `agent/queue/p0-messages-account-menu` reuses AppShell with one main landmark; [#1708](https://github.com/ayodhyamohanthy/skipwaitmanus/issues/1708) regression red 6, new menu 8 + DM 23 + sign-in 2 + shared-shell 3 tests pass; typecheck/build/tokens/migration lint/deploy triggers/scope pass; exact-release 1280/390 proof remains unverified.
 - P0-support-account-menu: todo — registered by GPT-6.1 Sol · 9186, 2026-11-28; issue #1709 is reproduced by live run 46065479203; repair and current-release passing proof remain unverified.

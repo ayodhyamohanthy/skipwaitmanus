@@ -9,6 +9,7 @@ import { Link } from "wouter";
 import { ArrowLeft, CircleAlert, LockKeyhole, Send, UserPlus } from "lucide-react";
 import { DM_REFERRER_ACCEPTANCE_ERROR, parseDmFollowRequired, parseDmSendBlock, type DmFollowRequired, type DmSendBlock } from "@shared/directMessages";
 import { useAuth } from "@/_core/auth";
+import { AppShell } from "@/components/AppShell";
 import { GoalButton, GoalNextStep, GoalNum, useOnlineStatus } from "@/components/goal";
 import { readApiJson } from "@/lib/apiResponse";
 import { DM_SEND_WORKFLOW, beginPendingSend, clearPendingSend, normalizeMessageBody, readPendingSend } from "@/lib/idempotentSend";
@@ -219,11 +220,15 @@ export default function GoalMessages() {
     finally { inFlightRef.current = false; setSending(false); }
   };
 
-  const shell = (children: React.ReactNode) => (
-    <main data-skipwait-screen="messages" data-goal-page="messages" className="g-scope mx-auto flex w-full max-w-2xl flex-col bg-g-canvas px-4 py-6 font-g-sans text-g-ink gdesk:px-5 gdesk:py-7">
-      {children}
-    </main>
-  );
+  const shell = (children: React.ReactNode) => {
+    const Content = isSignedIn ? "div" : "main";
+    const content = (
+      <Content data-skipwait-screen="messages" data-goal-page="messages" className="g-scope mx-auto flex w-full max-w-2xl flex-col bg-g-canvas px-4 py-6 font-g-sans text-g-ink gdesk:px-5 gdesk:py-7">
+        {children}
+      </Content>
+    );
+    return isSignedIn ? <AppShell>{content}</AppShell> : content;
+  };
 
   if (!isSignedIn) {
     return shell(<>
