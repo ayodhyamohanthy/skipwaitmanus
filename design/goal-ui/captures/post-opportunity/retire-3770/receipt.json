@@ -1,0 +1,78 @@
+{
+  "task": "D-048-K-post-opportunity",
+  "session": "Claude Code · 3770",
+  "date": "2026-11-27",
+  "candidate": "e622f4a3d",
+  "baseline": "ba003b279",
+  "method": "Each build served statically from dist/public; every /api call fulfilled with synthetic JSON (signed-in verified referrer at acme.com, unverified, signed-out); system Chromium, deviceScaleFactor 1, viewports 1280x800 and 390x844. No real service, sign-in, post or payment.",
+  "results": {
+    "blankHiringNowLink": "stopped in the browser, 0 POSTs at 1280 and 390, both builds",
+    "bareLinkPublish": "careers.acme.com/jobs/design completed to https://careers.acme.com/jobs/design; one POST {kind:hiring_now, roleTitle, targetRoleUrl}; Your opportunity is live.",
+    "gate": "unverified and signed-out both show Verify your work email first. linking to /sign-in?intent=referrer&returnTo=%2Fpost-opportunity",
+    "pageErrors": 0,
+    "horizontalOverflow": false
+  },
+  "pixelParity": "8 of 10 pairs byte-identical; the two hiring-now-link-required pairs differ only in the native validation bubble frame and are visually identical on inspection",
+  "shots": [
+    {
+      "file": "gate-signed-out-1280.png",
+      "after": "74af6cb33db7fd486e8f206c28d09d4b885acaae59eac08c59c493cd6092edcf",
+      "before": "74af6cb33db7fd486e8f206c28d09d4b885acaae59eac08c59c493cd6092edcf",
+      "identical": true
+    },
+    {
+      "file": "gate-signed-out-390.png",
+      "after": "2f406fba5f439bbe528890f51fb0061db0d456970a3358a8b243ea8c00c371c7",
+      "before": "2f406fba5f439bbe528890f51fb0061db0d456970a3358a8b243ea8c00c371c7",
+      "identical": true
+    },
+    {
+      "file": "gate-unverified-1280.png",
+      "after": "61a7fa094b7058e96b09695cc6be96bf8ce6b8296ec56d7c99a0c72ae83bcbe1",
+      "before": "61a7fa094b7058e96b09695cc6be96bf8ce6b8296ec56d7c99a0c72ae83bcbe1",
+      "identical": true
+    },
+    {
+      "file": "gate-unverified-390.png",
+      "after": "b43cb76556ecfc847de6297836ed994376af3662225b6be46d115489c46d5005",
+      "before": "b43cb76556ecfc847de6297836ed994376af3662225b6be46d115489c46d5005",
+      "identical": true
+    },
+    {
+      "file": "hiring-now-link-required-1280.png",
+      "after": "b89822a067224cfe1a5286b924c68e8ea1175b89391dd9635e7596616a66c660",
+      "before": "0ee76a59dd9e974e314c4cf636b9e2a5d528d21eef1c752b1a50ac48e96ffec6",
+      "identical": false
+    },
+    {
+      "file": "hiring-now-link-required-390.png",
+      "after": "1cff8d3c3f0974302cbe02c1f331604bcfe26f1445dadf86daf6bea24d73ac36",
+      "before": "c53a1888c6ebc2fff77a30374a910ca8341b9d5e387c4ef0cf19817e7f6e98ce",
+      "identical": false
+    },
+    {
+      "file": "hiring-now-published-1280.png",
+      "after": "113ac5eabc174a3a368f6b2f45eacf41d4040589e0e27c38bfba37ddf98b7261",
+      "before": "113ac5eabc174a3a368f6b2f45eacf41d4040589e0e27c38bfba37ddf98b7261",
+      "identical": true
+    },
+    {
+      "file": "hiring-now-published-390.png",
+      "after": "7a683d14f13cee248dbc6203f4370d707026b543112eb2fc564757427df5eb85",
+      "before": "7a683d14f13cee248dbc6203f4370d707026b543112eb2fc564757427df5eb85",
+      "identical": true
+    },
+    {
+      "file": "wizard-1280.png",
+      "after": "fedf7e7790bcd773878f5e69d0fb95e838bc0743b2c1280622b5e79263089a3b",
+      "before": "fedf7e7790bcd773878f5e69d0fb95e838bc0743b2c1280622b5e79263089a3b",
+      "identical": true
+    },
+    {
+      "file": "wizard-390.png",
+      "after": "0cc75985def8b6aaf2d6798923f629d7e175d6d3956fdefcf8cdb93fc843eaca",
+      "before": "0cc75985def8b6aaf2d6798923f629d7e175d6d3956fdefcf8cdb93fc843eaca",
+      "identical": true
+    }
+  ]
+}

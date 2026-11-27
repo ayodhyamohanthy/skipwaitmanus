@@ -122,6 +122,28 @@
       "epic": "D-212"
     },
     {
+      "id": "FIX-jobs-catalog-search",
+      "title": "/jobs answers a search from company careers sites when no posted role matches, instead of always 'No jobs match' (automated bug #1706)",
+      "row": "D-212",
+      "packet": "docs/plans/FIX-jobs-catalog-search.md",
+      "tier": 2,
+      "lane": "fix-jobs-catalog-search",
+      "branch": "agent/queue/fix-jobs-catalog-search",
+      "status": "done",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/discovery/GoalJobs.tsx",
+        "client/src/pages/goal/discovery/JobsCatalogAnswer.tsx",
+        "client/src/pages/goal/discovery/discovery.goal.test.tsx",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "design/goal-ui/captures/jobs/**",
+        "docs/plans/FIX-jobs-catalog-search.md"
+      ],
+      "note": "D-409/D-412 (7) bug fix, D-360/D-394 search. /api/jobs stays legacy-only (D-193: catalog rows never in /api/jobs, the sitemap or JobPosting markup); the page answers an unmatched search through /api/search. Issue #1706 closes after the live /jobs?q=engineer check, not on merge.",
+      "epic": "D-212"
+    },
+    {
       "id": "PICKER-speed-fixes",
       "title": "Picker: refresh only drafts that can land, a landed ruling's unblocker clears the block, a docs-only PR is never landed for a code row, quiet claims show as free (D-412)",
       "row": "D-212",
@@ -5629,7 +5651,7 @@
       "tier": 2,
       "lane": "d048-retire-post-opportunity",
       "branch": "agent/queue/d048-k-post-opportunity-fresh",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-414",
       "dependsOn": [
         "D-048-R4",
@@ -9893,9 +9915,9 @@
       "tier": 2,
       "lane": "sync-auto-pull",
       "branch": "agent/queue/sync-auto-pull",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Owner, Nov 25 2026: 'automatically pull ,push the comits to local so that the local and remote stays in sync' and 'the local pull requests are set for a timing cant it be as soon as a commmit or pull is available'. Push on commit already exists (D-375 hook). Never force, rebase, reset or touch a dirty worktree or a diverged branch.",
+      "note": "Owner, Nov 25 2026: 'automatically pull ,push the comits to local so that the local and remote stays in sync' and 'the local pull requests are set for a timing cant it be as soon as a commmit or pull is available'. Push on commit already exists (D-375 hook). Never force, rebase, reset or touch a dirty worktree or a diverged branch. Nov 27: PR #1610 landed only a packet Status line from this branch, so the board read done with no code; the watcher and behind-branch fast-forwards were built in the Claude Code pull request named in the packet Status, which sets this row done.",
       "epic": "D-212",
       "owns": [
         "scripts/syncCloneCore.mjs",
