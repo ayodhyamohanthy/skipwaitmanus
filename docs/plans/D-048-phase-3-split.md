@@ -39,6 +39,28 @@ remaining check; it never rebuilds the switch or lands the preserved release
 branch again. See the Status receipt below for source, CI, deployment and
 verification limits.
 
+## Home release acceptance successor (November 28, D-373/D-407)
+
+`D-048-R-home-signed-in` continues on `agent/queue/d048-r-home-signed-in-acceptance`,
+not the already-merged #1255 branch. Preserve the shipped `home` and `home-signed-in` ids;
+the remaining work is real signed-in `/` routing at 1280/390 and the original route-specific
+24-hour Sentry acceptance. The old November 17 receipt below remains historical evidence.
+
+Live QA [46065479203](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/46065479203)
+signed into both demo accounts on web/API `f02de526a`, but it never visits `/`. Its successful
+`/explore` and `/referrer-home` captures do not prove the root redirect. The release row now owns
+the existing signed-in QA runner and its tests for this bounded addition: visit `/` for both roles
+at both widths and require the actual final seeker `/explore` and referrer `/referrer-home` paths,
+retaining the account-menu assertion, ordinary failure reporting and repository-secret boundary.
+Run it through Actions; record the real run/captures and each expected deployed SHA. Never reset
+credentials, send passwords through chat, change accounts, submit a form or pay for this check.
+
+The row stays `todo` until that proof and the original Sentry requirement are supplied.
+`D-048-K-home` retains this dependency, its source carrier #1653, current drift/parity checks and
+protected-CI landing. Neither this routing receipt nor the passing destination captures authorizes
+deletion, marks either row done or waives acceptance. No switch, product or owner rule changes.
+
+
 ## Why the rollout was serial
 All D-048 rows shared the lane `design`, and the picker allows one open pull request per lane, so phase 3 could only move one page at a time. Lanes are free strings: splitting the lane is a data change. What makes parallel work unsafe is a short list of shared files, which one foundation chain now owns: the route table (`client/src/App.tsx`, all 87 routes on one line), the app shell, `client/src/components/goal/**`, the goal boundary test's allowlist, tokens and kit files.
 

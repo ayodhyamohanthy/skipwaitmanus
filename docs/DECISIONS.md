@@ -1400,3 +1400,27 @@ runtime repair, production acceptance, product/price/plan change, login method,
 legal wording, settings, secret, paid tool or sales-switch authorization.
 Protected PR and green required CI remain mandatory. The menu repairs and
 claim-cost improvement remain unfinished after this documentation lands.
+
+### November 28 D-048-K-home unblock and release-acceptance carrier (D-200, D-373, D-407)
+
+Official UNBLOCK `GPT-6.1 Sol · 02ca` (`72c75e7d8`) checked main `4c1242831`, decisions
+through D-414, the retirement/rollout packets, #1255 and #1653 at `df45e66ef`. This is a
+routing disposition under existing decisions, not a new owner ruling.
+
+Live QA 46065479203 summary.json proves both demo sign-ins on web/API `f02de526a`, but
+its route set omits `/`. Destination-page captures do not prove the root redirect. The root
+Sentry CLI read emitted an empty response then exceeded 60 seconds; no completed 24-hour
+Sentry acceptance is claimed.
+
+Apply D-407 (1)(d): clear the obsolete credential/reset block without declaring acceptance done.
+Apply D-373 (6): move only the existing `D-048-R-home-signed-in` carrier to fresh branch
+`agent/queue/d048-r-home-signed-in-acceptance`, keeping it `todo`, with its queue position,
+tier and build dependency. Its packet/scope now includes the existing signed-in QA runner
+and tests for `/` plus final-role-route assertions, under the same Actions-only demo secrets.
+Capture both widths and exact release identities, then complete the original Sentry requirement.
+Never rebuild the released switch or reset credentials for this check.
+
+`D-048-K-home` retains its R dependency, draft #1653, source and holder; no deletion or landing
+before release acceptance and existing parity/drift/CI gates. D-388's satisfied BANDED launch
+hold is not reinstated. No login, legal, product, price, money, settings, flag or production change.
+The unblocker's `review` report releases only the obsolete block, not either task's acceptance.
