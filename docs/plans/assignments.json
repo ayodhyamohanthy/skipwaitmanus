@@ -10572,6 +10572,27 @@
         "docs/BUILD_CONTINUITY.md"
       ],
       "note": "CEO review GPT-6.1 Sol · 02ca, main 3508530aa, D-200/D-324: production lock helper acquired separate locks for root and linked worktree sharing one canonical Git common directory. Append-only FIFO corrective row; original PICKER-single-flight remains done. Resolve a canonical common-directory lock, refuse live legacy worktree-local owners during cutover, preserve liveness/takeover and heartbeat/report exemptions, and prove root/sibling/symlink exclusion plus independent-clone concurrency with real-CLI fixtures. No claim, eligibility, product, settings or money change. Registration is not implementation acceptance."
+    },
+    {
+      "id": "SYNC-tidy",
+      "title": "One command lists the leftover worktrees and branches that hold nothing unsaved and removes them only after the owner confirms with --apply (owner, Nov 27)",
+      "row": "SYNC",
+      "packet": "docs/plans/SYNC-tidy.md",
+      "tier": 2,
+      "lane": "sync-tidy",
+      "branch": "agent/queue/sync-tidy",
+      "status": "todo",
+      "dependsOn": [],
+      "epic": "D-212",
+      "owns": [
+        "scripts/sync-tidy.mjs",
+        "scripts/syncTidyCore.mjs",
+        "scripts/syncTidy.test.ts",
+        "AGENTS.md",
+        "docs/plans/SYNC-tidy.md"
+      ],
+      "syncedTo": "D-414",
+      "note": "Owner, Nov 27 2026, in a Claude Code session: approved a safe clean-up after the first full sync on his Mac listed ~60 worktrees and 100+ branches as left for you. Never deletes anything unsaved or anything GitHub lacks; dry run by default. Claude Code builds it in the same session."
     }
   ]
 }
