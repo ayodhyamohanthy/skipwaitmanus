@@ -28,7 +28,7 @@ function mockFetch(handler: Handler) {
 const QUOTE = { level: 5, cost: 1, totalAvailable: 2, shortfall: 0 };
 const fullSession = { step: "quote", note: "My own note.", quote: QUOTE, jobSource: "link", requirements: [], facts: [], matches: [], gaps: [] };
 
-describe("Skippy page (legacy fallback)", () => {
+describe("Skippy entrypoint", () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
     vi.stubEnv("VITE_GOAL_SURFACES", "");
@@ -78,7 +78,7 @@ describe("Skippy page (legacy fallback)", () => {
       return new Response(JSON.stringify({ replies: [], session: fullSession }), { status: 200 });
     }));
     render(<Skippy />);
-    await screen.findByText(/costs 1 credit/);
+    await screen.findByText(/costs 1 referral/);
     expect(screen.getByText("Your note: My own note.")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Send it" }));
     await screen.findByText("Your ask is in.");
@@ -99,10 +99,10 @@ describe("Skippy page (legacy fallback)", () => {
   });
 });
 
-describe("Skippy goal page (VITE_GOAL_SURFACES=skippy)", () => {
+describe("Skippy goal page without a surface override", () => {
   beforeEach(() => {
     vi.unstubAllGlobals();
-    vi.stubEnv("VITE_GOAL_SURFACES", "skippy");
+    vi.unstubAllEnvs();
     authState = { isSignedIn: true, isLoaded: true, getToken: vi.fn(async () => "t"), openSignIn: vi.fn() };
   });
   afterEach(() => {

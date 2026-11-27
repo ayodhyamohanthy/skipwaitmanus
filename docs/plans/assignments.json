@@ -6783,7 +6783,7 @@
       "lane": "d048-retire-skippy",
       "branch": "agent/queue/d048-k-skippy",
       "status": "owner",
-      "syncedTo": "D-352",
+      "syncedTo": "D-409",
       "dependsOn": [
         "D-048-R-skippy"
       ],
