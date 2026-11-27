@@ -18,3 +18,4 @@ After each signed-in route loads at 1280 and 390, the runner clicks the visible 
 Required CI green; the first live QA run after release shows the account-menu check passing on every signed-in route at both widths (after `P0-goal-shell-sign-out` is live), with its run link in Status.
 
 ## Status
+QA-live-interactions: GPT-6.1 Sol · 7070 — 2026-11-28 — preserves [account-menu implementation](https://github.com/ayodhyamohanthy/skipwaitmanus/commit/aa35d8d6c4e0263f9481e7aff79087b072c4bf74), corrects the workflow interaction note; focused tests 24/24 and typecheck pass; required CI and first live 1280/390 run remain unverified.
