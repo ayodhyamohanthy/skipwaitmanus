@@ -9998,7 +9998,7 @@
       "lane": "group-contracts",
       "branch": "agent/queue/group-contracts-implementation",
       "status": "todo",
-      "syncedTo": "D-407",
+      "syncedTo": "D-414",
       "dependsOn": [
         "GROUP-recipients"
       ],

@@ -3,12 +3,12 @@
 // handing a password around. Run by .github/workflows/live-qa.yml after every production release and on demand.
 //
 // It signs in once per demo account on https://skipwait.me (and nowhere else), visits each signed-in route at 1280 and
-// 390, and records the document status, title, uncaught errors, console errors, 5xx requests, 4xx requests (method and
-// path, never the query string; D-387) and sideways scroll, with a full-page screenshot. Navigation only: no click, no
-// form, no request beyond the one sign-in, never /admin, no money.
-// Output: live-qa/<role>/<route>-<width>.png, live-qa/summary.json and a Markdown table in the step summary.
+// 390, recording document status, title, page/console errors, request results and sideways scroll. Its only interaction is
+// opening the Account menu, verifying the Sign out item without selecting it, capturing the open menu, then pressing Escape.
+// It never submits a form, visits /admin or touches money.
+// Output: live-qa/<role>/<route>-<width>.png, an account-menu capture when opened, live-qa/summary.json and a Markdown table in the step summary.
 // Exit 1 when a secret is missing (on every trigger, D-387), a sign-in fails, a document answers 5xx, a page throws or
-// does not load; 0 otherwise. A 4xx request is a finding, not a failure.
+// does not load, or the account-menu check fails; 0 otherwise. A 4xx request is a finding, not a failure.
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -31,7 +31,7 @@ export const ROUTES = Object.freeze({
 
 export const VIEWPORTS = Object.freeze([Object.freeze({ width: 1280, height: 900 }), Object.freeze({ width: 390, height: 844 })]);
 
-const NAV_TIMEOUT_MS = 30_000, QUIET_TIMEOUT_MS = 10_000, MAX_LINE = 300;
+const NAV_TIMEOUT_MS = 30_000, QUIET_TIMEOUT_MS = 10_000, ACCOUNT_MENU_TIMEOUT_MS = 5_000, MAX_LINE = 300;
 
 /** The workflow's `roles` input: both (default), seeker or referrer. */
 export function parseRoles(value) {
@@ -51,10 +51,41 @@ export function signInMessage(status) {
 
 export const captureName = (route, width) => `${route.replace(/^\//, "").replace(/\//g, "-") || "home"}-${width}.png`;
 
+/** Opens the account menu without activating an item; returns a stable, redacted-safe failure reason or null. */
+export async function checkAccountMenu(page, captureMenu) {
+  let button;
+  try {
+    button = page.getByRole("button", { name: "Account menu", exact: true });
+    if (!(await button.isVisible())) return "button Account menu is not visible";
+    await button.click({ timeout: ACCOUNT_MENU_TIMEOUT_MS });
+  } catch {
+    return "button Account menu could not be opened";
+  }
+
+  let failure = null;
+  try {
+    await page.getByRole("menuitem", { name: "Sign out", exact: true }).waitFor({ state: "visible", timeout: ACCOUNT_MENU_TIMEOUT_MS });
+  } catch {
+    failure = "Sign out menu item did not become visible within 5000 ms";
+  }
+  try {
+    await captureMenu();
+  } catch {
+    failure ??= "open account menu screenshot could not be captured";
+  }
+  try {
+    await page.keyboard.press("Escape");
+  } catch {
+    failure ??= "account menu could not be dismissed with Escape";
+  }
+  return failure;
+}
+
 /** A page's failures (which fail the run) and findings (listed only). */
 export function judgeRoute(r) {
   const fails = [], findings = [];
   if (r.navigationError) fails.push(`navigation failed: ${r.navigationError}`);
+  if (r.accountMenuError) fails.push(`account menu: ${r.accountMenuError}`);
   if (Number.isInteger(r.status) && r.status >= 500) fails.push(`document answered ${r.status}`);
   if (r.pageErrors.length) fails.push(`uncaught error: ${r.pageErrors[0]}`);
   if (Number.isInteger(r.status) && r.status >= 400 && r.status < 500) findings.push(`document answered ${r.status}`);
@@ -175,6 +206,14 @@ export async function runLiveQa({ roles, passwords, trigger, launch, fetchText, 
           for (const route of ROUTES[role]) {
             current = { route, width: viewport.width, status: null, title: null, finalPath: null, sideways: false, capture: null, navigationError: null, pageErrors: [], consoleErrors: [], failedRequests: [], clientErrors: [] };
             await visit(page, role, route, viewport, current, io, redact);
+            if (!current.navigationError) {
+              const menuFile = path.join(io.outDir, role, `${captureName(route, viewport.width).replace(/\.png$/, "")}-account-menu.png`);
+              const menuError = await checkAccountMenu(page, async () => {
+                await page.screenshot({ path: menuFile, fullPage: true });
+                current.accountMenuCapture = path.relative(io.outDir, menuFile);
+              });
+              if (menuError) current.accountMenuError = menuError;
+            }
             Object.assign(current, judgeRoute(current));
             result.routes.push(current);
             say(`${role} ${route} @${viewport.width}: ${current.status ?? "-"} ${current.fails.length ? `FAIL ${current.fails.join("; ")}` : current.findings.join("; ") || "ok"}`);
