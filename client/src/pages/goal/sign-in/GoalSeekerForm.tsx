@@ -66,33 +66,35 @@ export function GoalSeekerForm({ returnTo, emailLinkEnabled = EMAIL_SIGN_IN_LINK
   const [method, setMethod] = useState<"email" | "password">(emailLinkEnabled ? "email" : "password");
   const [moreOpen, setMoreOpen] = useState(false);
   const [enteringCode, setEnteringCode] = useState(false);
-  if (compact && emailLinkEnabled) {
+  if (compact) {
     return (
       <div className="grid gap-3">
-        <GoalSeekerEmailCode compact returnTo={returnTo} emailFieldId={SEEKER_EMAIL_FIELD_ID} passkeysEnabled={passkeys.enabled && !moreOpen} onUsePassword={() => setMethod("password")} onCodeEntry={setEnteringCode} />
+        {emailLinkEnabled
+          ? <GoalSeekerEmailCode compact returnTo={returnTo} emailFieldId={SEEKER_EMAIL_FIELD_ID} passkeysEnabled={passkeys.enabled && !moreOpen} onUsePassword={() => setMethod("password")} onCodeEntry={setEnteringCode} />
+          : <GoalSeekerPasswordForm compact returnTo={returnTo} />}
         {!enteringCode ? <>
           <GoalButton variant="outline" className="w-full border-g-control-edge" onClick={() => window.location.assign(goalSeekerSocialUrl("google", returnTo))}>Continue with Google</GoalButton>
-          <GoalButton variant="ghost" className="w-full" onClick={() => { setMethod("email"); setMoreOpen(true); }}>More ways to sign in</GoalButton>
+          <GoalButton variant="ghost" className="w-full" onClick={() => { setMethod(emailLinkEnabled ? "email" : "password"); setMoreOpen(true); }}>More ways to sign in</GoalButton>
         </> : null}
         <GoalSheet open={moreOpen} onOpenChange={setMoreOpen} title="More ways to sign in" description="Use the same account with another sign-in method.">
           <div className="max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain">
-            {method === "password"
+            {emailLinkEnabled && method === "password"
               ? <GoalSeekerPasswordForm compact returnTo={returnTo} onUseEmail={() => setMoreOpen(false)} />
               : <div className="mt-4 grid gap-2">
                   <PasskeySignInButton enabled={passkeys.enabled} returnTo={returnTo} />
                   {GOAL_SEEKER_SOCIAL.filter(item => item.id !== "google").map(item => (
                     <GoalButton key={item.id} variant="outline" className="w-full border-g-control-edge" onClick={() => window.location.assign(goalSeekerSocialUrl(item.id, returnTo))}>Continue with {item.label}</GoalButton>
                   ))}
-                  <GoalButton variant="outline" className="w-full border-g-control-edge" onClick={() => setMethod("password")}>Use a password instead</GoalButton>
+                  {emailLinkEnabled ? <GoalButton variant="outline" className="w-full border-g-control-edge" onClick={() => setMethod("password")}>Use a password instead</GoalButton> : null}
                   <GoalPasskeyManageLink />
                 </div>}
-            <GoalButton variant="ghost" className="mt-2 w-full" onClick={() => setMoreOpen(false)}>Back to email sign-in</GoalButton>
+            <GoalButton variant="ghost" className="mt-2 w-full" onClick={() => setMoreOpen(false)}>Back to {emailLinkEnabled ? "email" : "password"} sign-in</GoalButton>
           </div>
         </GoalSheet>
       </div>
     );
   }
-  if (method === "email") {
+  if (emailLinkEnabled && method === "email") {
     return (
       <div className="grid gap-3">
         <GoalSeekerEmailCode returnTo={returnTo} emailFieldId={SEEKER_EMAIL_FIELD_ID} passkeysEnabled={passkeys.enabled} onUsePassword={() => setMethod("password")} />

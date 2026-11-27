@@ -90,6 +90,42 @@ describe("D-414 mobile sign-in", () => {
     expect(fetch).toHaveBeenCalledWith("/api/auth/password/sign-in", expect.objectContaining({ body: JSON.stringify({ email: "candidate@example.com", password: "fictional-password", returnTo: "/explore" }) }));
   });
 
+  it("keeps password sign-in compact when email links are disabled and discloses the remaining methods", async () => {
+    open("?intent=seeker");
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url === "/api/auth/password/sign-in") return new Response(JSON.stringify({ ok: true, step: "signed_in", redirectTo: "/explore" }), { status: 200 });
+      throw new Error(`Unexpected request: ${url}`);
+    }));
+    const { container } = render(<GoalSignInPage mobileSignInEnabled emailLinkEnabled={false} />);
+    const form = screen.getByTestId("seeker-sign-in");
+    expect(within(form).getByLabelText("Email address")).toBeTruthy();
+    expect(within(form).getByLabelText("Password")).toBeTruthy();
+    expect(within(form).getByRole("link", { name: "Forgot password?" }).getAttribute("href")).toBe("/forgot-password");
+    expect(within(form).getByRole("button", { name: "Create a free account" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Continue with Google" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /Email me a sign-in link/ })).toBeNull();
+    for (const provider of ["Microsoft", "GitHub", "LinkedIn", "Slack"]) expect(screen.queryByRole("button", { name: `Continue with ${provider}` })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "More ways to sign in" }));
+    const sheet = screen.getByRole("dialog");
+    for (const provider of ["Microsoft", "GitHub", "LinkedIn", "Slack"]) {
+      const button = within(sheet).getByRole("button", { name: `Continue with ${provider}` });
+      fireEvent.click(button);
+      expect(assign).toHaveBeenLastCalledWith(expect.stringContaining(`provider=${provider.toLowerCase()}`));
+    }
+    expect(within(sheet).queryByLabelText("Email address")).toBeNull();
+    expect(within(sheet).queryByLabelText("Password")).toBeNull();
+    expect(within(sheet).queryByRole("button", { name: /Email me a sign-in link|Use a password instead/ })).toBeNull();
+    expect(document.querySelectorAll('input[type="email"]')).toHaveLength(1);
+    expect(container.querySelector("form form")).toBeNull();
+    fireEvent.click(within(sheet).getByRole("button", { name: "Back to password sign-in" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.change(within(form).getByLabelText("Email address"), { target: { value: "candidate@example.com" } });
+    fireEvent.change(within(form).getByLabelText("Password"), { target: { value: "fictional-password" } });
+    fireEvent.click(within(form).getByRole("button", { name: "Sign in" }));
+    await waitFor(() => expect(assign).toHaveBeenLastCalledWith("/explore"));
+    expect(fetch).toHaveBeenCalledExactlyOnceWith("/api/auth/password/sign-in", expect.objectContaining({ body: JSON.stringify({ email: "candidate@example.com", password: "fictional-password", returnTo: "/explore" }) }));
+  });
+
   it("uses the same single-use email code path and removes alternatives during code entry", async () => {
     open("?intent=seeker");
     requests();
