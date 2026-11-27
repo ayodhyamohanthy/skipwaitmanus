@@ -829,3 +829,24 @@ Pinned login/money suites remain unchanged. Capture tooling adds output-director
 - Final documentation integration: main `a61d38ed` was merged normally as the second parent before landing. Incoming D-368, §3c, the Post Opportunity parity dependency and its FIFO-tail repair row are preserved, not resolved by this acceptance. D-368 was read and changes no admin-ops scope. All 387 current queue rows/order and every unrelated field/hold survive; only this task's status differs from that main, with its D-366 sync stamp retained. Main's `DECISIONS.md` bytes and all historical images/receipts remain unchanged. Fresh focused checks and exact-head required CI are still required on this integrated follow-up.
 
 - GATE-goal-design-ratchet: built — DeepSeek V4.1 Flash · 296d — 2026-11-24 — branch `agent/queue/gate-goal-design-ratchet`, claim `8a28c004`, base main `2d8abf469`. Read BRIEF, AGENTS, BUILD_CONTINUITY, this packet §5, `client/src/test/goalPagesBoundary.test.ts`, `scripts/designTokenAuditCore.mjs`, `client/src/lib/goalSurfaces.ts` and decisions through D-383. Adds `client/src/test/goalDesignRatchet.test.ts` (required unit job, no workflow edit) and `client/src/test/goalDesignRatchet.baseline.json`, measured on main `2d8abf469`: 41 released ids and 42 allow entries (29 kit importers + 15 `goalSurfaceOn` callers; `Home.tsx` and `EmployerDashboard.tsx` are both). Rules: (1) every baseline released id is still in `RELEASED`; (2) only allow-listed files outside `client/src/pages/goal/`, `client/src/components/goal/` and the flag module may import `client/src/components/kit` or call `goalSurfaceOn`; (3) an entry whose file stops importing the kit, loses its switch or disappears must be removed, and every entry names a decision id; (4) each rule has a failing fixture, plus scanner fixtures for comments, strings, dynamic import, aliased and namespace calls. The scan tokenizes with the TypeScript scanner (comments and strings stay single tokens, template substitutions are handled), so fixture text is not a match, and it parses only files whose text names the kit path or the switch. Evidence: focused run 19/19 pass; end-to-end red proofs — a temporary `client/src/pages/__ratchet_probe__.tsx` importing `@/components/kit/button` failed rule 2, and removing `skippy` from `RELEASED` failed rule 1 with "skippy is no longer in RELEASED"; both probes removed. `pnpm check` (tsc --noEmit) passes on the merged tree, and the focused run stays 19/19 after integrating main `9596a319c`. No page, runtime code, price, legal text, login rule or money path changes.
+
+### D-048-K-home: old credential block becomes release-acceptance work (November 28)
+
+Official UNBLOCK `GPT-6.1 Sol · 02ca`, lock `72c75e7d8`, checked current main `4c1242831`,
+decisions through D-414, PR #1255, draft #1653 at `df45e66ef` and live-run summary
+[46065479203](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/46065479203).
+Both demo sign-ins succeed; the old unavailable-password/reset failure is no longer a current
+external blocker. D-407 (1)(d) makes unfinished acceptance work, not a standing task block.
+
+The root `/` route is absent from that run, so real root-routing acceptance remains unverified.
+Under D-373 (6), the same `D-048-R-home-signed-in` row gets a fresh acceptance carrier, specified
+in [the rollout packet](D-048-phase-3-split.md#home-release-acceptance-successor-november-28-d-373d-407).
+K retains its R dependency and #1653; neither source nor holder is taken over. The launch hold
+has already been released under D-388 after BANDED-release #1664; all drift, assertion-porting,
+clean-browser parity, Sentry, exact-release and required-CI conditions remain.
+
+The read-only root Sentry query returned an empty response with `hasMore:false`, but its CLI
+process exceeded 60 seconds. That is not a completed 24-hour acceptance check. No retirement,
+new browser proof, source repair or production change is claimed by this ruling.
+
+D-048-K-home: ruling — GPT-6.1 Sol · 02ca — 2026-11-28 — [evidence disposition](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1653#issuecomment-7229611541); clear the obsolete credential block, retain unfinished R acceptance and K parity/landing gates.
