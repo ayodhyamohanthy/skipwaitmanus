@@ -3,30 +3,26 @@
 // wallet, document privacy and the send/claim/accept/withdraw rules on https://skipwait.me with the two demo
 // accounts only. Manual dispatch only: never a payment, checkout, provider call, admin route or non-demo account.
 //
-// It signs in once per demo account, routes one ask to the demo referrer's own company, and records every step's
-// status code and the redacted fields the packet names. Output: live-qa/<role>/*.png, live-qa/summary.json and a
-// Markdown table in the step summary. Exit 1 when a secret is missing, an identity is not the demo account, the
-// wallet has no free referral, or any step fails; 0 otherwise.
+// It proves three sandbox requests using only the demo accounts. Every mutation rechecks its actor, every
+// result is validated before use, and failures clean up only requests created by this run. Evidence is
+// limited to release SHAs, numeric request ids, keyed ledger rows and 1280/390 captures.
 import { appendFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { readGitCommitMeta } from "./releaseSmokeCore.mjs";
 import { ACCOUNTS, ORIGIN, redactor, signInMessage } from "./live-qa-signed-in.mjs";
-
-/** The two public demo accounts (server/_core/reviewerLogin.ts). Nothing else may sign in here. */
-export const DEMO = Object.freeze({ seeker: ACCOUNTS.seeker.email, referrer: ACCOUNTS.referrer.email });
-
-/** The demo referrer's verified work-email domain: the only company this run may route an ask to. */
-export const DEMO_COMPANY_DOMAIN = "reviewer.skipwait.me";
-
-/** The walk-in post the demo referrer publishes when it has none live, so the ask has a route to its company. */
-export const QA_ROLE_TITLE = "QA demo role (automatic check, removed after the run)";
+import {
+  SANDBOX_COMPANY, claimProblems, createdRequest, directoryCompany, freeWallet,
+  identityProblem, ledgerEntries, ledgerFor, moneyProblems, privacyProblems, revealProblems,
+  transitionProblems, trpcJson, uploadedAttachment,
+} from "./liveQaJourneyContracts.mjs";
+import { createJourneyClientFactory } from "./liveQaJourneyBrowser.mjs";
 
 /** A reviewed public listing (shared/referralUrl.ts) the job-link preview resolves without fetching a page. */
 export const JOB_LINK_FIXTURE = "https://wellfound.com/jobs/3971835-account-executive";
 export const JOB_LINK_COMPANY = "chatfin.ai";
 
-/** One credit is consumed per run: the declined ask stays spent; the two closed asks return theirs. */
+/** The journey never uses purchased or promotional allowance. */
 export const MIN_CREDITS = 1;
 
 /** A 70-byte 1x1 PNG: a real, valid resume file the demo seeker may attach. */
@@ -36,7 +32,7 @@ export const RESUME = Object.freeze({
   dataUrl: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
 });
 
-const NAV_TIMEOUT_MS = 30_000, QUIET_TIMEOUT_MS = 10_000, MAX_LINE = 300;
+const NAV_TIMEOUT_MS = 30_000;
 
 /** The workflow's `mode` input: navigate (default) or journeys. */
 export function parseMode(value) {
@@ -45,77 +41,6 @@ export function parseMode(value) {
   throw new Error(`mode must be navigate or journeys, not "${v}"`);
 }
 
-/** Fail closed unless the signed-in account is exactly the demo account for its role. */
-export function identityProblem(role, email) {
-  const expected = DEMO[role];
-  if (!expected) return `unknown role ${role}`;
-  if (typeof email !== "string" || email.trim().toLowerCase() !== expected) return `${role} signed in as ${email || "nobody"}, not ${expected}`;
-  return null;
-}
-
-/** tRPC answers a superjson envelope (a batch is an array); read the plain value out of either shape. */
-export function trpcJson(body) {
-  const one = Array.isArray(body) ? body[0] : body;
-  const data = one?.result?.data;
-  if (data && typeof data === "object" && "json" in data) return data.json;
-  return data ?? null;
-}
-
-/** The wallet's spendable total from GET /api/credits/summary, or null when the answer is not a count. */
-export function walletTotal(body) {
-  const total = body?.summary?.totalAvailable;
-  return typeof total === "number" && Number.isInteger(total) && total >= 0 ? total : null;
-}
-
-/** The ledger rows that belong to one referral request: its spend and any withdrawal refund. */
-export function ledgerFor(entries, requestId) {
-  const id = String(requestId);
-  const rows = (Array.isArray(entries) ? entries : []).filter(entry => entry?.reference?.type === "referral_request" && entry?.reference?.id === id);
-  return { spend: rows.filter(entry => entry.credits < 0), refund: rows.filter(entry => entry.credits > 0 && entry.kind === "withdrawal_refund") };
-}
-
-/**
- * The money rules the packet names, checked against one request's ledger rows and the wallet:
- * D-034 (a covered ask is charged once), D-147 (a decline keeps it spent) and the pre-pickup return.
- */
-export function moneyProblems({ before, after, requestId, entries, expect }) {
-  const problems = [];
-  const { spend, refund } = ledgerFor(entries, requestId);
-  if (expect.spend && spend.length === 0) problems.push(`no spend row for request ${requestId}`);
-  if (expect.spend && spend.some(row => row.credits !== -1)) problems.push(`the spend row for request ${requestId} is not -1`);
-  if (expect.refund && refund.length === 0) problems.push(`no withdrawal refund row for request ${requestId}`);
-  if (expect.refund && refund.some(row => row.credits !== 1)) problems.push(`the refund row for request ${requestId} is not +1`);
-  if (!expect.refund && refund.length > 0) problems.push(`request ${requestId} was refunded but must stay spent`);
-  if (typeof before === "number" && typeof after === "number" && after - before !== expect.walletDelta) problems.push(`wallet moved ${after - before}, expected ${expect.walletDelta}`);
-  return problems;
-}
-
-/** Before acceptance the referrer sees no seeker name and no file name, id or link (D-019(e)). */
-export function privacyProblems(preview) {
-  const request = preview?.request;
-  if (!request) return ["no preview"];
-  const problems = [];
-  if ("candidateName" in request) problems.push("the preview names the seeker");
-  for (const file of request.attachments ?? []) {
-    if ("fileName" in file || "url" in file || "id" in file) problems.push("the preview opens a file");
-  }
-  return problems;
-}
-
-/** After the referrer's own acceptance the name and the files open. */
-export function revealProblems(detail) {
-  const request = detail?.request;
-  if (!request) return ["no accepted detail"];
-  const problems = [];
-  if (typeof request.candidateName !== "string" || !request.candidateName) problems.push("the accepted detail has no candidate name");
-  const files = request.attachments ?? [];
-  if (!files.length) problems.push("the accepted detail has no files");
-  for (const file of files) {
-    if (typeof file.fileName !== "string" || !file.fileName) problems.push("an accepted file has no name");
-    if (typeof file.url !== "string" || !file.url) problems.push("an accepted file has no link");
-  }
-  return problems;
-}
 
 export function exitCodeOf(steps) {
   return steps.some(step => !step.ok) ? 1 : 0;
@@ -123,8 +48,6 @@ export function exitCodeOf(steps) {
 
 const short = sha => (typeof sha === "string" && sha ? sha.slice(0, 8) : "unknown");
 const cell = text => String(text ?? "").replace(/\|/g, "\\|").replace(/\n/g, " ").slice(0, 120);
-const messageOf = error => (error instanceof Error ? error.message : String(error)).split("\n")[0].slice(0, MAX_LINE);
-const pathOf = url => { try { const u = new URL(url); return u.origin === ORIGIN ? u.pathname : `${u.origin}/…`; } catch { return "?"; } };
 
 export function markdownOf(summary) {
   const rows = ["## Live QA journeys (signed in, demo accounts)", "", `Origin ${summary.origin} · API \`${short(summary.release.api)}\` · web \`${short(summary.release.web)}\``, "",
@@ -136,8 +59,11 @@ export function markdownOf(summary) {
 
 async function releaseOf(fetchText) {
   const release = { api: null, web: null };
-  try { const health = JSON.parse(await fetchText(`${ORIGIN}/api/health/ready`)); release.api = typeof health.commitSha === "string" ? health.commitSha : null; } catch { /* recorded as unknown */ }
-  try { release.web = readGitCommitMeta(await fetchText(`${ORIGIN}/`)); } catch { /* recorded as unknown */ }
+  try {
+    const health = JSON.parse(await fetchText(`${ORIGIN}/api/health/ready`));
+    if (health.ok === true && health.state === "ready" && /^[a-f0-9]{40}$/.test(health.commitSha)) release.api = health.commitSha;
+  } catch { /* The release step refuses an unknown or unready API. */ }
+  try { release.web = readGitCommitMeta(await fetchText(`${ORIGIN}/`)); } catch { /* The release step refuses an unknown web SHA. */ }
   return release;
 }
 
@@ -152,153 +78,167 @@ export async function runJourneys({ passwords, trigger, clientFor, fetchText, mk
   const redact = redactor(Object.values(passwords));
   const say = line => log(redact(line));
   const missing = ["seeker", "referrer"].filter(role => !passwords[role]).map(role => ACCOUNTS[role].secret);
-  if (missing.length) {
-    say(`::error::${missing.join(" and ")} not set: the owner adds them on Settings > Secrets and variables > Actions (OPS-live-qa-runner section 4); this journeys run (${trigger || "manual"}) checked nothing`);
+  if (trigger !== "workflow_dispatch" || missing.length) {
+    say(`::error::${missing.length ? `${missing.join(" and ")} not set` : "journeys require workflow_dispatch"}; nothing was changed`);
     return { code: 1, summary: null };
   }
-  const steps = [];
-  const step = (name, ok, detail = "") => { steps.push({ name, ok, detail: redact(detail) }); say(`${name}: ${ok ? "ok" : "FAIL"}${detail ? ` — ${detail}` : ""}`); return ok; };
-  const summary = { origin: ORIGIN, mode: "journeys", release: await releaseOf(fetchText), steps, captures: [], requests: {} };
-  const finish = async code => {
-    await makeDir(outDir, { recursive: true });
-    await write(path.join(outDir, "summary.json"), redact(JSON.stringify(summary, null, 2)));
-    await appendSummary(redact(markdownOf(summary)));
-    if (summary.release.web) await setOutput(`web_sha=${summary.release.web}`);
-    return { code, summary };
+  const summary = { origin: ORIGIN, mode: "journeys", release: await releaseOf(fetchText), steps: [], captures: [], requests: {}, ledger: {}, remainingRequests: [], uncertainCreates: 0 };
+  const step = (name, ok, detail = "") => {
+    summary.steps.push({ name, ok, detail: redact(detail) });
+    say(`${name}: ${ok ? "ok" : "FAIL"}${detail ? ` — ${detail}` : ""}`);
+    return ok;
+  };
+  const requireStep = (name, ok, detail = "") => {
+    if (!step(name, ok, detail)) throw new Error("journey step failed");
   };
   const clients = { seeker: clientFor("seeker"), referrer: clientFor("referrer") };
+  const remaining = new Set();
+  const identity = async role => {
+    const reply = await clients[role].me();
+    return reply.status === 200 && identityProblem(role, trpcJson(reply.body)?.email) === null;
+  };
+  const post = async (role, target, body, headers) => {
+    if (!await identity(role)) {
+      step("identity-before-mutation", false, `${role} identity could not be verified; mutation refused`);
+      throw new Error("demo identity changed");
+    }
+    return clients[role].post(target, body, headers);
+  };
+  const transition = async (name, role, id, action, kind, body) => {
+    const reply = await post(role, `/api/company-referrals/${id}/${action}`, body);
+    requireStep(name, transitionProblems(reply, kind).length === 0, `HTTP ${reply.status}`);
+    if (kind === "withdrawn") remaining.delete(id);
+  };
+  const capture = async (target, name) => {
+    for (const width of [1280, 390]) {
+      const result = await clients.referrer.capture(target, width);
+      const ok = result.status === 200 && Boolean(result.capture) && !result.navigationError
+        && [result.pageErrors, result.consoleErrors, result.clientErrors].every(errors => Array.isArray(errors) && errors.length === 0);
+      summary.captures.push({ capture: result.capture, width, status: result.status, ok });
+      requireStep(`${name}-${width}`, ok, `HTTP ${result.status}; ${ok ? "captured" : "capture failed"}`);
+    }
+  };
+  const create = async (name, offset, note) => {
+    const upload = await post("seeker", "/api/documents", RESUME);
+    const attachmentId = uploadedAttachment(upload);
+    requireStep(`document-${name}`, attachmentId !== null, `HTTP ${upload.status}`);
+    let reply;
+    try {
+      reply = await post("seeker", "/api/company-referrals", {
+        companySlug: SANDBOX_COMPANY.slug, targetRoleUrl: SANDBOX_COMPANY.jobUrl,
+        attachmentIds: [attachmentId], candidateMessage: note,
+      }, { "Idempotency-Key": idempotencyKey(now + offset) });
+    } catch {
+      summary.uncertainCreates += 1;
+      throw new Error("creation response unavailable");
+    }
+    const id = reply.body?.requestId;
+    const knownId = [200, 201].includes(reply.status) && Number.isSafeInteger(id) && id > 0;
+    if (knownId) remaining.add(id);
+    else if ([200, 201].includes(reply.status) || reply.status >= 500) summary.uncertainCreates += 1;
+    const created = createdRequest(reply);
+    requireStep(`create-${name}`, created !== null, `HTTP ${reply.status}`);
+    summary.requests[name] = created.requestId;
+    return { id: created.requestId, attachmentId };
+  };
+  const claim = async (name, id) => {
+    const reply = await post("referrer", `/api/company-referrals/${id}/claim`);
+    requireStep(name, claimProblems(reply, id).length === 0, `HTTP ${reply.status}`);
+  };
+  const locked = async (target, name, id) => {
+    const reply = await clients.referrer.get(target);
+    requireStep(name, reply.status === 200 && reply.body?.request?.id === id && privacyProblems(reply.body).length === 0, `HTTP ${reply.status}; locked metadata required`);
+  };
+  const denyDocument = async (attachmentId, name) => {
+    const reply = await clients.referrer.get(`/api/documents/${attachmentId}`);
+    requireStep(name, reply.status === 404, `HTTP ${reply.status}`);
+  };
+  try {
+    requireStep("release", Boolean(summary.release.api) && /^[a-f0-9]{40}$/.test(summary.release.web ?? ""), "exact ready API and web SHAs required");
+    for (const role of ["seeker", "referrer"]) {
+      const reply = await clients[role].signIn(passwords[role]);
+      requireStep(`identity-${role}`, reply.status === 200 && await identity(role), signInMessage(reply.status));
+    }
+    const wallet = await clients.seeker.get("/api/credits/summary");
+    const before = wallet.status === 200 ? freeWallet(wallet.body) : null;
+    requireStep("wallet-before", before !== null && before.free >= MIN_CREDITS, "free-only allowance required; no purchase was attempted");
+    const directory = await clients.seeker.get(`/api/companies/${SANDBOX_COMPANY.slug}`);
+    requireStep("route", directory.status === 200 && directoryCompany(directory.body) !== null, "validated sandbox company required");
 
-  // 1. Sign in both demo accounts, then fail closed unless each session is exactly its demo account.
-  const signIn = {};
-  for (const role of ["seeker", "referrer"]) signIn[role] = await clients[role].signIn(passwords[role]);
-  const identity = [];
-  for (const role of ["seeker", "referrer"]) {
-    if (signIn[role].status !== 200) { identity.push(`${role}: ${signInMessage(signIn[role].status)}${signIn[role].body?.error ? ` (${signIn[role].body.error})` : ""}`); continue; }
-    const me = await clients[role].me();
-    const problem = identityProblem(role, trpcJson(me.body)?.email);
-    if (problem) identity.push(problem);
+    const ask = await create("ask", 0, "QA demo request: privacy and acceptance check, withdrawn by this run.");
+    const inbox = await clients.referrer.get("/api/company-referrals/inbox?scope=new");
+    requireStep("inbox", inbox.status === 200 && Array.isArray(inbox.body?.requests) && inbox.body.requests.some(row => row.id === ask.id), `HTTP ${inbox.status}`);
+    await locked(`/api/company-referrals/${ask.id}/preview`, "preview-privacy", ask.id);
+    await capture("/queue", "queue");
+    await denyDocument(ask.attachmentId, "document-denied");
+    await claim("claim", ask.id);
+    await locked(`/api/company-referrals/${ask.id}`, "claimed-privacy", ask.id);
+    await denyDocument(ask.attachmentId, "claimed-document-denied");
+    await transition("accept", "referrer", ask.id, "one-click-review", "accepted", { decision: "approved", ethicsConfirmed: true });
+    const detail = await clients.referrer.get(`/api/company-referrals/${ask.id}`);
+    const fileMatches = detail.body?.request?.attachments?.some(file => file.id === ask.attachmentId && file.url === `/api/documents/${ask.attachmentId}`);
+    requireStep("reveal", detail.status === 200 && detail.body?.request?.id === ask.id && revealProblems(detail.body).length === 0 && fileMatches === true, `HTTP ${detail.status}; accepted upload required`);
+    const opened = await clients.referrer.get(`/api/documents/${ask.attachmentId}`);
+    requireStep("document-open", opened.status === 200, `HTTP ${opened.status}`);
+    await capture(`/conversation/${ask.id}`, "accepted");
+    for (const suffix of ["", "/preview"]) {
+      const denied = await clients.seeker.get(`/api/company-referrals/${ask.id}${suffix}`);
+      requireStep(`cross-role-denied${suffix}`, denied.status === 403 && denied.body?.code === "work_email_code_required", `HTTP ${denied.status}`);
+    }
+    const nonowner = await post("referrer", `/api/company-referrals/${ask.id}/withdraw`);
+    requireStep("nonowner-withdraw-denied", nonowner.status === 404, `HTTP ${nonowner.status}`);
+    await transition("step-back", "referrer", ask.id, "step-back", "steppedBack");
+    await denyDocument(ask.attachmentId, "released-document-denied");
+    await transition("withdraw-accepted", "seeker", ask.id, "withdraw", "withdrawn");
+
+    const withdrawn = await create("withdrawn", 1, "QA demo request: withdrawn before pickup by this run.");
+    await transition("withdraw-before-pickup", "seeker", withdrawn.id, "withdraw", "withdrawn");
+    const declined = await create("declined", 2, "QA demo request: claimed and declined only by the demo referrer.");
+    await claim("claim-decline", declined.id);
+    await transition("decline", "referrer", declined.id, "one-click-review", "passed", { decision: "declined", declineReason: "cannot_support" });
+    await transition("withdraw-declined", "seeker", declined.id, "withdraw", "withdrawn");
+
+    const ledgerReply = await clients.seeker.get("/api/credits/ledger?role=job_seeker&limit=50");
+    const entries = ledgerReply.status === 200 ? ledgerEntries(ledgerReply.body) : null;
+    requireStep("ledger", entries !== null && [ask.id, withdrawn.id, declined.id].every(id => moneyProblems({ requestId: id, entries, expect: { spend: true, refund: id !== declined.id } }).length === 0), "one cycle debit per request; refunds only after pre-pickup withdrawal or released acceptance");
+    for (const id of [ask.id, withdrawn.id, declined.id]) {
+      const legs = ledgerFor(entries, id);
+      summary.ledger[id] = [...legs.spend, ...legs.refund].map(row => ({ id: row.id, kind: row.kind, credits: row.credits, bucket: row.bucket, reference: row.reference }));
+    }
+    const afterReply = await clients.seeker.get("/api/credits/summary");
+    requireStep("wallet-after", afterReply.status === 200 && freeWallet(afterReply.body) !== null, "consistent free-only wallet required; sandbox top-ups prevent aggregate-delta proof");
+    const link = await post("seeker", "/api/job-link/preview", { url: JOB_LINK_FIXTURE });
+    requireStep("job-link", link.status === 200 && link.body?.companyDomain === JOB_LINK_COMPANY && link.body?.status === "fresh", `HTTP ${link.status}`);
+    const finalRelease = await releaseOf(fetchText);
+    requireStep("release-stable", finalRelease.api === summary.release.api && finalRelease.web === summary.release.web, "web/API releases must remain unchanged during the journey");
+  } catch {
+    if (summary.steps.every(result => result.ok)) step("execution", false, "journey stopped; no unvalidated response was accepted");
+  } finally {
+    for (const id of remaining) {
+      try {
+        let reply = await post("seeker", `/api/company-referrals/${id}/withdraw`);
+        if (reply.status === 409) {
+          const detail = await clients.referrer.get(`/api/company-referrals/${id}`);
+          const state = detail.status === 200 && detail.body?.request?.id === id ? detail.body.request.status : null;
+          if (state === "approved") {
+            await transition(`cleanup-step-back-${id}`, "referrer", id, "step-back", "steppedBack");
+          } else if (state === "pending") {
+            await transition(`cleanup-pass-${id}`, "referrer", id, "one-click-review", "passed", { decision: "declined", declineReason: "cannot_support" });
+          } else throw new Error("cleanup state unavailable");
+          reply = await post("seeker", `/api/company-referrals/${id}/withdraw`);
+        }
+        if (transitionProblems(reply, "withdrawn").length) throw new Error("cleanup withdrawal failed");
+        remaining.delete(id);
+      } catch { step(`cleanup-${id}`, false, `request ${id} remains unverified; no other request was touched`); }
+    }
+    summary.remainingRequests = [...remaining];
+    step("cleanup", remaining.size === 0 && summary.uncertainCreates === 0, `${remaining.size} known requests remain; ${summary.uncertainCreates} uncertain creates`);
   }
-  if (!step("identity", identity.length === 0, identity.join("; "))) return finish(1);
-
-  // 2. The wallet before: no free referral means stop, never buy and never open checkout.
-  const before = walletTotal((await clients.seeker.get("/api/credits/summary")).body);
-  const walletDetail = typeof before !== "number" ? "the wallet did not answer" : before === 0 ? "no free referral available; nothing was bought" : before < MIN_CREDITS ? `only ${before} free referral${before === 1 ? "" : "s"} left; this journey needs ${MIN_CREDITS}` : `${before} available`;
-  if (!step("wallet-before", typeof before === "number" && before >= MIN_CREDITS, walletDetail)) return finish(1);
-
-  // 3. Route to the demo referrer's own company: reuse its live post, or publish one walk-in post for this run.
-  const mine = await clients.referrer.get("/api/opportunities/mine");
-  const live = (mine.body?.opportunities ?? []).find(opportunity => opportunity?.companyDomain === DEMO_COMPANY_DOMAIN && Number.isInteger(opportunity?.id) && opportunity?.isActive === true && opportunity?.expired === false);
-  let opportunityId = live?.id ?? null;
-  let createdOpportunity = false;
-  if (!opportunityId) {
-    const published = await clients.referrer.post("/api/opportunities", { kind: "walk_in", roleTitle: QA_ROLE_TITLE, location: "Remote", walkInAt: new Date(now).toISOString(), walkInEndsAt: new Date(now + 2 * 3_600_000).toISOString() });
-    opportunityId = published.body?.opportunity?.id ?? null;
-    createdOpportunity = Boolean(opportunityId);
-  }
-  if (!step("route", Boolean(opportunityId), opportunityId ? `demo company ${DEMO_COMPANY_DOMAIN} via opportunity ${opportunityId}` : "the demo referrer has no live post and could not publish one")) return finish(1);
-
-  // 4. Upload the resume the ask needs (a real 1x1 PNG in the demo account only).
-  const uploaded = await clients.seeker.post("/api/documents", RESUME);
-  const attachmentId = uploaded.body?.id ?? null;
-  if (!step("document", uploaded.status === 201 && Boolean(attachmentId), attachmentId ? `attachment ${attachmentId}` : `upload answered ${uploaded.status}`)) return finish(1);
-
-  // 5. Send the ask to the demo referrer's company. A covered ask is charged once at first visibility (D-034).
-  const create = await clients.seeker.post("/api/company-referrals", { opportunityId, attachmentIds: [attachmentId], candidateMessage: "QA demo request: this checks the referral flow and is withdrawn by the run." }, { "Idempotency-Key": idempotencyKey(now) });
-  const requestId = create.body?.requestId ?? null;
-  const covered = create.body?.coverageStatus === "covered";
-  if (!step("create", create.status === 201 && Boolean(requestId) && covered, requestId ? `request ${requestId}, ${create.body?.coverageStatus}` : `create answered ${create.status}`)) return finish(1);
-  summary.requests.ask = requestId;
-
-  // 6. The referrer sees the ask with no seeker name and no file links; capture the queue at both widths.
-  const inbox = await clients.referrer.get("/api/company-referrals/inbox?scope=new");
-  const visible = (inbox.body?.requests ?? []).some(row => Number(row?.id) === requestId);
-  const preview = await clients.referrer.get(`/api/company-referrals/${requestId}/preview`);
-  const privacy = [...(visible ? [] : ["the ask is not in the referrer's inbox"]), ...privacyProblems(preview.body)];
-  for (const width of [1280, 390]) summary.captures.push(await clients.referrer.capture("/queue", width));
-  if (!step("preview-privacy", privacy.length === 0, privacy.join("; "))) return finish(1);
-
-  // 7. Before acceptance the referrer cannot open the seeker's file (D-019(e)).
-  const denied = await clients.referrer.get(`/api/documents/${attachmentId}`);
-  if (!step("document-denied", denied.status === 404, `document answered ${denied.status}`)) return finish(1);
-
-  // 8. Claim and accept, the confirmed act the server requires.
-  const claim = await clients.referrer.post(`/api/company-referrals/${requestId}/claim`);
-  if (!step("claim", claim.status === 200, `claim answered ${claim.status}`)) return finish(1);
-  const accept = await clients.referrer.post(`/api/company-referrals/${requestId}/one-click-review`, { decision: "approved", ethicsConfirmed: true });
-  if (!step("accept", accept.status === 200 && accept.body?.status === "approved", `accept answered ${accept.status}`)) return finish(1);
-
-  // 9. After the referrer's own acceptance the name and files appear, and the file opens.
-  const detail = await clients.referrer.get(`/api/company-referrals/${requestId}`);
-  const reveal = revealProblems(detail.body);
-  const opened = await clients.referrer.get(`/api/documents/${attachmentId}`);
-  if (opened.status !== 200) reveal.push(`the accepted file answered ${opened.status}`);
-  for (const width of [1280, 390]) summary.captures.push(await clients.referrer.capture(`/conversation/${requestId}`, width));
-  if (!step("reveal", reveal.length === 0, reveal.join("; "))) return finish(1);
-
-  // 10. The seeker cannot read the referrer-only views of the same ask.
-  const seekerDetail = await clients.seeker.get(`/api/company-referrals/${requestId}`);
-  const seekerPreview = await clients.seeker.get(`/api/company-referrals/${requestId}/preview`);
-  const cross = [];
-  if (seekerDetail.status !== 404) cross.push(`the seeker's claimed-detail read answered ${seekerDetail.status}`);
-  if (seekerPreview.status !== 404) cross.push(`the seeker's preview read answered ${seekerPreview.status}`);
-  if (!step("cross-role-denied", cross.length === 0, cross.join("; "))) return finish(1);
-
-  // 11. The referrer steps back from the accepted ask, so it reopens and the run can close it; the step-back
-  // releases the claim, so the seeker's withdrawal returns the credit (the ask reached no referral).
-  const stepBack = await clients.referrer.post(`/api/company-referrals/${requestId}/step-back`);
-  if (!step("step-back", stepBack.status === 200 && stepBack.body?.steppedBack === true, `step-back answered ${stepBack.status}`)) return finish(1);
-  const acceptedWithdraw = await clients.seeker.post(`/api/company-referrals/${requestId}/withdraw`);
-  if (!step("withdraw-accepted", acceptedWithdraw.status === 200, `withdraw answered ${acceptedWithdraw.status}`)) return finish(1);
-
-  // 12. A second ask withdrawn before pickup returns its credit (D-034).
-  const secondUpload = await clients.seeker.post("/api/documents", RESUME);
-  const secondCreate = await clients.seeker.post("/api/company-referrals", { opportunityId, attachmentIds: [secondUpload.body?.id], candidateMessage: "QA demo request: withdrawn before pickup by the run." }, { "Idempotency-Key": idempotencyKey(now + 1) });
-  const secondId = secondCreate.body?.requestId ?? null;
-  if (!step("create-withdraw", secondCreate.status === 201 && Boolean(secondId) && secondCreate.body?.coverageStatus === "covered", secondId ? `request ${secondId}` : `create answered ${secondCreate.status}`)) return finish(1);
-  summary.requests.withdrawn = secondId;
-  const beforePickup = await clients.seeker.post(`/api/company-referrals/${secondId}/withdraw`);
-  if (!step("withdraw-before-pickup", beforePickup.status === 200, `withdraw answered ${beforePickup.status}`)) return finish(1);
-
-  // 13. A third ask the referrer claims and declines: the credit stays spent (D-147, D-021), even when the
-  // seeker withdraws it afterwards, because the latest pickup is the claim.
-  const thirdUpload = await clients.seeker.post("/api/documents", RESUME);
-  const thirdCreate = await clients.seeker.post("/api/company-referrals", { opportunityId, attachmentIds: [thirdUpload.body?.id], candidateMessage: "QA demo request: claimed and declined by the demo referrer." }, { "Idempotency-Key": idempotencyKey(now + 2) });
-  const thirdId = thirdCreate.body?.requestId ?? null;
-  if (!step("create-decline", thirdCreate.status === 201 && Boolean(thirdId) && thirdCreate.body?.coverageStatus === "covered", thirdId ? `request ${thirdId}` : `create answered ${thirdCreate.status}`)) return finish(1);
-  summary.requests.declined = thirdId;
-  const thirdClaim = await clients.referrer.post(`/api/company-referrals/${thirdId}/claim`);
-  if (!step("claim-decline", thirdClaim.status === 200, `claim answered ${thirdClaim.status}`)) return finish(1);
-  const decline = await clients.referrer.post(`/api/company-referrals/${thirdId}/one-click-review`, { decision: "declined", declineReason: "role_not_a_fit" });
-  if (!step("decline", decline.status === 200 && decline.body?.status === "declined", `decline answered ${decline.status}`)) return finish(1);
-  const declinedWithdraw = await clients.seeker.post(`/api/company-referrals/${thirdId}/withdraw`);
-  if (!step("withdraw-declined", declinedWithdraw.status === 200, `withdraw answered ${declinedWithdraw.status}`)) return finish(1);
-
-  // 14. The ledger and the wallet after: the two closed asks returned their credit, the declined one stays spent.
-  const ledger = await clients.seeker.get("/api/credits/ledger?role=job_seeker&limit=50");
-  const after = walletTotal((await clients.seeker.get("/api/credits/summary")).body);
-  const entries = ledger.body?.entries;
-  const money = [
-    ...moneyProblems({ before, after, requestId, entries, expect: { spend: true, refund: true, walletDelta: -MIN_CREDITS } }),
-    ...moneyProblems({ before, after, requestId: secondId, entries, expect: { spend: true, refund: true, walletDelta: -MIN_CREDITS } }),
-    ...moneyProblems({ before, after, requestId: thirdId, entries, expect: { spend: true, refund: false, walletDelta: -MIN_CREDITS } }),
-  ];
-  if (!step("ledger", money.length === 0, money.join("; "))) return finish(1);
-  if (!step("wallet-after", after === before - MIN_CREDITS, `${before} before, ${after} after`)) return finish(1);
-
-  // 15. One job-link preview for a reviewed public listing.
-  const link = await clients.seeker.post("/api/job-link/preview", { url: JOB_LINK_FIXTURE });
-  const linkOk = link.status === 200 && link.body?.companyDomain === JOB_LINK_COMPANY;
-  if (!step("job-link", linkOk, linkOk ? `${JOB_LINK_FIXTURE} → ${JOB_LINK_COMPANY}` : `preview answered ${link.status}`)) return finish(1);
-
-  // 16. Clean up so the next run starts from the same state.
-  if (createdOpportunity) {
-    const closed = await clients.referrer.post(`/api/opportunities/${opportunityId}/close`);
-    step("cleanup", closed.status === 200, `close answered ${closed.status}`);
-  } else {
-    step("cleanup", true, "reused a live demo post; nothing to close");
-  }
-
-  return finish(exitCodeOf(steps));
+  await makeDir(outDir, { recursive: true });
+  await write(path.join(outDir, "summary.json"), redact(JSON.stringify(summary, null, 2)));
+  await appendSummary(redact(markdownOf(summary)));
+  if (summary.release.web) await setOutput(`web_sha=${summary.release.web}`);
+  return { code: exitCodeOf(summary.steps), summary };
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
@@ -307,75 +247,20 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   try {
     const { chromium } = await import("playwright");
     const browser = await chromium.launch();
-    const contexts = new Map();
-    const contextFor = async role => {
-      if (!contexts.has(role)) contexts.set(role, await browser.newContext());
-      return contexts.get(role);
-    };
-    const jsonOf = async response => { try { return await response.json(); } catch { return null; } };
-    const clientFor = role => ({
-      signIn: async password => {
-        const context = await contextFor(role);
-        const response = await context.request.post(`${ORIGIN}/api/auth/reviewer/sign-in`, { data: { email: DEMO[role], password }, failOnStatusCode: false, maxRedirects: 0 });
-        return { status: response.status(), body: await jsonOf(response) };
-      },
-      me: async () => {
-        const context = await contextFor(role);
-        const response = await context.request.get(`${ORIGIN}/api/trpc/auth.me`, { failOnStatusCode: false });
-        return { status: response.status(), body: await jsonOf(response) };
-      },
-      get: async target => {
-        const context = await contextFor(role);
-        const response = await context.request.get(`${ORIGIN}${target}`, { failOnStatusCode: false });
-        return { status: response.status(), body: await jsonOf(response) };
-      },
-      post: async (target, body, headers) => {
-        const context = await contextFor(role);
-        const response = await context.request.post(`${ORIGIN}${target}`, { data: body, headers, failOnStatusCode: false });
-        return { status: response.status(), body: await jsonOf(response) };
-      },
-      capture: async (target, width) => {
-        const context = await contextFor(role);
-        const page = await context.newPage();
-        const current = { status: null, title: null, pageErrors: [], consoleErrors: [], clientErrors: [], capture: null, navigationError: null };
-        page.on("pageerror", error => current.pageErrors.push(redact(messageOf(error))));
-        page.on("console", msg => { if (msg.type() === "error") current.consoleErrors.push(redact(msg.text()).slice(0, MAX_LINE)); });
-        page.on("response", res => { if (res.status() >= 400) current.clientErrors.push(redact(`${res.status()} ${res.request().method()} ${pathOf(res.url())}`).slice(0, MAX_LINE)); });
-        try {
-          await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
-          const response = await page.goto(`${ORIGIN}${target}`, { waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT_MS });
-          await page.waitForLoadState("networkidle", { timeout: QUIET_TIMEOUT_MS }).catch(() => {});
-          current.status = response?.status() ?? null;
-          current.title = redact(await page.title());
-          const file = path.join("live-qa", role, `${target.replace(/^\//, "").replace(/\//g, "-")}-${width}.png`);
-          await page.screenshot({ path: file, fullPage: true });
-          current.capture = file;
-        } catch (error) {
-          current.navigationError = redact(messageOf(error));
-        }
-        await page.close();
-        return current;
-      },
-    });
     try {
       const { code } = await runJourneys({
-        passwords,
-        trigger: process.env.LIVE_QA_TRIGGER ?? "",
-        clientFor,
+        passwords, trigger: process.env.LIVE_QA_TRIGGER ?? "",
+        clientFor: createJourneyClientFactory({ browser, redact }),
         fetchText: async url => (await fetch(url, { signal: AbortSignal.timeout(NAV_TIMEOUT_MS), headers: { "cache-control": "no-cache" } })).text(),
-        mkdir: (p, o) => mkdir(p, o),
-        writeFile: (p, text) => writeFile(p, text),
-        appendSummary: text => (process.env.GITHUB_STEP_SUMMARY ? appendFile(process.env.GITHUB_STEP_SUMMARY, text) : Promise.resolve()),
-        setOutput: text => (process.env.GITHUB_OUTPUT ? appendFile(process.env.GITHUB_OUTPUT, `${text}\n`) : Promise.resolve()),
-        log: line => console.log(line),
-        outDir: "live-qa",
+        mkdir: (p, o) => mkdir(p, o), writeFile: (p, text) => writeFile(p, text),
+        appendSummary: text => process.env.GITHUB_STEP_SUMMARY ? appendFile(process.env.GITHUB_STEP_SUMMARY, text) : Promise.resolve(),
+        setOutput: text => process.env.GITHUB_OUTPUT ? appendFile(process.env.GITHUB_OUTPUT, `${text}\n`) : Promise.resolve(),
+        log: line => console.log(line), outDir: "live-qa",
       });
       process.exitCode = code;
-    } finally {
-      await browser.close();
-    }
-  } catch (error) {
-    console.error(`live-qa-journeys: ${redact(messageOf(error))}`);
+    } finally { await browser.close(); }
+  } catch {
+    console.error("live-qa-journeys: execution failed; inspect the redacted step summary");
     process.exitCode = 1;
   }
 }
