@@ -54,6 +54,65 @@
       "note": "Landed as PR #514 (merge commit on main; independent review passed by Gemini 3.8 Flash · 8f37). Stale test fixture paths updated to 0100_billing_review_outbox.sql, schemaReconcile table match targeted, and MySQL 8.0.46 FK errno 1452 assertion aligned. Migration digest unchanged; 0 runtime or SQL changes."
     },
     {
+      "id": "P0-goal-shell-sign-out",
+      "title": "P0: the goal shell's account avatar opens the account menu, so signed-in people can sign out on /explore, /requests, /ask, /inbox and the conversation views (D-019, D-412 (6))",
+      "row": "D-212",
+      "packet": "docs/plans/P0-goal-shell-sign-out.md",
+      "tier": 1,
+      "lane": "p0-goal-shell-sign-out",
+      "branch": "agent/queue/p0-goal-shell-sign-out",
+      "status": "todo",
+      "syncedTo": "D-412",
+      "dependsOn": [],
+      "owns": [
+        "client/src/components/goal/GoalAppShell.tsx",
+        "client/src/components/goal/goalAppShell.signOut.test.tsx",
+        "docs/plans/P0-goal-shell-sign-out.md"
+      ],
+      "note": "Owner report, Nov 27. GoalAppShell passes no account.menu, so the avatar is inert; pass the AppShell AccountMenu.",
+      "epic": "D-212"
+    },
+    {
+      "id": "PICKER-speed-fixes",
+      "title": "Picker: refresh only drafts that can land, a landed ruling's unblocker clears the block, a docs-only PR is never landed for a code row, quiet claims show as free (D-412)",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-speed-fixes.md",
+      "tier": 2,
+      "lane": "picker-speed-fixes",
+      "branch": "agent/queue/picker-speed-fixes",
+      "status": "todo",
+      "syncedTo": "D-412",
+      "dependsOn": [],
+      "owns": [
+        "scripts/nextTaskCore.mjs",
+        "scripts/nextTaskText.mjs",
+        "scripts/next-task.mjs",
+        "scripts/nextTaskSpeedFixes.test.ts",
+        "docs/plans/PICKER-speed-fixes.md"
+      ],
+      "note": "Owner, Nov 27: fix what slows the team. Picker only; no landing, block, review or owner rule is relaxed.",
+      "epic": "D-212"
+    },
+    {
+      "id": "QA-live-interactions",
+      "title": "Signed-in live QA opens the account menu on every signed-in route at 1280 and 390 and fails when Sign out is not offered, so dead controls file a bug issue (D-412 (7)(a), D-409)",
+      "row": "D-212",
+      "packet": "docs/plans/QA-live-interactions.md",
+      "tier": 2,
+      "lane": "qa-live-interactions",
+      "branch": "agent/queue/qa-live-interactions",
+      "status": "todo",
+      "syncedTo": "D-412",
+      "dependsOn": [],
+      "owns": [
+        "scripts/live-qa-signed-in.mjs",
+        "scripts/liveQaSignedIn.test.ts",
+        "docs/plans/QA-live-interactions.md"
+      ],
+      "note": "Owner, Nov 27: QA must catch bugs and file issues for agents. Clicks only the account menu and Escape; never signs out, never /admin, no money.",
+      "epic": "D-212"
+    },
+    {
       "id": "REL-plans-signed-out-token",
       "title": "Release repair: signed-out /plans never asks WorkOS for a token, so live verification passes again and the landing hold lifts (incident #1439)",
       "row": "D-212",
@@ -611,7 +670,7 @@
       "lane": "picker-bug-issues",
       "branch": "agent/queue/picker-bug-issues",
       "status": "todo",
-      "syncedTo": "D-409",
+      "syncedTo": "D-412",
       "dependsOn": [
         "QA-auto-issues"
       ],
@@ -623,7 +682,7 @@
         "scripts/nextTaskBugIssues.test.ts",
         "docs/plans/QA-automated-testers.md"
       ],
-      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them.",
+      "note": "Owner D-409, Nov 26: automated testers raise bugs before users hit them. D-412 (7)(c) (Nov 27): scope unchanged; build it next so automated and ai-tester bug issues reach agents.",
       "epic": "D-212"
     },
     {
@@ -8363,18 +8422,21 @@
       "lane": "ask-flow",
       "branch": "agent/queue/d174-no-expiry-release",
       "status": "todo",
-      "syncedTo": "D-386",
+      "syncedTo": "D-411",
       "dependsOn": [
         "D-174-expiry-clock-removal",
         "D-174-held-ask-reconfirm"
       ],
-      "note": "D-385 packet section 7. QA preview first with fictional accounts and the test provider only (no real money): a 31-day-old held request with a fresh credit is not charged until the seeker confirms, then charged once. One PR flips both switches with the coupling test green. After deploy, read back ask-expiry-sweep skipped in /api/admin/jobs and countdown-free /requests at 1280 and 390 on the exact deployed SHA. Activation authority: D-174's launch rule after QA (D-097).",
+      "note": "D-385 packet section 7, as ruled by D-411. Legal wording is owner-approved (D-411 (2)): add the five approved no-expiry strings in shared/moneyCopy.ts, chosen by ASK_NO_EXPIRY_ENABLED, with verbatim pins and switch-off strings byte-identical. QA preview (D-411 (3)): a GATE-e2e-journeys journey (real server, MySQL, fictional accounts, no provider) on the release PR head with both switches on proves a 31-day-old waiting request with a fresh credit is not charged until the seeker confirms, then charged exactly once across retries. One PR flips ASK_RECONFIRM_ENABLED and ASK_NO_EXPIRY_ENABLED together with the coupling test green. After deploy, read back ask-expiry-sweep skipped in /api/admin/jobs and countdown-free /requests at 1280 and 390 on the exact deployed SHA (demo accounts, D-393/D-410). Activation authority: D-174's launch rule after QA (D-097).",
       "epic": "D-174",
       "owns": [
         "shared/askReconfirm.ts (switch only)",
         "shared/referral.ts (switch only)",
         "docs/BUGFREE_GATE.md",
-        "docs/plans/D-174-expiry-clock-removal.md"
+        "docs/plans/D-174-expiry-clock-removal.md",
+        "shared/moneyCopy.ts (D-411 approved additions only)",
+        "shared/moneyCopy.noExpiry.test.ts",
+        "e2e/reconfirm-money.e2e.ts"
       ]
     },
     {
