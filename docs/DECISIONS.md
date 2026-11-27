@@ -1333,6 +1333,28 @@ adds no numbered owner decision, runtime code, schema, provider call, payment,
 email, legal wording, price, login change or enabled switch.
 No implementation, required-CI or production acceptance is claimed.
 
+### November 28 launch-retirement routing receipt (D-200, D-370, D-388)
+
+Official `CEO REVIEW` session `GPT-6.1 Sol · ed37` checked main
+`3508530aaf046afe3145003feb2306169e617c5d`, instructions and decisions through D-414,
+the picker board and `D-048-retire.md`. The D-388 (4) release condition is met:
+[BANDED-release PR #1664](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1664)
+merged as `b54c03eb57893365043741ec40fc98ebacdf9cdc` on November 27, and the canonical
+offer readback returned `onSale: true` with API `f02de526a` ready. This does not certify
+the outstanding BANDED checkout-handshake or signed-in acceptance.
+
+Restore exactly D-388's eight fresh retirement rows from `owner` to `todo`:
+home, post-opportunity, admin-money, admin-people, inplace, employer, employer-talent
+and employer-billing (`D-048-K-*`). Preserve their FIFO position, branch, current
+claims, ownership, tier and release dependencies; check their packet through D-414.
+Every surface still requires live-goal/parity/ported-assertion proof and normal CI
+before deletion. Do not equate a merged release row with its unfinished acceptance.
+
+This applies the existing owner's release condition, not a new numbered decision,
+new task, blanket hold clearance or permission to take another session's work.
+No old design, runtime code, price, sales switch, legal text, login method, money
+path or production setting is changed. Other owner-parked rows remain unchanged.
+
 ### November 28 CEO review: account-menu repair carriers and claim cost (D-019, D-200, D-409, D-412)
 
 Official CEO REVIEW `GPT-6.1 Sol · 9186` checked main
