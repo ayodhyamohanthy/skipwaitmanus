@@ -1,18 +1,17 @@
 // @vitest-environment jsdom
-// D-048-p3-post: flag-off parity (kit wizard untouched) and flag-on goal
-// rebuild for /post-opportunity. Mocks follow client/src/pages/postOpportunity.test.tsx.
+// D-048-p3-post: the goal rebuild of /post-opportunity. Since D-048-K-post-opportunity (D-332)
+// it is the only design, so no surface switch is mocked. Mocks follow client/src/pages/postOpportunity.test.tsx.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import PostOpportunity from "../../PostOpportunity";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 
-const { authState, go, surfaces } = vi.hoisted(() => ({ authState: { isLoaded: true, isSignedIn: true }, go: vi.fn(), surfaces: { on: new Set<string>() } }));
+const { authState, go } = vi.hoisted(() => ({ authState: { isLoaded: true, isSignedIn: true }, go: vi.fn() }));
 const getToken = vi.fn().mockResolvedValue("test-token");
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: authState.isLoaded, isSignedIn: authState.isSignedIn, userId: "12", getToken }), useUser: () => ({ user: null }) }));
 vi.mock("@/hooks/useCreditBalance", () => ({ useCreditBalance: () => null }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => surfaces.on.has(id) }));
 vi.mock("wouter", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
   useLocation: () => ["/post-opportunity", go],
@@ -25,16 +24,14 @@ const ok = (json: unknown) => ({ ok: true, status: 200, json: async () => json }
 const fail = (status: number, json: unknown) => ({ ok: false, status, json: async () => json });
 const renderPost = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } })}><PostOpportunity /></QueryClientProvider>);
 
-beforeEach(() => { surfaces.on = new Set(["post-opportunity"]); });
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); getToken.mockClear(); go.mockClear(); authState.isLoaded = true; authState.isSignedIn = true; });
 
-describe("Goal /post-opportunity flag gate", () => {
-  it("renders the kit wizard untouched when the flag is off", async () => {
-    surfaces.on = new Set();
+describe("Goal /post-opportunity is the only design", () => {
+  it("renders the goal wizard with no surface switch and never the retired kit wizard", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => ok(verified)));
     renderPost();
-    expect(await screen.findByText("What are you sharing?")).toBeTruthy();
-    expect(screen.queryByText("Share one useful signal.")).toBeNull();
+    expect(await screen.findByText("Share one useful signal.")).toBeTruthy();
+    expect(screen.queryByText("What are you sharing?")).toBeNull();
   });
 });
 

@@ -5629,7 +5629,7 @@
       "tier": 2,
       "lane": "d048-retire-post-opportunity",
       "branch": "agent/queue/d048-k-post-opportunity-fresh",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-414",
       "dependsOn": [
         "D-048-R4",
