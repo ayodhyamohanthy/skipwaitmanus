@@ -5,7 +5,7 @@
 // The pure rules first, then the script as a process against throwaway git repositories, so every push,
 // fast-forward, refusal and untouched worktree is proven without touching GitHub.
 import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, rmdirSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -501,5 +501,23 @@ describe("SYNC-auto-pull as a process", () => {
     git(f.clone, "config", "skipwait.autoSync", "false");
     const off = spawnSync(process.execPath, [SCRIPT, "--watch"], { cwd: f.clone, encoding: "utf8", env: { ...ENV, SKIPWAIT_WATCH_ROUNDS: "1" } });
     expect(off.stdout).toContain("watch: off");
+  }, 60_000);
+});
+
+describe("SYNC-auto-pull and a busy clone", () => {
+  it("skips a worktree whose index is locked (GitHub Desktop at work) instead of failing, and pulls once it is free", () => {
+    const f = simple();
+    const elsewhere = path.join(f.dir, "elsewhere");
+    git(f.dir, "clone", "-q", f.origin, elsewhere);
+    const theirs = commit(elsewhere, "n.txt", "n\n"); git(elsewhere, "push", "-q", "origin", "main");
+    const before = git(f.clone, "rev-parse", "main");
+    writeFileSync(path.join(f.clone, ".git", "index.lock"), "");
+    let r = run(f.clone);
+    expect(r.out).toContain("main: git is busy in");
+    expect(r.out).not.toContain("failed:");
+    expect(git(f.clone, "rev-parse", "main")).toBe(before);
+    rmSync(path.join(f.clone, ".git", "index.lock"));
+    r = run(f.clone);
+    expect(git(f.clone, "rev-parse", "main")).toBe(theirs);
   }, 60_000);
 });

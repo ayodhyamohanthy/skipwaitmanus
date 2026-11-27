@@ -79,6 +79,9 @@ function withLock(top, fn) {
   try { return fn(); } finally { rmSync(lock, { force: true }); }
 }
 
+/** Git is busy in this worktree (GitHub Desktop or another git command holds its index lock): skip it this round. */
+const busy = where => { const lock = tryGit(["rev-parse", "--path-format=absolute", "--git-path", "index.lock"], where); return Boolean(lock) && (() => { try { statSync(lock); return true; } catch { return false; } })(); };
+
 /** Every worktree of this clone: its path, its branch (null when detached) and whether it has uncommitted changes. */
 function worktrees(top) {
   const listed = tryGit(["worktree", "list", "--porcelain"], top);
@@ -142,6 +145,7 @@ function pullBranch(top, b, tree, args, say, out, plan) {
   if (how.action === "report") { out.reports.push(`${b.name}: ${how.reason}`); return { action: "report", reason: how.reason }; }
   const step = `${b.name}: ${b.sha.slice(0, 8)} -> ${b.remoteSha.slice(0, 8)}`;
   if (args.dryRun) { say(`would fast-forward ${step} (behind origin)`); return plan; }
+  if (how.action === "merge" && busy(tree.path)) { say(`${b.name}: git is busy in ${tree.path} (GitHub Desktop?); the next sync pulls it`); return plan; }
   const ok = how.action === "merge"
     ? tryGit(["merge", "-q", "--ff-only", b.remoteSha], tree.path) !== null
     : tryGit(["update-ref", `refs/heads/${b.name}`, b.remoteSha, b.sha], top) !== null;
@@ -192,6 +196,7 @@ function sync(top, args, say) {
     if (!localIsAncestor) saveMain(top, localMain.sha, originMain, name => remotes.get(name) ?? null, args, say, out);
   } else if (main.action !== "none") {
     if (args.dryRun) say(`main: would fast-forward ${localMain.sha.slice(0, 8)} -> ${originMain.slice(0, 8)}`);
+    else if (main.action === "merge" && busy(mainTree.path)) say(`main: git is busy in ${mainTree.path} (GitHub Desktop?); the next sync pulls it`);
     else {
       const ok = main.action === "merge"
         ? tryGit(["merge", "-q", "--ff-only", "refs/remotes/origin/main"], mainTree.path) !== null
