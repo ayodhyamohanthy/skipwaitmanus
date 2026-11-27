@@ -50,6 +50,8 @@ The product goal is in `docs/BRIEF.md`; current decisions are in `docs/DECISIONS
 
 | # | Task (audit feature names) | Depends on | Size | Status |
 |---|---|---|---|---|
+| P0-messages-account-menu | Restore the existing signed-in account menu on `/messages` in every DM state; observed live QA issue #1708. Tier 1; [packet](plans/P0-route-account-menus.md) §1. | — | S | Registered under D-019/D-412; runtime and live acceptance pending. Status in packet. |
+| P0-support-account-menu | Restore the existing account menu for signed-in `/support`, preserving signed-out support, policy frames and content; observed live QA issue #1709. Tier 1; [packet](plans/P0-route-account-menus.md) §2. | — | S | Registered under D-019/D-412; runtime and live acceptance pending. Status in packet. |
 | PREMIUM-total-label | Owner-registered narrow Pay selected-total label repair; packet `docs/plans/PREMIUM-total-label.md`, Tier 1, lane premium-display. | — | S | done — Gemini 3.8 Flash · 8f37 — PR #467 (independent review passed). |
 | D-067-outbox-fixture-repair | Owner-registered stale test paths and precise MySQL FK error assertion repair; packet `docs/plans/D-067-outbox-fixture-repair.md`, Tier 1, lane outbox-test-evidence. No runtime/SQL change. | — | S | done — Gemini 3.8 Flash · 8f37 — PR #514 (independent review passed). |
 | **P0 — approved Oct 14 (D-012), preempts everything** |||||
