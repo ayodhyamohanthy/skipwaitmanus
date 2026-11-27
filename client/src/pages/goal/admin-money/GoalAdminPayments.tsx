@@ -1,10 +1,8 @@
-// Goal /admin/payments (D-048-p3-admin-money). The three server calls below are
-// copied verbatim from AdminPaymentsReview.tsx: load, one decision per parked
-// payment, and the credit-revocation refund. Only the presentation changes
-// (packet §4.1). Status is dot+text with goal tokens, never inline colour.
+// Goal /admin/payments (D-048-p3-admin-money). This page owns the payment
+// review reads, decision request and credit-revocation request; the row owns
+// decision-specific behavior. Status is dot+text with goal tokens, never inline colour.
 // Design-review repairs (2026-11-05): the queue renders the goal review row
-// (GoalPaymentReviewRow) instead of the kit's coloured pills, and the error
-// state wins over the empty states while the queue is not answering.
+// (GoalPaymentReviewRow); the error state wins over empty states while the queue is not answering.
 import { useEffect, useState } from "react";
 import { useAuth } from "@/_core/auth";
 import { compactDate, displayPaymentRef as displayRef, formatAmount } from "@/components/admin/paymentReviewCopy";
@@ -14,7 +12,7 @@ import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { GoalStatus } from "@/components/goal/GoalStatus";
 import { readApiJson } from "@/lib/apiResponse";
 import { paymentReviewOutcomeSchema, type PaymentReviewRequestBody } from "@shared/paymentReview";
-import type { ReviewQueuePayment, ReviewSubmitResult } from "@/components/admin/PaymentReviewRow";
+import type { ReviewQueuePayment, ReviewSubmitResult } from "./GoalPaymentReviewRow";
 import { AdminMoneyGoalFrame, AdminMoneyHeading } from "./AdminMoneyGoalFrame";
 import { MONEY_GOAL_LINE } from "./adminMoneyCopy";
 import GoalPaymentReviewRow from "./GoalPaymentReviewRow";
@@ -57,7 +55,7 @@ export default function GoalAdminPayments() {
     finally { setLoading(false); }
   };
 
-  // One decision on one parked payment; the row turns the result into plain words (PaymentReviewRow).
+  // One decision on one parked payment; GoalPaymentReviewRow turns the result into plain words.
   const submitReview = async (paymentId: number, body: PaymentReviewRequestBody): Promise<ReviewSubmitResult> => {
     const fallback = "We could not record this payment decision.";
     let response: Response;

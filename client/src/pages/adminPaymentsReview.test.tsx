@@ -1,8 +1,11 @@
 // @vitest-environment jsdom
 import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import AdminPaymentsReview from "./AdminPaymentsReview";
+
+const renderPage = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}><AdminPaymentsReview /></QueryClientProvider>);
 
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, getToken: vi.fn().mockResolvedValue("admin-token") }),
@@ -24,17 +27,15 @@ describe("administrator payment credit revocation", () => {
   afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
   it("shows a ledger-only action on credited rows, explains it is not a provider refund, and calls the revocation route", async () => {
-    render(<AdminPaymentsReview />);
-    await waitFor(() => expect(screen.getByText("Recently completed payments")).toBeTruthy());
-    // The completed rows arrive from their own request after the section heading renders: wait for the row's
-    // button itself, or a loaded CI shard finds the heading first and the button not yet (main 1a027590a).
+    renderPage();
+    await waitFor(() => expect(screen.getByText("Recent credited payments")).toBeTruthy());
+    // Wait for the completed-row action separately from the section heading.
     const refundButton = await screen.findByRole("button", { name: /^Revoke credits$/ });
     fireEvent.click(refundButton);
     expect(screen.getByText(/This does not refund provider money/i)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Confirm credit revocation/i }));
     await waitFor(() => expect(vi.mocked(fetch).mock.calls.some(([url, init]) => String(url) === "/api/admin/payments/review/2/revoke-credits" && (init as RequestInit)?.method === "POST")).toBe(true));
-    await waitFor(() => expect(screen.getByText("Credited payment rows.")).toBeTruthy());
-    expect(screen.queryByRole("button", { name: /^Revoke credits$/ })).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Revoke credits$/ })).toBeNull());
   });
 });
 
@@ -71,7 +72,7 @@ describe("administrator payment review decisions", () => {
   const queueLoads = () => vi.mocked(fetch).mock.calls.filter(([url, init]) => String(url) === "/api/admin/payments/review" && !(init as RequestInit | undefined)?.method).length;
 
   it("shows the right buttons per parked reason", async () => {
-    render(<AdminPaymentsReview />);
+    renderPage();
     const credit = await row(1);
     expect(credit.getByRole("button", { name: "Add 4 credits" })).toBeTruthy();
     expect(credit.getByRole("button", { name: /^Reject/ })).toBeTruthy();
@@ -88,12 +89,12 @@ describe("administrator payment review decisions", () => {
     const odd = await row(6);
     expect(odd.queryByRole("button", { name: /^Add|Take back|Keep|^Reject|Close/ })).toBeNull();
     expect(odd.getByRole("button", { name: "Reload this page" })).toBeTruthy();
-    expect(screen.queryByText(/Mark a payment credited to grant its tokens/)).toBeNull();
+    expect(screen.getByRole("region", { name: "Payments under review" })).toBeTruthy();
   });
 
   it("a payment refunded only in part before its credit can still be credited once, and says why in plain words", async () => {
     queue = [partlyRefundedEarly, refundedEarly];
-    render(<AdminPaymentsReview />);
+    renderPage();
     const partly = await row(7);
     expect(partly.getAllByRole("button").map(button => button.textContent)).toEqual(["Add 4 credits", "Reject, add nothing"]);
     expect(partly.getByText("Chargebee recorded a refund before any credits were added, but it did not cover the whole payment. Check the refunds in Chargebee, and add the credits only if the buyer still paid for the pack.")).toBeTruthy();
@@ -103,9 +104,9 @@ describe("administrator payment review decisions", () => {
 
   it("take back posts revoke_unused and shows the outcome in plain words", async () => {
     post = () => ({ status: 200, body: { payment: { paymentId: 3, tokenCount: 4, userId: 7, role: "job_seeker", decision: "revoke_unused", requested: 4, revoked: 1, unrecovered: 3, balanceBefore: 1, balanceAfter: 0 } } });
-    render(<AdminPaymentsReview />);
+    renderPage();
     fireEvent.click((await row(3)).getByRole("button", { name: "Take back unused credits" }));
-    const dialog = await screen.findByRole("alertdialog");
+    const dialog = await screen.findByRole("dialog", { name: "Take back unused credits?" });
     expect(within(dialog).getByText(/Chargebee already returned this payment's money/)).toBeTruthy();
     expect(within(dialog).getByText(/Nothing goes below zero/)).toBeTruthy();
     expect((within(dialog).getByLabelText(/Credits to take back/) as HTMLInputElement).value).toBe("4");
@@ -116,35 +117,36 @@ describe("administrator payment review decisions", () => {
   });
 
   it("asks for the credit count on a partial refund before it can take anything back", async () => {
-    render(<AdminPaymentsReview />);
+    renderPage();
     fireEvent.click((await row(4)).getByRole("button", { name: "Take back unused credits" }));
-    const dialog = await screen.findByRole("alertdialog");
+    const dialog = await screen.findByRole("dialog", { name: "Take back unused credits?" });
     const field = within(dialog).getByLabelText(/Credits to take back/) as HTMLInputElement;
     const confirm = within(dialog).getByRole("button", { name: "Take back credits" }) as HTMLButtonElement;
     expect(field.value).toBe("");
-    expect(confirm.disabled).toBe(true);
-    for (const value of ["0", "5", "1.5"]) { fireEvent.change(field, { target: { value } }); expect(confirm.disabled, value).toBe(true); }
+    expect(confirm.getAttribute("aria-disabled")).toBe("true");
+    for (const value of ["0", "5", "1.5"]) { fireEvent.change(field, { target: { value } }); expect(confirm.getAttribute("aria-disabled"), value).toBe("true"); }
     fireEvent.change(field, { target: { value: "2" } });
-    expect(confirm.disabled).toBe(false);
+    expect(confirm.getAttribute("aria-disabled")).toBeNull();
     fireEvent.click(confirm);
     await waitFor(() => expect(posts()).toEqual([{ url: "/api/admin/payments/review/4", body: { decision: "revoke_unused", credits: 2 } }]));
   });
 
   it("another refund after the review asks for the credit count and explains that earlier take-backs count", async () => {
     queue = [refundedAgain];
-    render(<AdminPaymentsReview />);
+    renderPage();
     const again = await row(8);
     expect(again.getByText("Chargebee recorded another refund for this payment after its credits were added and an earlier refund was handled. Check the total refunded in Chargebee before you take back more credits.")).toBeTruthy();
     expect(again.queryByRole("button", { name: /^Add/ })).toBeNull();
     fireEvent.click(again.getByRole("button", { name: "Take back unused credits" }));
-    const dialog = await screen.findByRole("alertdialog");
+    const dialog = await screen.findByRole("dialog", { name: "Take back unused credits?" });
     expect(within(dialog).getByText(/More than one refund was recorded for this payment/)).toBeTruthy();
     expect(within(dialog).getByText(/Credits already taken back for this payment count toward its pack/)).toBeTruthy();
     const field = within(dialog).getByLabelText(/Credits to take back/) as HTMLInputElement;
     const confirm = within(dialog).getByRole("button", { name: "Take back credits" }) as HTMLButtonElement;
     expect(field.value).toBe("");
-    expect(confirm.disabled).toBe(true);
+    expect(confirm.getAttribute("aria-disabled")).toBe("true");
     fireEvent.change(field, { target: { value: "1" } });
+    expect(confirm.getAttribute("aria-disabled")).toBeNull();
     fireEvent.click(confirm);
     await waitFor(() => expect(posts()).toEqual([{ url: "/api/admin/payments/review/8", body: { decision: "revoke_unused", credits: 1 } }]));
   });
@@ -156,7 +158,7 @@ describe("administrator payment review decisions", () => {
       { ...spent, refunds: { count: 1, latestAmount: null, latestCurrency: null } },
       { ...awaiting, refunds: { count: "two" } },
     ];
-    render(<AdminPaymentsReview />);
+    renderPage();
     expect((await row(4)).getByText("Refund recorded in Chargebee: INR 54.")).toBeTruthy();
     expect((await row(8)).getByText("2 refunds recorded in Chargebee. The latest was INR 300.")).toBeTruthy();
     expect((await row(3)).getByText("Refund recorded in Chargebee. Its amount could not be read.")).toBeTruthy();
@@ -164,11 +166,11 @@ describe("administrator payment review decisions", () => {
   });
 
   it("keeps the credits only after a confirmation", async () => {
-    render(<AdminPaymentsReview />);
+    renderPage();
     fireEvent.click((await row(3)).getByRole("button", { name: "Keep credits and close" }));
-    const dialog = await screen.findByRole("alertdialog");
+    const dialog = await screen.findByRole("dialog", { name: "Keep the credits and close?" });
     expect(posts()).toEqual([]);
-    fireEvent.click(within(dialog).getByRole("button", { name: "Keep credits and close" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Confirm: keep credits and close" }));
     await waitFor(() => expect(posts()).toEqual([{ url: "/api/admin/payments/review/3", body: { decision: "keep_credits" } }]));
     expect(await (await row(3)).findByText("Closed. Nothing was taken back from the wallet.")).toBeTruthy();
   });
@@ -176,17 +178,17 @@ describe("administrator payment review decisions", () => {
   it("a refusal keeps the row and shows the server's words", async () => {
     const refusal = "This payment's credits were already added once, so they cannot be added again. Nothing was changed.";
     post = () => ({ status: 409, body: { error: refusal } });
-    render(<AdminPaymentsReview />);
+    renderPage();
     fireEvent.click((await row(1)).getByRole("button", { name: "Add 4 credits" }));
     expect(await (await row(1)).findByRole("alert")).toBeTruthy();
     expect((await row(1)).getByRole("alert").textContent).toContain(refusal);
-    expect((await row(1)).queryByText("Credited")).toBeNull();
+    expect((await row(1)).getByText("Under review")).toBeTruthy();
     expect(posts()).toEqual([{ url: "/api/admin/payments/review/1", body: { decision: "credited" } }]);
   });
 
   it("an already resolved payment reloads the queue instead of reporting a failed save", async () => {
     post = () => ({ status: 409, body: { error: "This payment was already resolved" } });
-    render(<AdminPaymentsReview />);
+    renderPage();
     await row(1);
     expect(queueLoads()).toBe(1);
     queue = [spent];

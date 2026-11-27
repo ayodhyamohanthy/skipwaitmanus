@@ -1,17 +1,15 @@
-// Goal /admin/payments review row (D-048-p3-admin-money). The decision logic
-// mirrors the kit row (client/src/components/admin/PaymentReviewRow.tsx): same
-// kinds, same allowed decisions, same note, same confirm steps for take-back
-// and keep-and-close, and every server call goes through the page's `submit`
-// prop, which is byte-identical to the kit page's fetch. Only the presentation
-// differs: goal tokens, dot+text status, ghost/outline controls - the kit's
-// coloured pills do not survive here (design-review finding 1, 2026-11-05).
+// Goal /admin/payments review row (D-048-p3-admin-money). It owns the parked
+// payment decision behavior, including notes, confirm steps and safe take-back
+// validation; the page supplies the request and reload handlers. Presentation
+// follows the goal tokens, dot+text status and ghost/outline controls.
 import { useState } from "react";
 import { DECISIONS_BY_KIND, parsePaymentReviewKind, paymentRefundSummarySchema, type PaymentReviewDecision, type PaymentReviewOutcome, type PaymentReviewRequestBody } from "@shared/paymentReview";
 import { compactDate, creditCount, decisionLabel, displayPaymentRef, formatAmount, outcomeText, parseTakeBackCount, refundLine, reviewReasonText, takeBackCountNote } from "@/components/admin/paymentReviewCopy";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalStatus } from "@/components/goal/GoalStatus";
-import type { ReviewQueuePayment, ReviewSubmitResult } from "@/components/admin/PaymentReviewRow";
 
+export type ReviewQueuePayment = { id: number; provider: string; userId: number; role: string | null; tokenCount: number; amount: number; currency: string; reconciliationReason: string | null; createdAt: string | Date; userEmail: string | null; reviewKind?: unknown; refunds?: unknown };
+export type ReviewSubmitResult = { ok: true; outcome: PaymentReviewOutcome | null } | { ok: false; status: number; message: string };
 type Failure = { message: string; decision: PaymentReviewDecision; credits?: number; retryable: boolean };
 type Props = { payment: ReviewQueuePayment; submit: (paymentId: number, body: PaymentReviewRequestBody) => Promise<ReviewSubmitResult>; onReload: () => void; onConfirmingChange?: (open: boolean) => void };
 

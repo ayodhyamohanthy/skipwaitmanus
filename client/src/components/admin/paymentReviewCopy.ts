@@ -1,4 +1,4 @@
-// Plain words for the admin payment review queue (client/src/pages/AdminPaymentsReview.tsx).
+// Plain words for the goal admin payment review queue (GoalAdminPayments.tsx).
 // Contract: shared/paymentReview.ts. Raw reason codes never reach the page.
 import type { PaymentRefundSummary, PaymentReviewDecision, PaymentReviewKind, PaymentReviewOutcome } from "@shared/paymentReview";
 
@@ -65,14 +65,6 @@ export function outcomeText(outcome: PaymentReviewOutcome): string {
   const taken = `Took back ${outcome.revoked} of ${creditCount(outcome.requested)}.`;
   return outcome.unrecovered > 0 ? `${taken} ${outcome.unrecovered} had already been used and cannot be taken back.` : taken;
 }
-
-export function outcomeBadge(decision: PaymentReviewDecision): { label: string; tone: "green" | "red" | "slate" } {
-  if (decision === "credited") return { label: "Credited", tone: "green" };
-  if (decision === "rejected") return { label: "Closed", tone: "red" };
-  if (decision === "revoke_unused") return { label: "Taken back", tone: "slate" };
-  return { label: "Closed", tone: "slate" };
-}
-
 /** A whole number from 1 to the pack size, or null. */
 export function parseTakeBackCount(value: string, packCredits: number): number | null {
   if (!/^\d+$/.test(value.trim())) return null;
