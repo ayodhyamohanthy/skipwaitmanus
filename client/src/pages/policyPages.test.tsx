@@ -29,7 +29,10 @@ beforeAll(async () => { await import("./goal/settings/GoalSettings"); });
 const EXPECTED_ALLOWANCE_COST = "3 free referrals every month; extra referral requests use your balance. Referrers are never paid and never ask you for money.";
 const noBlanketReferralPromise = (text: string) => text.replace(EXPECTED_ALLOWANCE_COST, "");
 
-const { getToken } = vi.hoisted(() => ({ getToken: vi.fn().mockResolvedValue("test-token") }));
+const { getToken, queryClient } = vi.hoisted(() => ({
+  getToken: vi.fn().mockResolvedValue("test-token"),
+  queryClient: { setQueryData: vi.fn(), invalidateQueries: vi.fn().mockResolvedValue(undefined) },
+}));
 vi.mock("@/_core/auth", () => ({
   useAuth: () => ({ isSignedIn: true, isLoaded: true, getToken }),
   useUser: () => ({ isLoaded: true, isSignedIn: true, user: { emailAddresses: [{ emailAddress: "seeker@gmail.com", verification: { status: "verified" } }] } }),
@@ -37,7 +40,10 @@ vi.mock("@/_core/auth", () => ({
   SignedIn: ({ children }: { children: React.ReactNode }) => children,
   SignedOut: () => null,
 }));
-vi.mock("@tanstack/react-query", () => ({ useQuery: () => ({ data: undefined, isError: false, refetch: () => Promise.resolve() }) }));
+vi.mock("@tanstack/react-query", () => ({
+  useQuery: () => ({ data: undefined, isError: false, refetch: () => Promise.resolve() }),
+  useQueryClient: () => queryClient,
+}));
 vi.mock("@/hooks/useReferrerAccess", () => ({ useReferrerAccess: () => ({ status: "none", access: { verified: false } }) }));
 vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <div>Account</div> }));
 vi.mock("@/components/Brand", () => ({ Brand: () => <div>skipwait.me</div>, LogoMark: () => <div /> }));
@@ -300,6 +306,7 @@ describe("paused credit packs copy guard (D-044, D-153, D-219, PR666 F2)", () =>
     // 4. Check Premium page metadata / SEO
     const { default: Premium } = await import("./Premium");
     render(<Premium />);
+    await screen.findByRole("heading", { name: "Get more referral requests." });
     expect(document.title).not.toMatch(/Buy referral credits/i);
     const metaDesc = document.querySelector('meta[name="description"]')?.getAttribute("content") ?? "";
     expect(metaDesc).not.toMatch(/Extra credits are sold in packs/i);
