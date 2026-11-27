@@ -4,8 +4,9 @@
 import express from "express";
 import { readFileSync } from "node:fs";
 import request from "supertest";
-import { describe, expect, it, vi } from "vitest";
-import { installReferrerSessionGate, REFERRER_ACTION_FUNCTIONS, REFERRER_ACTION_ROUTES, REFERRER_GATE_ALLOWLIST, type ReferrerSessionGateDeps } from "./referrerSessionGate";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { installReferrerSessionGate, referrerSessionPasses, REFERRER_ACTION_FUNCTIONS, REFERRER_ACTION_ROUTES, REFERRER_GATE_ALLOWLIST, type GateIdentity, type ReferrerSessionGateDeps } from "./referrerSessionGate";
+import type { ReferrerPasskeyAccount, ReferrerPasskeyProfile } from "./_core/passkeyReferrerPolicy";
 import { createMemoryStepUpStore } from "./referrerStepUp";
 import { registerPrivateReferralRoutes, type PrivateReferralRouteDeps } from "./privateReferralRoutes";
 import { registerProfileRoutes } from "./profileRoutes";
@@ -88,6 +89,82 @@ describe("referrer action route list (§4.4 pin)", () => {
     expect(install).toBeGreaterThan(0);
     expect(install).toBeLessThan(indexSource.indexOf("registerPrivateReferralRoutes(app"));
     expect(install).toBeLessThan(indexSource.indexOf("registerProfileRoutes(app"));
+  });
+});
+
+describe("D-408 work-email passkey sessions", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  const nowMs = Date.UTC(2026, 10, 27);
+  const alias = "workemail_ref@acme.com";
+  function passkeyHarness() {
+    vi.stubEnv("REFERRER_PASSKEY_SIGNIN_ENABLED", "true");
+    const account: ReferrerPasskeyAccount = { id: 7, openId: "user_personal", suspended: false };
+    const profile: ReferrerPasskeyProfile = { userId: 7, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date(nowMs - 1000) };
+    const identity: GateIdentity = { account, sessionOpenId: alias, sessionAmr: "passkey" };
+    const getAccountByOpenId = vi.fn(async () => account);
+    const getProfile = vi.fn(async () => profile);
+    const deps: ReferrerSessionGateDeps = { store: createMemoryStepUpStore(), now: () => nowMs, verifySessionCookie: async () => null, getAccountByOpenId, getProfile };
+    const app = express();
+    installReferrerSessionGate(app, { resolveIdentity: async () => identity, gate: deps });
+    app.get("/api/company-referrals/inbox", (_req, res) => res.json({ allowed: true }));
+    return { app, identity, deps, getAccountByOpenId, getProfile };
+  }
+
+  it("allows a fresh work-email alias resolved to the same personal canonical account", async () => {
+    const { app, getAccountByOpenId, getProfile } = passkeyHarness();
+    expect((await request(app).get("/api/company-referrals/inbox")).status).toBe(200);
+    expect(getAccountByOpenId).toHaveBeenCalledWith(alias);
+    expect(getProfile).toHaveBeenCalledWith(7);
+  });
+
+  it("refuses while the flag is off without reading passkey eligibility", async () => {
+    const { app, getAccountByOpenId, getProfile } = passkeyHarness();
+    vi.stubEnv("REFERRER_PASSKEY_SIGNIN_ENABLED", "false");
+    expect((await request(app).get("/api/company-referrals/inbox")).status).toBe(403);
+    expect(getAccountByOpenId).not.toHaveBeenCalled();
+    expect(getProfile).not.toHaveBeenCalled();
+  });
+
+  it.each([null, new Date(nowMs + 1), new Date(nowMs - 30 * 86_400_000)])("refuses absent, future and expired work-email proof %j", async workEmailVerifiedAt => {
+    const { app, getProfile } = passkeyHarness();
+    getProfile.mockResolvedValue({ userId: 7, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt });
+    expect((await request(app).get("/api/company-referrals/inbox")).status).toBe(403);
+  });
+
+  it("refuses a suspended or different canonical account and another person's profile", async () => {
+    const { app, getAccountByOpenId, getProfile } = passkeyHarness();
+    getAccountByOpenId.mockResolvedValue({ id: 7, openId: "user_personal", suspended: true });
+    expect((await request(app).get("/api/company-referrals/inbox")).status).toBe(403);
+    getAccountByOpenId.mockResolvedValue({ id: 8, openId: alias, suspended: false });
+    expect((await request(app).get("/api/company-referrals/inbox")).status).toBe(403);
+    getAccountByOpenId.mockResolvedValue({ id: 7, openId: "user_personal", suspended: false });
+    getProfile.mockResolvedValue({ userId: 8, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date(nowMs) });
+    expect((await request(app).get("/api/company-referrals/inbox")).status).toBe(403);
+  });
+
+  it("refuses a changed employer, a personal alias, and missing verified alias metadata", async () => {
+    const { app, identity, getProfile } = passkeyHarness();
+    getProfile.mockResolvedValue({ userId: 7, accountType: "referrer", workEmailDomain: "new-employer.com", workEmailVerifiedAt: new Date(nowMs) });
+    expect((await request(app).get("/api/company-referrals/inbox")).status).toBe(403);
+    getProfile.mockResolvedValue({ userId: 7, accountType: "referrer", workEmailDomain: "acme.com", workEmailVerifiedAt: new Date(nowMs) });
+    identity.sessionOpenId = "user_personal";
+    expect((await request(app).get("/api/company-referrals/inbox")).status).toBe(403);
+    identity.account.openId = alias;
+    delete identity.sessionOpenId;
+    expect((await request(app).get("/api/company-referrals/inbox")).status).toBe(403);
+  });
+
+  it("accepts a verified passkey cookie only when its exact alias resolves to the requesting account", async () => {
+    const { identity, deps, getAccountByOpenId } = passkeyHarness();
+    delete identity.sessionAmr;
+    delete identity.sessionOpenId;
+    deps.verifySessionCookie = vi.fn(async () => ({ openId: alias, amr: "passkey" as const }));
+    const app = express();
+    app.get("/check", async (req, res) => res.json({ allowed: await referrerSessionPasses(req, identity, deps) }));
+    const run = () => request(app).get("/check").set("Cookie", "app_session_id=verified-cookie");
+    expect((await run()).body).toEqual({ allowed: true });
+    getAccountByOpenId.mockResolvedValue({ id: 8, openId: alias, suspended: false });
+    expect((await run()).body).toEqual({ allowed: false });
   });
 });
 

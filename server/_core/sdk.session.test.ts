@@ -7,6 +7,9 @@ vi.mock("../db", () => mocks);
 vi.mock("./env", () => ({ ENV: { cookieSecret: "test-secret-at-least-32-characters-long", appId: "skipwait-app" } }));
 import { SignJWT } from "jose";
 import { sdk } from "./sdk";
+import express from "express";
+import request from "supertest";
+import { resolveDevIdentity } from "./devAuth";
 
 const key = new TextEncoder().encode("test-secret-at-least-32-characters-long");
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -27,6 +30,42 @@ describe("the work-email-code claim (amr)", () => {
   it("is never inferred from a workemail_ subject", async () => {
     const token = await sdk.createSessionToken("workemail_ref@acme.com");
     expect((await sdk.verifySession(token))?.amr).toBeUndefined();
+  });
+});
+
+describe("the passkey authentication claim (D-408)", () => {
+  it("preserves the exact passkey literal when creating, signing and verifying sessions", async () => {
+    expect((await sdk.verifySession(await sdk.createSessionToken("workemail_ref@acme.com", { amr: "passkey" })))?.amr).toBe("passkey");
+    const signed = await sdk.signSession({ openId: "user-1", appId: "skipwait-app", name: "User", amr: "passkey" });
+    expect((await sdk.verifySession(signed))?.amr).toBe("passkey");
+    expect((await sdk.verifySession(await forged({ amr: "passkey" })))?.amr).toBe("passkey");
+  });
+
+  it.each(["PASSKEY", "passkey ", ["passkey"], ["work_email_otp", "passkey"], null])("strips a nonliteral amr %j", async amr => {
+    expect((await sdk.verifySession(await forged({ amr })))?.amr).toBeUndefined();
+  });
+
+  it("preserves passkey and the original authentication time through renewal", async () => {
+    const ssid = "7c9e6679-7425-40de-944b-e07fc1f90ae7";
+    const session = await sdk.verifySession(await sdk.renewSessionIfDue(await forged({ amr: "passkey", ssid, auth_time: 1700000000 }, 2 * 86_400)));
+    expect(session).toMatchObject({ amr: "passkey", ssid, authTime: 1700000000 });
+  });
+
+  it("refuses suspended or revoked passkey sessions", async () => {
+    const token = await forged({ amr: "passkey" });
+    mocks.getUserByOpenId.mockResolvedValue({ suspended: true, sessionsValidAfter: new Date(0) });
+    expect(await sdk.verifySession(token)).toBeNull();
+    mocks.getUserByOpenId.mockResolvedValue({ suspended: false, sessionsValidAfter: new Date(Date.now() + 2000) });
+    expect(await sdk.verifySession(token)).toBeNull();
+  });
+
+  it("copies the verified token alias into dev identity even when the canonical openId is personal", async () => {
+    mocks.getUserByOpenId.mockResolvedValue({ id: 7, openId: "user_personal", suspended: false, sessionsValidAfter: new Date(0), email: "ref@acme.com" });
+    const token = await sdk.createSessionToken("workemail_ref@acme.com", { amr: "passkey" });
+    const app = express();
+    app.get("/identity", async (req, res) => { res.json(await resolveDevIdentity(req)); });
+    const response = await request(app).get("/identity").set("Cookie", `app_session_id=${token}`);
+    expect(response.body).toMatchObject({ account: { id: 7, openId: "user_personal" }, sessionOpenId: "workemail_ref@acme.com", sessionAmr: "passkey" });
   });
 });
 

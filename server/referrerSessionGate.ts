@@ -3,25 +3,29 @@
 // when (A) its own session was made by the work-email code login (the
 // identity's own `amr`, or the request's own app_session_id code cookie of the
 // SAME account, §0 item 8), or (B) a fresh in-session step-up proof exists for
-// the request's account id and session key (§0b.3). Otherwise it is refused
-// with 403 work_email_code_required before the route runs any database call
-// (the proof lookup is the only read). Seeker routes never pass through here.
+// the request's account id and session key (§0b.3), or (C) D-408's separately
+// released passkey session resolves its exact work-email alias to this account
+// with current employer proof younger than 30 days. Otherwise it is refused
+// with 403 work_email_code_required before the route runs its database calls.
+// Seeker routes never pass through here.
 import { parse as parseCookieHeader } from "cookie";
 import type { Express, NextFunction, Request, Response } from "express";
 import { COOKIE_NAME } from "@shared/const";
 import { workEmailCodeRequiredBody } from "../shared/referrerStepUp";
 import { createDrizzleStepUpStore, isFreshStepUpProof, sha256Hex, type ReferrerStepUpStore, type StepUpAccount, type StepUpProfile } from "./referrerStepUp";
 import * as db from "./db";
+import type { SessionPayload } from "./_core/sdk";
+import { isFreshReferrerPasskeyAccount, referrerPasskeySignInOn, type ReferrerPasskeyAccount, type ReferrerPasskeyProfile } from "./_core/passkeyReferrerPolicy";
 
-export type GateIdentity = { account: { id: number; openId: string }; sessionAmr?: "work_email_otp"; sessionKey?: string };
+export type GateIdentity = { account: { id: number; openId: string }; sessionAmr?: SessionPayload["amr"]; sessionOpenId?: string; sessionKey?: string };
 export type ReferrerSessionGateDeps = {
   store: ReferrerStepUpStore;
   now?: () => number;
   /** sdk.verifySession: verifies the request's own app_session_id cookie. */
-  verifySessionCookie: (token: string | undefined) => Promise<{ openId: string; amr?: "work_email_otp" } | null>;
-  /** db.getUserByOpenId: the canonical account with its merged suspension and revocation stamp. */
-  getAccountByOpenId: (openId: string) => Promise<StepUpAccount | undefined>;
-  getProfile: (userId: number) => Promise<StepUpProfile>;
+  verifySessionCookie: (token: string | undefined) => Promise<Pick<SessionPayload, "openId" | "amr"> | null>;
+  /** db.getUserByOpenId: resolve this exact alias to the canonical account, with merged suspension/revocation. */
+  getAccountByOpenId: (openId: string) => Promise<(StepUpAccount & Partial<Pick<ReferrerPasskeyAccount, "openId">>) | undefined>;
+  getProfile: (userId: number) => Promise<(NonNullable<StepUpProfile> & Partial<Pick<ReferrerPasskeyProfile, "userId">>) | undefined>;
   /** The progress route is a referrer action only when the actor is the ask's referrer. */
   isReferrerOfRequest?: (userId: number, requestId: number) => Promise<boolean>;
 };
@@ -101,8 +105,30 @@ export async function hasFreshStepUp(identity: GateIdentity, deps: ReferrerSessi
   return isFreshStepUpProof(proof, { userId: identity.account.id, sessionKeyHash, account, profile, now: (deps.now ?? Date.now)() });
 }
 
+/** D-408: bind the authenticated alias to this account before checking its employer proof. */
+async function freshPasskeyAlias(sessionOpenId: string, identity: GateIdentity, deps: ReferrerSessionGateDeps): Promise<boolean> {
+  const account = await deps.getAccountByOpenId(sessionOpenId);
+  if (!account || account.id !== identity.account.id || account.suspended !== false || typeof account.openId !== "string") return false;
+  const profile = await deps.getProfile(identity.account.id);
+  if (!profile || profile.userId !== account.id || profile.accountType !== "referrer") return false;
+  return isFreshReferrerPasskeyAccount(
+    { id: account.id, openId: account.openId, suspended: account.suspended },
+    { userId: profile.userId, accountType: profile.accountType, workEmailDomain: profile.workEmailDomain ?? null, workEmailVerifiedAt: profile.workEmailVerifiedAt ?? null },
+    (deps.now ?? Date.now)(), sessionOpenId,
+  );
+}
+
+async function hasFreshPasskeySession(req: Request, identity: GateIdentity, deps: ReferrerSessionGateDeps): Promise<boolean> {
+  if (!referrerPasskeySignInOn()) return false;
+  if (identity.sessionAmr === "passkey" && identity.sessionOpenId && await freshPasskeyAlias(identity.sessionOpenId, identity, deps)) return true;
+  const token = appSessionCookie(req);
+  if (!token) return false;
+  const session = await deps.verifySessionCookie(token);
+  return session?.amr === "passkey" && await freshPasskeyAlias(session.openId, identity, deps);
+}
+
 export async function referrerSessionPasses(req: Request, identity: GateIdentity, deps: ReferrerSessionGateDeps): Promise<boolean> {
-  return (await hasWorkEmailCodeSession(req, identity, deps)) || (await hasFreshStepUp(identity, deps));
+  return (await hasWorkEmailCodeSession(req, identity, deps)) || (await hasFreshPasskeySession(req, identity, deps)) || (await hasFreshStepUp(identity, deps));
 }
 
 /** The production wiring: the session cookie verifier, the canonical account and profile reads, the MySQL store. */

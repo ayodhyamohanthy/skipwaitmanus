@@ -4,7 +4,7 @@ import type { Express, Request, Response } from "express";
 import { randomUUID } from "node:crypto";
 import * as db from "../db";
 import { getSessionCookieOptions } from "./cookies";
-import { sdk, SESSION_ACCESS_TTL_MS } from "./sdk";
+import { sdk, SESSION_ACCESS_TTL_MS, type SessionPayload } from "./sdk";
 
 /**
  * Local development authentication.
@@ -26,8 +26,10 @@ export type DevIdentity = {
   account: { id: number; openId: string; role?: "user" | "admin"; name: string | null; email: string | null; loginMethod: string | null };
   primaryEmail: DevEmailAddress | null;
   emailAddresses: DevEmailAddress[];
-  /** D-057-session-gate: set only when this request's own session was made by the work-email code login. */
-  sessionAmr?: "work_email_otp";
+  /** D-057 / D-408: copied only from this request's verified app-session credential. */
+  sessionAmr?: SessionPayload["amr"];
+  /** Exact authenticated alias, before the account lookup returns its canonical openId. */
+  sessionOpenId?: string;
   /** D-057-session-gate §0b.2: `workos:<sid>` or `app:<ssid>`, from the verified credential only. */
   sessionKey?: string;
   /** D-140 / D-382: Unix epoch seconds of interactive authentication; undefined when legacy or absent. */
@@ -92,6 +94,7 @@ export async function resolveDevIdentity(req: Request): Promise<DevIdentity | un
       account,
       primaryEmail,
       emailAddresses: primaryEmail ? [primaryEmail] : [],
+      sessionOpenId: session.openId,
       ...(session.amr ? { sessionAmr: session.amr } : {}),
       ...(sessionKey ? { sessionKey } : {}),
       ...(session.authTime ? { authTime: session.authTime } : {}),
