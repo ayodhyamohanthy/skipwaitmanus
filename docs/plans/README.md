@@ -110,3 +110,19 @@ candidate-approved delegation/send, API integration, buyer/candidate UI, QA and 
 the FIFO tail; `GROUP-recipients` retains its row and holder. `GROUP-terms` holds only the commercial answer
 batch; other slices build disabled against explicit policy fixtures. Registration is not implementation,
 sales activation or a migration/payment/email action. Required CI remains the landing gate (D-370).
+
+## November 28 automated-menu findings and claim cost
+
+[Account-menu repair packet](P0-account-menu-pages.md): `P0-messages-account-menu`
+and `P0-support-account-menu` are disjoint Tier 1 repairs for live automated
+issues #1708/#1709. D-019 broken-basic priority places them after the original
+shell P0, preserving all prior rows' relative order and holders. Reuse the
+existing shell/menu; preserve signed-out Support, policy text and DM privacy.
+Each needs behavioral tests and a passing exact-release 1280/390 Live QA run.
+
+[PICKER-claim-cost](PICKER-claim-cost.md) appends FIFO as Tier 2 technical
+follow-through on D-321/D-324/D-412. Measure the repeated state-read cost before
+repair; never trade authoritative freshness or first-push-wins for speed.
+Registration is not implementation, issue closure, speedup or release proof.
+Status lines for all three rows live in their packets; D-370 required CI applies.
+
