@@ -206,7 +206,7 @@ IDs are unique and never reused: immediately before committing a new entry, fetc
 | D-176 | 2026-10-24 | **No availability framing in the directory: users search a company, see its job IDs and descriptions, and ask; availability only routes the ask (owner, Oct 24 00:00 IST).** Verbatim: "The concept of open to requests doesnt map well with users mental model they just search company , see job ids and its descriptions , they ask referrals , if any referrer is there it should go , if not there new ones who join will be able to see". The directory drops the "Open to requests" / "Not open yet" labels, chips and open-first grouping (D-169 superseded): referrer availability is backend routing, never a browse gate or a visible status. An ask at a company with an available verified referrer is delivered to them; otherwise it waits in the company's private pool for verified employees who join later (D-174). After saving, the seeker is told plainly which happened - reached verified employees, or waiting in the company's pool - never a false immediate-referral claim. Verified-employee access rules and privacy are unchanged, and coverage data is not exposed through the directory. #594's implementation and QA stand as completed history; the journey row owns the replacement build. | Owner iMessage phonemsg-01M5N0ED9V8M2929BBYJY7QXCG | Supersedes D-169 (availability framing and open-first grouping); affects the /explore directory UI, the D-174 journey build and post-save ask status copy | pending build |
 | D-177 | 2026-10-24 | **Recruiters/HR post job descriptions, and verified employees publish referral drives (owner, Oct 24 00:57 IST).** Verbatim: "Now as we are showing jobs like career portals and linkedin inside our portal ,we should have recruiters or hr's posting job descriptions too , internal and public , job referrers can publish a internal job referral drive too which is very often happens in corporate". **"Internal" resolved Oct 24 1:18 IST (owner):** referral opportunities that outside candidates can see and request, which are sometimes shared in company emails instead of career portals - NOT employee-only vacancies. The employee-shared opportunity type: visible to outside candidates, may be posted without a public career-page link, labeled honestly as employee-shared (never "career-portal confirmed"), and the private email thread and its recipients are never published. Validation is reconciled by type: career-portal-confirmed posts keep the verified public link; employee-shared posts carry the provenance label and the poster's verified-employee identity instead. No other link, identity or privacy check is waived, and email-only jobs are not silently rejected. Packet: `docs/plans/D-177-recruiter-posts-referral-drives.md`. | Owner iMessage phonemsg-01M5N3Q94QHYJK0VEHA3WBERS0, audience resolved by phonemsg-01M5N4XQX4YY5R18T59S38BYJ5 | Affects posting surfaces, opportunity validation, feed labeling | pending build |
 | D-178 | 2026-10-24 | **External agents and Skippy act on the portal with parity: sign in, pay, apply for referrals (owner, Oct 24 00:58-01:01 IST).** Any agent can connect to skipwait.me and apply for referrals when the signed-in user it acts for has paid referral entitlement; agent payment is wallet-bearing on the user's behalf and needs that user's approval; Skippy parity means whatever a user can do on screen via the UI can be done through the assistant, for humans and agent bots alike. The free monthly human allowance is NOT revoked; whether the free allowance is agent-spendable is RESOLVED by D-181 (owner, Oct 24 3:54 IST): yes, agent-spendable within the user's permission and the same limits; no activation before the build and its tests land. No agent-scoped purchase, price fork or new payment product is requested or to be manufactured. Packet: `docs/plans/D-178-agent-portal-access.md`. | Owner iMessage phonemsg-01M5N3RFHS5V5Y2MS5NBYCPT0M, phonemsg-01M5N3T0SZFH12MGASAEZ6MSCX, phonemsg-01M5N3XV03FBKPFXF8DQPEXF50 | Affects agent keys/scopes, Skippy tools, payment approval paths | pending build · packet adopted by D-290 (Nov 7) |
-| D-179 | 2026-10-24 | **ATS connections technically validate completed referrals (owner, Oct 24 1:09 IST).** Verbatim: "We should connect to every ats to technically validate whether referral is done". A referrer's self-report is never labeled or treated as ATS-verified; money/reward flows stay frozen under D-132/D-152 and never key off an unverified status; "every ATS" is the ambition, per-ATS capability and company consent decide real coverage. Packet: `docs/plans/D-179-ats-referral-validation.md`. | Owner iMessage phonemsg-01M5N4DC140W9347XWW34NAWX1 | Affects the completion lifecycle and ATS integration research | research/implementation rule recorded |
+| D-179 | 2026-10-24 | **ATS connections technically validate completed referrals (owner, Oct 24 1:09 IST).** Verbatim: "We should connect to every ats to technically validate whether referral is done". A referrer's self-report is never labeled or treated as ATS-verified; money/reward flows stay frozen under D-132/D-152 and never key off an unverified status; "every ATS" is the ambition, per-ATS capability and company consent decide real coverage. Packet: `docs/plans/D-179-ats-referral-validation.md`. | Owner iMessage phonemsg-01M5N4DC140W9347XWW34NAWX1 | Affects the completion lifecycle and ATS integration research | direction recorded; D-132/D-152 money references above are historical and superseded by D-219 and `docs/PRICING.md`; no ATS integration or money change authorized by this record |
 | D-180 | 2026-10-24 | **Public terminology is "referral" only: the user-facing ask/referral pair is one concept (owner, Oct 24 3:33 IST).** Verbatim: "Combine the concept of ask and referral it should be our internal redirection having ask referral confuses users just use referral term only. What do you say" (iMessage phonemsg-01M5NCM1K63RW8RRWFCQ4PBT05); then "Update in docs" (phonemsg-01M5NCR5GJNK9NT0YN0C9559TX) and the full-reconciliation word (phonemsg-01M5NCWCEBVYKGZ6292Z3XBVPZ). User-facing surfaces, seeker and referrer, use referral vocabulary; the ask/referral split (waiting queue, first look, pools) is internal routing only. **Unchanged contracts:** what counts as a referral stays intro_made or later, via the referrer's mark or the seeker's confirmation (D-076(8)); a request is never displayed as a submitted or completed referral, and self-report is never ATS-verified (D-179); the lifecycle stays pending → approved → intro_made → interview → offer → closed, plus declined/withdrawn (`shared/referral.ts`) - no new stage graph; money wording, amounts, allowances and rules stay frozen (D-132/D-152), and D-173's buyer-facing unit wording pass continues in the terminology lane (PR #598); internal identifiers (`referralRequests`, `/api/ask-drafts`) are not renamed. **Design recommendations, NOT owner-approved strings, pending copy review:** formal noun "referral request" - "Request a referral", "My referrals" with the true states, "Referral requested"; allowance and balance stage-qualified ("referral requests left", "uses 1 referral request"), never implying bought or completed referrals; "3 free referrals" stands as headline only (phonemsg-01M5MXXXXCF1Z6SSY4F2420XB9, "Just say 3 free referrals", Oct 23 23:16 IST), deciding nothing broader. | Owner iMessages phonemsg-01M5NCM1K63RW8RRWFCQ4PBT05, phonemsg-01M5NCR5GJNK9NT0YN0C9559TX and phonemsg-01M5NCWCEBVYKGZ6292Z3XBVPZ; queue add approved by the owner's yes (phonemsg-01M5ND47BAKG2S9TKG8RNE797X) to the narrow docs-sync question | Extends D-173's terminology sweep from the unit to the request; no money, metric or identifier change | adopted - sync |
 | D-181 | 2026-10-24 | **The included free referral allowance is agent-spendable too (owner, Oct 24 3:54 IST).** Resolves D-178's open question 2 (asked Oct 24 1:20 IST, re-asked 3:46). Question, verbatim: "Should Skippy and outside agents be able to use a user's included free referral allowance too, or only their paid allowance?" (iMessage phonemsg-01M5NDD7KMGRCFJ61Q2WFFDNYM). Answer, verbatim: "Free allowance too" (phonemsg-01M5NDTEYZJ00PB1V7ETTCYSJ1). The same included free + paid allowance is accessible via the website, Skippy and outside agents, within the user's permission and the same limits; the free monthly human allowance itself is unchanged. **Bounds:** eligibility only - not authority for any agent's own spending or other accounts, and no activation before the D-178 build and its tests land; money amounts and rules stay frozen (D-132/D-152). | Owner iMessage phonemsg-01M5NDTEYZJ00PB1V7ETTCYSJ1 answering phonemsg-01M5NDD7KMGRCFJ61Q2WFFDNYM | Resolves D-178's open item; affects agent keys/scopes, Skippy tools | adopted - pending D-178 build |
 | D-182 | 2026-10-24 | **Cloudflare's Workers Builds check holds no landing and must not become a second production deploy path; #602 is released (decided under D-074 and D-085 by Claude Code as CEO; (3) is an ask for the owner; changeable).** (1) **What the check is.** `Workers Builds: skipwaitmanus` is Cloudflare's own Git integration, not GitHub Actions. On a branch it runs `wrangler versions upload` and stays green; on a `main` merge it runs `wrangler deploy`, which builds `./Dockerfile` and stops at `COPY commit-sha.txt`, because that file is gitignored and written only inside `deploy-api.yml` (diagnosis in #607). So it is red on `main` merges (`02a8a028`, `1c14dfef`) while the three required checks of the ruleset `main: green CI only (D-082)` (`typecheck`, `unit + component + route tests`, `production build`) and the real deploys stay green. It is neither required nor the deploy path. Ruling: a red Workers Builds check holds no landing, lane or report; a lander states it in one line and watches CI, Deploy API and Deploy Web to the end, as D-082 already asks. (2) **#607 does not land.** It makes that `wrangler deploy` succeed, which turns Cloudflare's builder into a second production writer of the API container: it would deploy on every `main` merge, docs-only ones included, without `migrate-db` (schema-dependent code could go live before its migration), without the release stamp (health would report the SHA `unknown`, so the exact-release check and the drift watch lose their anchor), and racing the serialized `deploy-api.yml` run (AGENTS.md: serialize production writers so latest `main` wins). Today the failing build is what keeps that path shut. (3) **Ask for the owner, 9/10:** in the Cloudflare dashboard, turn off production deploys from the Workers Builds Git integration of `skipwaitmanus` (disconnect the repository, or give it a deploy command that uploads a version without deploying it), so the red check goes away for the right reason. Against: disconnecting also drops Cloudflare's preview build on pull requests; nothing in the gate reads it. (4) **#602 (PICKER-board-newer-report) is released.** Its own "Landing hold" waited for that check, and GPT · 8d50 then read the hold as an instruction of its run; no decision holds it. It is Tier 2 with an independent Tier 2 pass and all four exact-head checks green on `2d2d1159`, so it lands the normal way: merge current `main`, required CI green on that head, then a fast-forward or the merge-commit button (D-134 (6)). Rating 9/10: it ends a hold that three lanes (#528, #565, #602) treated as real. The strongest argument against: a check left red trains everyone to ignore red; (3) removes it. | Check runs on `main` `02a8a028` and `1c14dfef` (Workers Builds failure, required checks success) against branch heads (success); `gh api` rulesets 25433342 and 25733248; `.github/workflows/deploy-api.yml` (`migrate-db` before the deploy, `commit-sha.txt` written in the workflow); `Dockerfile` line 18; the bodies of #607 and #602; GPT · 8d50's report of Oct 24, 04:00 IST. | Clarifies D-082 and the Oct 23 merge-policy amendment (required checks only); affects #602, #607, #528 and #565. | adopted — (3) waits for the owner |
@@ -1304,3 +1304,99 @@ This execution receipt records implementation routing within existing authority,
 owner decision, price, plan content, login, legal text, refund promise or live switch. Required CI and
 protected auto-merge apply (D-370). Registration is not a shipped Group Plan; no runtime code, SQL,
 provider call, payment or recipient email is performed by this change.
+
+### November 28 GROUP-contracts worktree unblock (D-200, D-407)
+
+Official UNBLOCK `GPT-6.1 Sol · 8c80`, lock `fbb8b642b`, checked main
+`ac7a08d431693cb294a8e3eb9ed00c572a7dda75`, decisions through D-414,
+`GROUP-plan-split.md` §6.1/§8, merged preparation PR #1629 (`8362b0b15`),
+published carrier `agent/queue/group-contracts-implementation` at `b01b4706c`,
+and blocked report `f927a2ce8` by `GPT-6.1 Sol · ead0`.
+
+The report describes another local worktree's uncommitted/untracked contract
+files, not an owner decision or unavailable external prerequisite. D-407 (1)
+already excludes local-environment and unpublished-work problems from task
+blocks. Continue from the published carrier in a separate clone or isolated
+session worktree; preserve its history and leave the other writer's files
+untouched. Use a normal picker claim, never a manual marker or duplicate active
+claim. No coordinator acknowledgement or owner action is required.
+
+Clear that standing block with the unblocker's `review` report. Keep the row
+`todo`, its branch, dependency on `GROUP-recipients`, ownership and FIFO position;
+advance only its decision-sync stamp to D-414. Section 6.1 implementation and
+acceptance remain unfinished, not satisfied by #1629 or this ruling. Preserve
+any published partial implementation when completing the contracts.
+
+D-413 (4)'s recorded commercial answers remain authoritative; final Group
+sales/consent wording and activation remain with `GROUP-release`. This receipt
+adds no numbered owner decision, runtime code, schema, provider call, payment,
+email, legal wording, price, login change or enabled switch.
+No implementation, required-CI or production acceptance is claimed.
+
+### November 28 launch-retirement routing receipt (D-200, D-370, D-388)
+
+Official `CEO REVIEW` session `GPT-6.1 Sol · ed37` checked main
+`3508530aaf046afe3145003feb2306169e617c5d`, instructions and decisions through D-414,
+the picker board and `D-048-retire.md`. The D-388 (4) release condition is met:
+[BANDED-release PR #1664](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1664)
+merged as `b54c03eb57893365043741ec40fc98ebacdf9cdc` on November 27, and the canonical
+offer readback returned `onSale: true` with API `f02de526a` ready. This does not certify
+the outstanding BANDED checkout-handshake or signed-in acceptance.
+
+Restore exactly D-388's eight fresh retirement rows from `owner` to `todo`:
+home, post-opportunity, admin-money, admin-people, inplace, employer, employer-talent
+and employer-billing (`D-048-K-*`). Preserve their FIFO position, branch, current
+claims, ownership, tier and release dependencies; check their packet through D-414.
+Every surface still requires live-goal/parity/ported-assertion proof and normal CI
+before deletion. Do not equate a merged release row with its unfinished acceptance.
+
+This applies the existing owner's release condition, not a new numbered decision,
+new task, blanket hold clearance or permission to take another session's work.
+No old design, runtime code, price, sales switch, legal text, login method, money
+path or production setting is changed. Other owner-parked rows remain unchanged.
+
+### November 28 CEO review: account-menu repair carriers and claim cost (D-019, D-200, D-409, D-412)
+
+Official CEO REVIEW `GPT-6.1 Sol · 9186` checked main
+`3508530aaf046afe3145003feb2306169e617c5d`, current instructions and decisions
+through D-414, the prior [#1710](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1710)
+outcome and [Live QA 46065479203](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/46065479203).
+Its four Messages/Support captures at 1280 and 390 were inspected; both routes
+lack the account menu. Source explains the boundary: `GoalMessages` has only
+its local main element, and `Support` uses the public `PolicyPageShell`
+fallback. Neither renders the repaired goal app shell. Existing automated
+issues #1708/#1709 are open, with no implementation PR or assigned repair row.
+
+Register `P0-messages-account-menu` and `P0-support-account-menu` directly after
+the original shell P0 under D-019's broken-basic priority. Their shared
+[packet](plans/P0-account-menu-pages.md) gives disjoint source ownership,
+existing-shell reuse, behavioral regressions and exact-release 1280/390
+acceptance. Preserve public Support, actual policy frames, all content and
+DM privacy/idempotency. The existing QA checks stay enabled; only a later
+passing live run closes each issue. No automatic PR-close directive or new
+sign-out implementation. Existing rows retain their relative order and holders.
+
+The same session's normal claim exceeded a 300-second deadline in the shared
+worktree environment and a 900-second deadline in a clean full-history clone.
+One bounded retry completed in 847 seconds after three rival claims won,
+returning CEO REVIEW. Repeated state loads reported two unknown merged-branch
+histories beyond 12 closed-PR pages. This proves admission cost and contention,
+not a root cause or that unknown work is done. Append `PICKER-claim-cost` FIFO
+with its [measured-repair packet](plans/PICKER-claim-cost.md): phase attribution
+before implementation, reader-cost proof, and unchanged authoritative freshness,
+lease, unknown-read, sync and landing safeguards. No manual claim or hold waiver.
+
+The read-only scorecard's 100-PR sample covers only four days of its requested
+seven-day window: 94 merges, including 55 docs-only, with 214 `review` reports
+among 361 reports. These are engineering sample counts, not full-window totals
+or business outcomes. Its 18 no-independent-pass entries do not show a D-370
+violation: that decision removed the requirement. API and web both read
+`f02de526`; main is 18 commits ahead, not itself a release defect because
+deployment is path-filtered. No current production funnel, supply conversion
+or money-check result was read; those business measures remain unverified.
+
+This is execution routing within existing decisions, not a new owner ruling,
+runtime repair, production acceptance, product/price/plan change, login method,
+legal wording, settings, secret, paid tool or sales-switch authorization.
+Protected PR and green required CI remain mandatory. The menu repairs and
+claim-cost improvement remain unfinished after this documentation lands.

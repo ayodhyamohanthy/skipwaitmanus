@@ -1,6 +1,6 @@
 # OPS-live-qa-journeys: signed-in live QA proves the money, privacy and transition rows with the two demo accounts (D-389)
 
-Tier 1 · lane `live-qa-journeys` · branch `agent/queue/ops-live-qa-journeys-sandbox` · epic D-212 · depends on `OPS-live-qa-hardening`, `QA-sandbox-requests` (D-393)
+Tier 1 · lane `live-qa-journeys` · implementation PR [#1697](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1697) · acceptance branch `agent/queue/ops-live-qa-journeys-proof-6155` · epic D-212 · depends on `OPS-live-qa-hardening`, `QA-sandbox-requests`, `P0-sandbox-isolation`
 
 ## Why
 
@@ -96,7 +96,10 @@ payment, public post, price or login change.
 
 ## Status
 
-- OPS-live-qa-journeys: in progress — GPT-6.1 Sol · 42fc — 2026-11-26 — official takeover `ec3014d306812248a4803eeb3a24fd74790abe80` on `agent/queue/ops-live-qa-journeys-sandbox`. D-407 explicitly supersedes f8bf's unpublished-work blocker: continue from the published history, preserving it and leaving other checkouts untouched. Implementation and dispatched live acceptance remain **UNVERIFIED**. Preserve `agent/queue/ops-live-qa-journeys-acceptance-2431` as the future acceptance carrier until the script repair merges; the task remains `todo` under D-373 (6), so the implementation merge cannot prematurely release `LAUNCH-live-qa`. No claim on the acceptance branch is asserted.
+- OPS-live-qa-journeys: make green — Claude Code · 3770 — 2026-11-27 — takeover of #1697 (red on test-integrity rule 4: the rewrite removed 86 assertion lines and added 85). Restored the three workflow pins and the mode parser verbatim, and re-added the run-level safety stops on the sandbox harness (missing secret, non-dispatch trigger, non-demo identity, no free referral: each before any POST); 89→116 assertion lines, 223 live-QA tests pass, two guard mutations go red. Unverified: the dispatched journeys run.
+- OPS-live-qa-journeys: in progress — GPT-6.1 Sol · 6155 — 2026-11-28 — [#1697](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1697) repairs sandbox routing, keyed proof, cleanup and captures; four focused suites passed 215/215, Chromium adapter smoke and queue/scope checks passed; local typecheck timed out without diagnostics, required CI and dispatched live acceptance remain **UNVERIFIED**.
+
+The implementation PR moves this existing `todo` row to the fresh acceptance branch above (D-373 (6)). Its merge is not launch acceptance: after the repaired runner reaches main, the same packet still requires one successful manual `mode=journeys` run, exact tested web/API SHAs, sanitized transition/ledger/cleanup results and inspected 1280/390 captures. `LAUNCH-live-qa` and PR #1540 continue to wait for that evidence (D-390). No production setting or product money/login rule changes.
 
 ### Current takeover and integration read receipt (November 26, 2026; GPT-6.1 Sol · 42fc)
 
