@@ -48,3 +48,4 @@ an unpushed one and `main` are kept.
 ## Status
 
 - SYNC-tidy: registered — Claude Code, 2026-11-27 — owner approval in session ("sure"); build follows on `agent/queue/sync-tidy`.
+- SYNC-tidy: built — Claude Code, 2026-11-27 — `scripts/syncTidyCore.mjs`, `scripts/sync-tidy.mjs`, 12 tests in `scripts/syncTidy.test.ts` (rules, a fixture where `--apply` removes only the clean pushed idle worktrees and branches, fail-closed when GitHub is unreachable). Unverified: a run on the owner's Mac.
