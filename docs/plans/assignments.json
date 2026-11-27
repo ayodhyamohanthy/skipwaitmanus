@@ -10549,6 +10549,27 @@
       ],
       "note": "D-321/D-324/D-412 technical follow-through; appended FIFO. Session 9186 observed 300/900-second deadlines and an 847-second official retry with lost races before CEO REVIEW. Attribute phases first, then prove lower reader cost and unchanged freshness/unknown/lease/hold semantics; no manual claim or optimistic evidence. Coordinate shared picker files, never duplicate PICKER-bug-issues.",
       "epic": "D-212"
+    },
+    {
+      "id": "PICKER-common-dir-lock",
+      "title": "One picker per Git common directory: linked worktrees share the run lock without stealing a live legacy owner",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-common-dir-lock.md",
+      "tier": 2,
+      "lane": "picker-single-flight",
+      "branch": "agent/queue/picker-common-dir-lock",
+      "status": "todo",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "epic": "D-212",
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskSingleFlight.test.ts",
+        "docs/plans/PICKER-common-dir-lock.md",
+        "docs/plans/PICKER-single-flight.md",
+        "docs/BUILD_CONTINUITY.md"
+      ],
+      "note": "CEO review GPT-6.1 Sol · 02ca, main 3508530aa, D-200/D-324: production lock helper acquired separate locks for root and linked worktree sharing one canonical Git common directory. Append-only FIFO corrective row; original PICKER-single-flight remains done. Resolve a canonical common-directory lock, refuse live legacy worktree-local owners during cutover, preserve liveness/takeover and heartbeat/report exemptions, and prove root/sibling/symlink exclusion plus independent-clone concurrency with real-CLI fixtures. No claim, eligibility, product, settings or money change. Registration is not implementation acceptance."
     }
   ]
 }
