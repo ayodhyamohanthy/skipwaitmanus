@@ -3,6 +3,12 @@ import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+// D-174-no-expiry-release: this suite pins the legacy ask clocks, so it forces the switch off; the
+// no-expiry path is pinned in the *.noExpiry tests and e2e/reconfirm-money.e2e.ts (D-411).
+vi.mock("../../../shared/askNoExpiry", async importOriginal => ({
+  ...await importOriginal<typeof import("../../../shared/askNoExpiry")>(),
+  ASK_NO_EXPIRY_ENABLED: false,
+}));
 import Safety from "./Safety";
 import Help from "./Help";
 import Landed from "./Landed";
@@ -92,6 +98,7 @@ describe("Trust cluster", () => {
   it("offers intent choice on the goal design, never a password form for referrers", () => {
     render(<SignIn />);
     expect(screen.getByRole("heading", { name: "Sign in to find or give a referral." })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Use a password instead" }));
     expect(screen.getByLabelText(/Password/)).toBeTruthy();
     expect(screen.getByRole("link", { name: "Forgot password?" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /Give a referral/ }));
