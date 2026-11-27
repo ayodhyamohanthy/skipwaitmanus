@@ -109,13 +109,34 @@ export async function runJourneys({ passwords, trigger, clientFor, fetchText, mk
     requireStep(name, transitionProblems(reply, kind).length === 0, `HTTP ${reply.status}`);
     if (kind === "withdrawn") remaining.delete(id);
   };
-  const capture = async (target, name) => {
+  // loadThread (client/src/lib/threadApi.ts) asks /preview before the claimed detail; once the referrer has
+  // claimed the request that probe answers 404 by design (server/privateReferralRoutes.ts). On this run's own
+  // accepted conversation only, that one request and its one browser console line are expected (run 46084378112);
+  // every other page, console or client error still fails the capture, and a failure names what it saw.
+  const capture = async (target, name, probeId = null) => {
     for (const width of [1280, 390]) {
       const result = await clients.referrer.capture(target, width);
-      const ok = result.status === 200 && Boolean(result.capture) && !result.navigationError
-        && [result.pageErrors, result.consoleErrors, result.clientErrors].every(errors => Array.isArray(errors) && errors.length === 0);
+      const wellFormed = [result.pageErrors, result.consoleErrors, result.clientErrors].every(errors => Array.isArray(errors));
+      const client = wellFormed ? [...result.clientErrors] : [];
+      const consoleLines = wellFormed ? [...result.consoleErrors] : [];
+      const probeAt = probeId ? client.indexOf(`404 GET /api/company-referrals/${probeId}/preview`) : -1;
+      if (probeAt >= 0) {
+        client.splice(probeAt, 1);
+        const lineAt = consoleLines.findIndex(line => /^Failed to load resource: the server responded with a status of 404\b/.test(line));
+        if (lineAt >= 0) consoleLines.splice(lineAt, 1);
+      }
+      const ok = wellFormed && result.status === 200 && Boolean(result.capture) && !result.navigationError
+        && result.pageErrors.length === 0 && client.length === 0 && consoleLines.length === 0;
       summary.captures.push({ capture: result.capture, width, status: result.status, ok });
-      requireStep(`${name}-${width}`, ok, `HTTP ${result.status}; ${ok ? "captured" : "capture failed"}`);
+      const seen = [
+        ...client,
+        ...(consoleLines.length ? [`${consoleLines.length} console error(s)`] : []),
+        ...(wellFormed && result.pageErrors.length ? [`${result.pageErrors.length} page error(s)`] : []),
+        ...(result.navigationError ? ["navigation failed"] : []),
+        ...(wellFormed ? [] : ["malformed capture result"]),
+      ];
+      const detail = ok ? `captured${probeAt >= 0 ? "; expected /preview probe" : ""}` : `capture failed${seen.length ? `: ${seen.join(", ")}` : ""}`;
+      requireStep(`${name}-${width}`, ok, `HTTP ${result.status}; ${detail}`);
     }
   };
   const create = async (name, offset, note) => {
@@ -180,7 +201,7 @@ export async function runJourneys({ passwords, trigger, clientFor, fetchText, mk
     requireStep("reveal", detail.status === 200 && detail.body?.request?.id === ask.id && revealProblems(detail.body).length === 0 && fileMatches === true, `HTTP ${detail.status}; accepted upload required`);
     const opened = await clients.referrer.get(`/api/documents/${ask.attachmentId}`);
     requireStep("document-open", opened.status === 200, `HTTP ${opened.status}`);
-    await capture(`/conversation/${ask.id}`, "accepted");
+    await capture(`/conversation/${ask.id}`, "accepted", ask.id);
     for (const suffix of ["", "/preview"]) {
       const denied = await clients.seeker.get(`/api/company-referrals/${ask.id}${suffix}`);
       requireStep(`cross-role-denied${suffix}`, denied.status === 403 && denied.body?.code === "work_email_code_required", `HTTP ${denied.status}`);
