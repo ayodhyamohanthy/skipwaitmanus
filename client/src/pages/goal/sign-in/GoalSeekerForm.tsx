@@ -1,7 +1,8 @@
 // The job seeker's side of the goal /sign-in (D-048-p3-signin, D-354).
-// FOUNDER-LOCKED login rule (D-030 as amended by D-049/D-057): personal email
+// FOUNDER-LOCKED login rule (D-030 as amended by D-049/D-057/D-406): personal email
 // with password, every social provider straight to WorkOS on skipwait.me,
-// and device-saved passkeys. The six-digit seeker code is retired (D-049, D-078).
+// and device-saved passkeys. D-406: with EMAIL_SIGN_IN_LINK_ENABLED on, the default
+// is an emailed sign-in link + code (GoalSeekerEmailCode); password stays one tap away.
 // New accounts are link-based (Option B, D-078 ruling 2). Referrers never render this.
 import { CircleAlert, Eye, EyeOff, MailCheck } from "lucide-react";
 import { type FormEvent, useState } from "react";
@@ -14,6 +15,8 @@ import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@
 import { passwordStepSchema } from "@shared/passwordAuth";
 import { postPasswordAuth } from "@/lib/passwordAuthClient";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
+import { EMAIL_SIGN_IN_LINK_ENABLED } from "@shared/emailSignIn";
+import { GoalSeekerEmailCode } from "./GoalSeekerEmailCode";
 import { GOAL_SEEKER_SOCIAL, goalSeekerSocialUrl } from "./seekerSocial";
 
 export type PasswordMode = "sign_in" | "sign_up";
@@ -39,7 +42,39 @@ export function GoalPasskeyManageLink() {
   return <a href="/sign-in?passkeys=manage" className="inline-flex min-h-11 items-center text-g-meta text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink">Manage saved passkeys</a>;
 }
 
-export function GoalSeekerForm({ returnTo }: { returnTo: string }) {
+/** Passkey and social sign-in, shown under either seeker method. */
+function SeekerAlternatives({ returnTo, enabled }: { returnTo: string; enabled: boolean }) {
+  return (
+    <>
+      <div className="flex items-center gap-3 text-g-meta text-g-ink-3" aria-hidden="true"><span className="h-px flex-1 bg-g-hairline" />or<span className="h-px flex-1 bg-g-hairline" /></div>
+      <PasskeySignInButton enabled={enabled} returnTo={returnTo} />
+      <div className="grid gap-2 gdesk:grid-cols-2">
+        {GOAL_SEEKER_SOCIAL.map((item, index) => (
+          <GoalButton key={item.id} type="button" variant="outline" className={`w-full border-g-control-edge${index === 0 ? " gdesk:col-span-2" : ""}`} onClick={() => window.location.assign(goalSeekerSocialUrl(item.id, returnTo))}>
+            Continue with {item.label}
+          </GoalButton>
+        ))}
+      </div>
+    </>
+  );
+}
+
+/** D-406: emailed link + code by default when the switch is on; otherwise exactly the password form. */
+export function GoalSeekerForm({ returnTo, emailLinkEnabled = EMAIL_SIGN_IN_LINK_ENABLED }: { returnTo: string; emailLinkEnabled?: boolean }) {
+  const passkeys = usePasskeyAvailability();
+  const [method, setMethod] = useState<"email" | "password">(emailLinkEnabled ? "email" : "password");
+  if (method === "email") {
+    return (
+      <div className="grid gap-3">
+        <GoalSeekerEmailCode returnTo={returnTo} emailFieldId={SEEKER_EMAIL_FIELD_ID} passkeysEnabled={passkeys.enabled} onUsePassword={() => setMethod("password")} />
+        <SeekerAlternatives returnTo={returnTo} enabled={passkeys.enabled} />
+      </div>
+    );
+  }
+  return <GoalSeekerPasswordForm returnTo={returnTo} onUseEmail={emailLinkEnabled ? () => setMethod("email") : undefined} />;
+}
+
+function GoalSeekerPasswordForm({ returnTo, onUseEmail }: { returnTo: string; onUseEmail?: () => void }) {
   const passkeys = usePasskeyAvailability();
   const online = useOnlineStatus();
   const [mode, setMode] = useState<PasswordMode>("sign_in");
@@ -223,21 +258,19 @@ export function GoalSeekerForm({ returnTo }: { returnTo: string }) {
               Create a free account
             </button>
           </p>
-          <p className="text-center text-g-meta text-g-ink-3">
-            Signed in with a code before? Use Forgot password to set one. It&apos;s the same account.
-          </p>
+          {onUseEmail ? (
+            <button type="button" className="min-h-11 text-center text-g-meta text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink" onClick={onUseEmail}>
+              Email me a sign-in link instead
+            </button>
+          ) : (
+            <p className="text-center text-g-meta text-g-ink-3">
+              Signed in with a code before? Use Forgot password to set one. It&apos;s the same account.
+            </p>
+          )}
         </>
       )}
 
-      <div className="flex items-center gap-3 text-g-meta text-g-ink-3" aria-hidden="true"><span className="h-px flex-1 bg-g-hairline" />or<span className="h-px flex-1 bg-g-hairline" /></div>
-      <PasskeySignInButton enabled={passkeys.enabled} returnTo={returnTo} />
-      <div className="grid gap-2 gdesk:grid-cols-2">
-        {GOAL_SEEKER_SOCIAL.map((item, index) => (
-          <GoalButton key={item.id} type="button" variant="outline" className={`w-full border-g-control-edge${index === 0 ? " gdesk:col-span-2" : ""}`} onClick={() => window.location.assign(goalSeekerSocialUrl(item.id, returnTo))}>
-            Continue with {item.label}
-          </GoalButton>
-        ))}
-      </div>
+      <SeekerAlternatives returnTo={returnTo} enabled={passkeys.enabled} />
     </form>
   );
 }

@@ -56,9 +56,10 @@ beforeEach(() => {
 afterEach(() => { vi.useRealTimers(); vi.unstubAllEnvs(); vi.restoreAllMocks(); });
 
 describe("D-193 old waiting request reconfirmation", () => {
-  it("ships off and validates only the confirmation response contract", async () => {
+  it("ships on together with no-expiry (D-411) and validates only the confirmation response contract", async () => {
     const actual = await vi.importActual<typeof import("../shared/askReconfirm")>("../shared/askReconfirm");
-    expect(actual.ASK_RECONFIRM_ENABLED).toBe(false);
+    expect(actual.ASK_RECONFIRM_ENABLED).toBe(true);
+    expect((await vi.importActual<typeof import("../shared/askNoExpiry")>("../shared/askNoExpiry")).ASK_NO_EXPIRY_ENABLED).toBe(true);
     expect(actual.RECONFIRM_AFTER_DAYS).toBe(30);
     expect(askReconfirmResponseSchema.parse({ requestId: ID, confirmed: true })).toEqual({ requestId: ID, confirmed: true });
     for (const value of [{ requestId: 0, confirmed: true }, { requestId: ID, confirmed: false }, { requestId: ID, confirmed: true, extra: 1 }]) {

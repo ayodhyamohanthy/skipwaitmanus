@@ -101,3 +101,12 @@ Scoped Oct 23 founder exception for one manual claim only: see docs/DECISIONS.md
 
 ## Private access reliability registration (Oct28)
 [`PRIVATE-referral-access-availability.md`](PRIVATE-referral-access-availability.md) preserves existing access rules under unavailable authorization. Tier1; shared route waits for BYOR pending actual limited handoff, later route owners stay serialized. No implementation, consent change or activation is claimed.
+
+## Group Plan execution split (Nov25)
+
+[`GROUP-plan-split.md`](GROUP-plan-split.md) decomposes the October 31 owner direction into contracts,
+migration-first storage, quote/checkout, verified-payment allocations, candidate claim/grants, email/recovery,
+candidate-approved delegation/send, API integration, buyer/candidate UI, QA and release. New rows append at
+the FIFO tail; `GROUP-recipients` retains its row and holder. `GROUP-terms` holds only the commercial answer
+batch; other slices build disabled against explicit policy fixtures. Registration is not implementation,
+sales activation or a migration/payment/email action. Required CI remains the landing gate (D-370).

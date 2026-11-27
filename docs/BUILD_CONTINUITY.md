@@ -44,6 +44,7 @@ These instructions apply only inside an active session. They install no schedule
 Some AI providers and API relays end a conversation after a fixed number of turns (for example "当前会话已满 20 轮对话，请新开一个会话继续" / "This conversation has reached 20 turns. Please start a new session to continue"). The limit is the provider's, not SkipWait's, and the repository cannot lift it. Nothing is lost when it fires, because every commit is already pushed (D-375). Lose no time either:
 
 1. Before each step, keep your work committed and pushed. Write your exact session name (for example `OpenCode · 3f9a`) in your packet Status line right after your first claim.
+   **Status diet (D-412 (2)):** a packet Status entry is one line: session, date, what changed, the link (commit, PR or run) and what is still unverified. Never restate decisions read, preflight receipts or unchanged facts. A missing local database is not a block: build it with [`docs/LOCAL_E2E_DATABASE.md`](./LOCAL_E2E_DATABASE.md).
 2. When the client ends the conversation, start a new one (Codex: `/new`; other clients: a new chat) and say `build`.
 3. The new session resumes under the same name. Find it in your packet Status line or in `node scripts/next-task.mjs --status` (the holder column of the task you were on), then run `node scripts/next-task.mjs --claim "<that exact name>"`. The picker hands you your own unfinished work first. Never invent a new tag for work you already hold, or it sits orphaned for 2 hours.
 4. Prefer one bounded step per conversation: claim, do one commit-sized step, push, heartbeat. A capped client finishes tasks across several conversations this way.
@@ -57,6 +58,13 @@ OpenCode and ZCode apply the repository's `opencode.json`, `.opencode/agents/wor
 ```bash
 node scripts/agent-loop.mjs -- opencode run   # OpenCode: runs "opencode run build" again after each conversation
 node scripts/agent-loop.mjs -- codex exec     # Codex: runs "codex exec build" again after each conversation
+```
+
+**Turn guard (D-403).** The Xingchi relay refuses a request whose history holds 20 user turns or 100 model replies (`400 ... session_turn_limit_exceeded`), and client auto-compaction counts tokens, not turns. `scripts/xingchi-guard.mjs` (Node built-ins only) sits between any client and Xingchi on 127.0.0.1: before forwarding a `chat/completions` or `responses` request it counts the turns, and from 18 user turns or 95 model replies (`--max-user`, `--max-model`) it drops the oldest middle of the conversation, keeping system and developer messages, the first user message, the latest turns and every tool call with its result, and puts one note in its place telling the agent to re-read its packet, the picker output and `git log`. If Xingchi still answers `session_turn_limit_exceeded`, it compacts to a quarter of the limits and retries once. It passes the Authorization header through, never logs or stores it or any body, streams responses (SSE included) unchanged, and logs one line per request to stderr. Start it once per machine, then point each client's base URL at the guard with the same path suffix it used for Xingchi: for `https://<xingchi-host>/v1`, use `http://127.0.0.1:8787/v1`. The API key stays in the client. No client config in this repository changes.
+
+```bash
+node scripts/xingchi-guard.mjs --upstream https://<xingchi-host>/v1           # or XINGCHI_BASE_URL=... node scripts/xingchi-guard.mjs
+node scripts/xingchi-guard.mjs --help                                        # port, limits and the base-URL rule
 ```
 
 ## Carry the next handoff forward

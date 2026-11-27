@@ -14,11 +14,14 @@ for file in "$dir"/*.sql; do
 done
 # numeric prefixes must be unique: the runner keys on full filename + sha256,
 # but duplicate numbers collide in human review and ordering. Fail loudly.
-declare -A seen
+# Bash 3.2 (macOS's /bin/bash) has no associative arrays, so compare neighbours in the sorted list instead.
+prev_prefix=""
+prev_name=""
 for file in "$dir"/*.sql; do
   name=$(basename "$file")
   prefix=${name%%_*}
-  if [[ -n "${seen[$prefix]:-}" ]]; then echo "::error::duplicate migration number $prefix: $name conflicts with ${seen[$prefix]}"; status=1; fi
-  seen[$prefix]=$name
+  if [[ -n "$prev_prefix" && "$prefix" == "$prev_prefix" ]]; then echo "::error::duplicate migration number $prefix: $name conflicts with $prev_name"; status=1; fi
+  prev_prefix=$prefix
+  prev_name=$name
 done
 exit $status

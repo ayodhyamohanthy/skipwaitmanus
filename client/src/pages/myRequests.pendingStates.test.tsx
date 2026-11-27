@@ -4,6 +4,12 @@
 import React from "react";
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+// D-174-no-expiry-release: this suite pins the legacy ask clocks, so it forces the switch off; the
+// no-expiry path is pinned in the *.noExpiry tests and e2e/reconfirm-money.e2e.ts (D-411).
+vi.mock("../../../shared/askNoExpiry", async importOriginal => ({
+  ...await importOriginal<typeof import("../../../shared/askNoExpiry")>(),
+  ASK_NO_EXPIRY_ENABLED: false,
+}));
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import MyRequests from "./MyRequests";
 
@@ -20,6 +26,9 @@ vi.mock("wouter", () => ({
   useLocation: () => ["/requests", go],
 }));
 vi.mock("sonner", () => ({ toast: vi.fn() }));
+// P0-goal-shell-sign-out: the shell's account menu has its own tests (accountMenu.test.tsx,
+// goalAppShell.signOut.test.tsx); here it is a stub so this page's fetch counts stay its own.
+vi.mock("@/components/AccountMenu", () => ({ AccountMenu: () => <button type="button" aria-label="Account menu">AB</button> }));
 
 function renderPage() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
