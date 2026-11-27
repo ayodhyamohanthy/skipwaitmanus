@@ -153,6 +153,25 @@ function launchAgent(top, install, say, target = null) {
 }
 
 /**
+ * SYNC-auto-pull self-upgrade: a full sync run on a Mac whose LaunchAgent is still the old 15-minute timer starts
+ * `--auto-setup` in its own process group, which swaps the agent for the watcher (same folder and script). So the old
+ * timer, once it has pulled this code, upgrades itself with nobody typing anything. Same guards as --auto-setup.
+ * @returns {boolean} true when the upgrade was started
+ */
+export function selfUpgrade(top, env = process.env) {
+  if (process.platform !== "darwin") return false;
+  const optedOut = tryGit(["config", "--bool", "--get", "skipwait.autoSync"], top) === "false";
+  if (!autoSetupAllowed({ env, optedOut }).allowed) return false;
+  const plist = plistPath();
+  if (!existsSync(plist) || readFileSync(plist, "utf8").includes("<string>--watch</string>")) return false;
+  const log = path.join(os.homedir(), "Library", "Logs", "skipwait-sync-clone.log");
+  mkdirSync(path.dirname(log), { recursive: true });
+  // Detached: unloading the old agent ends the run that started this, never the upgrade itself.
+  spawn(process.execPath, [path.join(HERE, "sync-clone.mjs"), "--auto-setup", "--timestamps"], { cwd: top, detached: true, stdio: ["ignore", openSync(log, "a"), openSync(log, "a")] }).unref();
+  return true;
+}
+
+/**
  * --auto-setup: the picker runs this on every --claim. Silent when everything is already in place or setup is
  * not allowed here; one line per thing it installs. An existing hook of ours is left as it is (only an explicit
  * --install-hook refreshes it), and a timer already installed for any clone is never re-pointed: an old 15-minute

@@ -25,7 +25,7 @@ import { closeSync, openSync, readFileSync, rmSync, statSync, writeFileSync } fr
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { addedLines, exitCodeOf, findSensitive, planBranch, planMain, pullMethod, sideBranchForMain, watchInterval, watchLoop } from "./syncCloneCore.mjs";
-import { autoSetup, hook, timer } from "./syncCloneSetup.mjs";
+import { autoSetup, hook, selfUpgrade, timer } from "./syncCloneSetup.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const CLEANUP = path.join(HERE, "branch-cleanup.mjs");
@@ -317,7 +317,11 @@ function main() {
     case "auto": return autoSetup(top, say);
     case "current": return withLock(top, () => current(top, args, say));
     case "watch": return watch(top, args, say);
-    default: return withLock(top, () => sync(top, args, say));
+    default: {
+      const code = withLock(top, () => sync(top, args, say));
+      if (!args.dryRun && selfUpgrade(top)) say("automatic sync: upgrading the 15-minute timer to the ~30 s watcher");
+      return code;
+    }
   }
 }
 
