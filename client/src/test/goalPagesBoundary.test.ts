@@ -38,6 +38,8 @@ const AUDITED: AuditEntry[] = [
   { file: "components/BetaNotice.tsx", kind: "dual-tone", goalCallSites: ["BetaBadge", "BetaNoticeLine"], reason: "beta badge and notice line; the goal tone uses goal tokens only, the kit tone serves the legacy shell" },
   { file: "components/referrer-home/ReferrerSampleRows.tsx", kind: "goal-styled", reason: "referrer-home sample rows drawn with goal tokens only" },
   { file: "components/CookieConsent.tsx", kind: "goal-styled", reason: "cookie consent banner styled with goal tokens only" },
+  { file: "components/AccountMenu.tsx", kind: "goal-styled", reason: "the signed-in account menu (Settings, Language, Sign out) drawn with goal tokens only; AppShell already renders it inside GoalShell, and GoalAppShell needs it so people can sign out (P0-goal-shell-sign-out, D-412 (6))" },
+  { file: "components/NotificationBell.tsx", kind: "goal-styled", reason: "the account menu's unread-alerts bell, goal tokens only; reached through AccountMenu (P0-goal-shell-sign-out, D-412 (6))" },
   { file: "_core/auth.tsx", kind: "behavior-only", reason: "auth hooks; SignInButton is an unstyled wrapper that passes className through" },
   { file: "components/plans/billingApi.ts", kind: "behavior-only", reason: "billing API calls, no UI" },
   { file: "components/plans/format.ts", kind: "behavior-only", reason: "price and date formatting, no UI" },

@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { useAuth, useUser } from "@/_core/auth";
 import { useReferrerAccess } from "@/hooks/useReferrerAccess";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
+import { AccountMenu } from "@/components/AccountMenu";
 import { GoalLanguageConsent } from "./GoalLanguageConsent";
 import { GoalLanguagePicker } from "./GoalLanguagePicker";
 import { GoalShell } from "./GoalShell";
@@ -41,7 +42,9 @@ export function GoalAppShell({ active, pageTitle, drawer, children }: { active: 
       verifiedReferrer={verifiedReferrer}
       pageTitle={pageTitle}
       credits={credits}
-      account={{ initials: isSignedIn && isLoaded ? initialsOf(user) : "" }}
+      // P0-goal-shell-sign-out (D-019, D-412 (6)): the avatar opens the same account menu AppShell renders, so a
+      // signed-in person can reach Settings and Sign out from every goal-shell page. Signed out there is no avatar.
+      account={{ initials: isSignedIn && isLoaded ? initialsOf(user) : "", menu: isSignedIn && isLoaded ? <AccountMenu /> : undefined }}
       languagePicker={isLoaded && !isSignedIn ? <GoalLanguagePicker variant="bar" className="max-w-28" /> : null}
       alertsHref="/alerts"
       drawer={drawer}
