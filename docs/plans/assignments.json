@@ -119,6 +119,97 @@
       "epic": "D-212"
     },
     {
+      "id": "PRIVACY-own-employer-guard",
+      "title": "A person never sends a referral request to their own current employer: refused before any spend, with a plain message (D-414 (3))",
+      "row": "D-212",
+      "packet": "docs/plans/MOBILE-app-flow.md",
+      "tier": 1,
+      "lane": "privacy-own-employer-guard",
+      "branch": "agent/queue/privacy-own-employer-guard",
+      "status": "todo",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "owns": [
+        "server/db.ts",
+        "server/ownEmployerGuard.ts",
+        "server/ownEmployerGuard.test.ts",
+        "shared/ownEmployer.ts",
+        "client/src/pages/explore/useAskComposer.tsx",
+        "docs/plans/MOBILE-app-flow.md"
+      ],
+      "note": "Owner, Nov 27: lands before MOBILE-both-prompt. Guard call only in server/db.ts; refusal state only in the composer.",
+      "epic": "D-212"
+    },
+    {
+      "id": "MOBILE-landing-choice",
+      "title": "Mobile landing is one screen: role choice (search inline for seekers), benefit copy, proof moved to /how-it-works, slim cookie bar, signed-in users go home (D-414)",
+      "row": "D-212",
+      "packet": "docs/plans/MOBILE-app-flow.md",
+      "tier": 2,
+      "lane": "mobile-landing-choice",
+      "branch": "agent/queue/mobile-landing-choice",
+      "status": "todo",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/Home.tsx",
+        "shared/landingContent.ts",
+        "client/src/pages/goal/how-it-works/**",
+        "client/src/App.tsx",
+        "scripts/prerender-public-pages.tsx",
+        "client/src/components/CookieConsent.tsx",
+        "client/src/pages/landing*.test.tsx",
+        "docs/plans/MOBILE-app-flow.md"
+      ],
+      "note": "Switch MOBILE_LANDING_V2 starts off. Cookie wording unchanged (layout only). Figures keep their sources.",
+      "epic": "D-212"
+    },
+    {
+      "id": "MOBILE-signin-onescreen",
+      "title": "Sign-in fits one phone screen with the chosen role carried in and Switch; Google visible, other methods under More ways; referrer stays work-email code only (D-414)",
+      "row": "D-212",
+      "packet": "docs/plans/MOBILE-app-flow.md",
+      "tier": 1,
+      "lane": "mobile-signin-onescreen",
+      "branch": "agent/queue/mobile-signin-onescreen",
+      "status": "todo",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/sign-in/GoalSignInPage.tsx",
+        "client/src/pages/goal/sign-in/GoalSeekerForm.tsx",
+        "client/src/pages/goal/sign-in/GoalReferrerCodeForm.tsx",
+        "client/src/pages/goal/sign-in/GoalAuthFrame.tsx",
+        "client/src/pages/goal/sign-in/mobileSignIn.test.tsx",
+        "docs/plans/MOBILE-app-flow.md"
+      ],
+      "note": "Switch MOBILE_SIGNIN_V2 starts off. Login rule methods unchanged; loginRule.test.tsx and signIn.test.tsx keep every pin.",
+      "epic": "D-212"
+    },
+    {
+      "id": "MOBILE-both-prompt",
+      "title": "Once, after a seeker's first request: Where do you work now? verify your work email to refer too; a work-email-only referrer is asked to add a personal login before job hunting (D-414)",
+      "row": "D-212",
+      "packet": "docs/plans/MOBILE-app-flow.md",
+      "tier": 1,
+      "lane": "mobile-both-prompt",
+      "branch": "agent/queue/mobile-both-prompt",
+      "status": "todo",
+      "syncedTo": "D-414",
+      "dependsOn": [
+        "PRIVACY-own-employer-guard"
+      ],
+      "owns": [
+        "client/src/components/requests/BothRolesSheet.tsx",
+        "client/src/components/requests/bothRolesSheet.test.tsx",
+        "client/src/pages/explore/useAskComposer.tsx",
+        "shared/bothRolesPrompt.ts",
+        "docs/plans/MOBILE-app-flow.md"
+      ],
+      "note": "Switch BOTH_ROLES_PROMPT starts off. Uses the existing D-057 in-portal work-email verification.",
+      "epic": "D-212"
+    },
+    {
       "id": "REL-plans-signed-out-token",
       "title": "Release repair: signed-out /plans never asks WorkOS for a token, so live verification passes again and the landing hold lifts (incident #1439)",
       "row": "D-212",
@@ -2037,12 +2128,13 @@
       "tier": 2,
       "lane": "design-theme",
       "branch": "agent/queue/d048-dark-mode",
-      "status": "owner",
-      "syncedTo": "D-333",
+      "status": "todo",
+      "syncedTo": "D-413",
       "dependsOn": [
-        "SHELL-focus-clearance"
+        "SHELL-focus-clearance",
+        "D-048-K-kit"
       ],
-      "note": "Owner hold, recorded as D-230 (Oct 28): PR #766 stays draft; do not merge it and do not run --landed on it - a slot claim is not landing authorization, and this CLI's only release path writes a false Landed marker. Built and passing on head fc6072a4 (do not rebuild): the 27-token client/src/styles/goalDark.css, its R9 admission and fixtures in scripts/designTokenAuditCore.mjs, the switchable provider, sw-theme persistence and the pre-paint script; node scripts/design-token-audit.mjs exits 0 there, so D-224's contract is met. Open before the owner accepts: containment (html.dark still restyles the legacy kit surfaces; neither client/index.html:9 nor ThemeContext.tsx tests a route), the reported 1.19-1.67:1 cross-fade dip, and both-mode 1280/390 captures of every rendered state including fictional signed-in fixtures per admitted route. status owner parks the row so the picker stops handing that landing to the next idle session - the D-216 precedent used to hold draft PR #710; the owner's answer to the D-230 question returns it to the queue. Background: owner direction relayed in #645/#646 ('Have light and dark mode', 'In our platform'); the dark colour counterpart was approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light palette pixel-unchanged, no default or system-follow change). Tier 2: visual only. D-333 (3), owner in session Nov 13: \"Release shell parts only\", so this row stays owner. Release condition (D-321 rule 2): D-048-K-kit lands, because html.dark still restyles the legacy kit surfaces (D-230's containment item), or the owner says otherwise.",
+      "note": "Owner hold, recorded as D-230 (Oct 28): PR #766 stays draft; do not merge it and do not run --landed on it - a slot claim is not landing authorization, and this CLI's only release path writes a false Landed marker. Built and passing on head fc6072a4 (do not rebuild): the 27-token client/src/styles/goalDark.css, its R9 admission and fixtures in scripts/designTokenAuditCore.mjs, the switchable provider, sw-theme persistence and the pre-paint script; node scripts/design-token-audit.mjs exits 0 there, so D-224's contract is met. Open before the owner accepts: containment (html.dark still restyles the legacy kit surfaces; neither client/index.html:9 nor ThemeContext.tsx tests a route), the reported 1.19-1.67:1 cross-fade dip, and both-mode 1280/390 captures of every rendered state including fictional signed-in fixtures per admitted route. status owner parks the row so the picker stops handing that landing to the next idle session - the D-216 precedent used to hold draft PR #710; the owner's answer to the D-230 question returns it to the queue. Background: owner direction relayed in #645/#646 ('Have light and dark mode', 'In our platform'); the dark colour counterpart was approved Oct 25 00:52 IST (verified mark #60A5FA, commit #FAFAFA, light palette pixel-unchanged, no default or system-follow change). Tier 2: visual only. D-333 (3), owner in session Nov 13: \"Release shell parts only\", so this row stays owner. Release condition (D-321 rule 2): D-048-K-kit lands, because html.dark still restyles the legacy kit surfaces (D-230's containment item), or the owner says otherwise. D-413 (2): owner chose to wait for the kit removal; releases only after D-048-K-kit lands.",
       "owns": [
         "client/src/styles/goalDark.css",
         "client/src/contexts/themeContext.test.tsx",
@@ -8043,8 +8135,8 @@
       "tier": 1,
       "lane": "request-inbox-ui",
       "branch": "agent/queue/d089-ui",
-      "status": "owner",
-      "syncedTo": "D-410",
+      "status": "todo",
+      "syncedTo": "D-414",
       "dependsOn": [
         "D-089.server",
         "D-048-p3-links",
@@ -8052,7 +8144,7 @@
         "D-048-fix-referrer-home-ux",
         "D-048-fix-referrer-home-private-copy"
       ],
-      "note": "D-327 packet §5.2 (Tier 1: renders the server payloads behind the switch; S-M). Builds the goal-native panel GoalReferralLinkPanel.tsx with referralLinkApi.ts through referrerData's shared fetch helpers (so the D-057 403 handling applies), mounts it once in GoalReferrerHome.tsx under the switch, adds the askedYouDirectly field to referrerData.ts, the 'Sent to you directly' dot-and-text marker on MyCompanyInbox.tsx queue rows, the §4.9 landing line in the D-048-p3-links goal landings and the switch-only FastTrackLink/VanityFastTrackLink pages, one GOAL_UI_COVERAGE.md component line, captures at 1280 and 390 (panel generated, named, editing, taken-name error, paused, step-up; landing with and without a name; queue row with the marker) into design/goal-ui/captures/request-inbox/, and the red-first tests U1-U7 of §5.2. Goal pages stay kit-import-free (D-241 boundary); Tier 1 is declared because MyCompanyInbox.tsx computes Tier 1 (declared-above-computed is not used to relax the review); not buildable until the D-089 (3) pre-build design/placement gate is met (packet §4.10) — release captures are not a waiver. Waits for D-048-fix-referrer-home-ux: both rows own GoalReferrerHome.tsx (this row switch-only), so the capacity-bar repair lands first (validateAssignments overlap rule). D-407 (3) explicitly preserves the owner approval hold for panel, landing and direct-marker placement (D-327 (6)). Release condition: record actual approved comp/placement evidence, or a grounded design dependency naming all three surfaces, then return this row to todo and claim through the normal picker. D-370 removes independent-review/model gates only; D-399/D-407 (4) allow merge/check refresh of an eligible existing draft while this hold stands, no UI build, enablement or landing. Re-read through D-410 on Nov 26 against main 6e64d7fe8 (official UNBLOCK GPT-6.1 Sol · fbc0, 510757f74); D-410 affects D-178.release only, so the D-407 (3) owner hold and unverified approval remain.",
+      "note": "D-327 packet §5.2 (Tier 1: renders the server payloads behind the switch; S-M). Builds the goal-native panel GoalReferralLinkPanel.tsx with referralLinkApi.ts through referrerData's shared fetch helpers (so the D-057 403 handling applies), mounts it once in GoalReferrerHome.tsx under the switch, adds the askedYouDirectly field to referrerData.ts, the 'Sent to you directly' dot-and-text marker on MyCompanyInbox.tsx queue rows, the §4.9 landing line in the D-048-p3-links goal landings and the switch-only FastTrackLink/VanityFastTrackLink pages, one GOAL_UI_COVERAGE.md component line, captures at 1280 and 390 (panel generated, named, editing, taken-name error, paused, step-up; landing with and without a name; queue row with the marker) into design/goal-ui/captures/request-inbox/, and the red-first tests U1-U7 of §5.2. Goal pages stay kit-import-free (D-241 boundary); Tier 1 is declared because MyCompanyInbox.tsx computes Tier 1 (declared-above-computed is not used to relax the review); not buildable until the D-089 (3) pre-build design/placement gate is met (packet §4.10) — release captures are not a waiver. Waits for D-048-fix-referrer-home-ux: both rows own GoalReferrerHome.tsx (this row switch-only), so the capacity-bar repair lands first (validateAssignments overlap rule). D-407 (3) explicitly preserves the owner approval hold for panel, landing and direct-marker placement (D-327 (6)). Release condition: record actual approved comp/placement evidence, or a grounded design dependency naming all three surfaces, then return this row to todo and claim through the normal picker. D-370 removes independent-review/model gates only; D-399/D-407 (4) allow merge/check refresh of an eligible existing draft while this hold stands, no UI build, enablement or landing. Re-read through D-410 on Nov 26 against main 6e64d7fe8 (official UNBLOCK GPT-6.1 Sol · fbc0, 510757f74); D-410 affects D-178.release only, so the D-407 (3) owner hold and unverified approval remain. D-414 (2) (owner, Nov 27): placement approved as packet §4.8, §4.9 and §5.2 specify; the D-407 (3) hold is cleared.",
       "epic": "D-089-request-inbox",
       "owns": [
         "client/src/components/referrer-home/GoalReferralLinkPanel.tsx",
@@ -8118,8 +8210,8 @@
       "tier": 1,
       "lane": "i18n",
       "branch": "agent/claude/d093-language",
-      "status": "owner",
-      "syncedTo": "D-275",
+      "status": "todo",
+      "syncedTo": "D-413",
       "dependsOn": [
         "D-093.capture",
         "D-093.metrics",
@@ -8132,7 +8224,7 @@
         "shared/languages.ts (switch only)",
         "client/src/pages/TrustPrivacy.tsx"
       ],
-      "note": "D-093 release row (packet section 5.7, D-223 (3)): flips LANGUAGE_CAPTURE_ENABLED and adds the owner-approved privacy sentence after its five rows land, preview QA and an independent Tier 1 (privacy) review. Status stays owner: the TrustPrivacy wording is the owner's (packet section 8 Q1, unresolved) and LAUNCH-legal-copy owns TrustPrivacy.tsx. The six decomposition rows were registered Nov 2 through the ordinary docs/registry route (routine decomposition of D-093: coordinator qualification, PR #891 comment 6563726334; the earlier \"new rows paused\" premise was the coordinator's recommendation, not an owner restriction, corrected in docs/BUILD_CONTINUITY.md, and no owner pause-lift question is pending; the other restriction clauses there still stand pending their own qualification). Registration is not activation or product acceptance. No language other than English becomes visible."
+      "note": "D-093 release row (packet section 5.7, D-223 (3)): flips LANGUAGE_CAPTURE_ENABLED and adds the owner-approved privacy sentence after its five rows land, preview QA and an independent Tier 1 (privacy) review. Status stays owner: the TrustPrivacy wording is the owner's (packet section 8 Q1, unresolved) and LAUNCH-legal-copy owns TrustPrivacy.tsx. The six decomposition rows were registered Nov 2 through the ordinary docs/registry route (routine decomposition of D-093: coordinator qualification, PR #891 comment 6563726334; the earlier \"new rows paused\" premise was the coordinator's recommendation, not an owner restriction, corrected in docs/BUILD_CONTINUITY.md, and no owner pause-lift question is pending; the other restriction clauses there still stand pending their own qualification). Registration is not activation or product acceptance. No language other than English becomes visible. D-413 (3): owner approved the packet's §7 Q1 privacy sentences verbatim; other release gates unchanged."
     },
     {
       "id": "D-093.picker",
@@ -8658,7 +8750,7 @@
       "status": "owner",
       "syncedTo": "D-350",
       "dependsOn": [],
-      "note": "D-275: packet adopted; R1-R6 are the build design and R0 (no second container, make `e2e journeys` required) is the coordinator's call. Parked at owner because every route ends in an owner action: R0 needs the owner's ruleset addition (D-212 (6)), R1-R6 need the credits hard-stop confirmation (D-204), the second-container approval and the Oct 31 pause lifted. No session builds it. D-350 (Nov 16): owner approved only R0's free part. The owner adds 'e2e journeys' as a required check in the main ruleset (owner action). R1-R6 stay parked: a second container and credits are spending.",
+      "note": "D-275: packet adopted; R1-R6 are the build design and R0 (no second container, make `e2e journeys` required) is the coordinator's call. Parked at owner because every route ends in an owner action: R0 needs the owner's ruleset addition (D-212 (6)), R1-R6 need the credits hard-stop confirmation (D-204), the second-container approval and the Oct 31 pause lifted. No session builds it. D-350 (Nov 16): owner approved only R0's free part. The owner adds 'e2e journeys' as a required check in the main ruleset (owner action). R1-R6 stay parked: a second container and credits are spending. D-413 (1): owner added e2e journeys as a required check on Nov 27 (R0 done); R1-R6 stay parked.",
       "epic": "D-212"
     },
     {
@@ -8669,10 +8761,10 @@
       "tier": 3,
       "lane": "settings",
       "branch": "agent/queue/ops-github-settings",
-      "status": "owner",
-      "syncedTo": "D-222",
+      "status": "done",
+      "syncedTo": "D-413",
       "dependsOn": [],
-      "note": "Owner's word needed for each (account settings). Nothing to build.",
+      "note": "Owner's word needed for each (account settings). Nothing to build. D-413 (1): owner reported every setting done on Nov 27; to be confirmed by a session that can read repository settings.",
       "epic": "D-212"
     },
     {
@@ -9009,14 +9101,14 @@
       "id": "D-179-ats-validation",
       "title": "Record founder direction D-179: ATS connections technically validate completed referrals",
       "row": "D-179",
-      "packet": null,
+      "packet": "docs/plans/D-179-ats-referral-validation.md",
       "tier": 2,
       "lane": "d179-docs",
       "branch": "agent/coordinator/ats-referral-validation",
-      "status": "owner",
-      "syncedTo": "D-344",
+      "status": "todo",
+      "syncedTo": "D-413",
       "dependsOn": [],
-      "note": "Docs-only direction record in PR #608 (owner iMessage Oct 24 1:09 IST, phonemsg-01M5N4DC140W9347XWW34NAWX1); the DECISIONS.md D-179 entry is already on main via #610. Packet doc lives on the #608 branch and arrives with it. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. D-344 (5) (Nov 16): parked (was in-review). PR #608 is more than 1,800 commits behind main and has had no push for over two weeks. Nothing is deleted. To resume, the owner or any session under D-200 sets the row back to todo, and the work restarts from current main, reusing what still applies from #608."
+      "note": "Docs-only direction record in PR #608 (owner iMessage Oct 24 1:09 IST, phonemsg-01M5N4DC140W9347XWW34NAWX1); the DECISIONS.md D-179 entry is already on main via #610. Packet doc lives on the #608 branch and arrives with it. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. D-344 (5) (Nov 16): parked (was in-review). PR #608 is more than 1,800 commits behind main and has had no push for over two weeks. Nothing is deleted. To resume, the owner or any session under D-200 sets the row back to todo, and the work restarts from current main, reusing what still applies from #608. D-413 (5): owner said resume (Nov 27); restart from current main reusing what applies from PR #608."
     },
     {
       "id": "DEVICE-SIGNIN-passkeys",
@@ -9881,8 +9973,8 @@
       "tier": 3,
       "lane": "group-terms",
       "branch": "agent/queue/group-terms",
-      "status": "owner",
-      "syncedTo": "D-400",
+      "status": "done",
+      "syncedTo": "D-413",
       "dependsOn": [],
       "epic": "GROUP",
       "owns": [
@@ -9894,7 +9986,7 @@
         "docs/BRIEF.md",
         "AGENTS.md"
       ],
-      "note": "Packet section 8. Release condition: an authenticated owner answer to institution eligibility/discount interaction including additions, payer/renewal/term and unclaimed or existing-plan handling, and founding-cap/minimum treatment, recorded before any policy activation. The recommendations are unapproved. This owner-only pricing/plan call holds payable terms and GROUP-release, not contract/store/provider/consent work. D-399 build-ahead may prepare the answer record, never invent the answer. No legal edit, runtime or provider action."
+      "note": "Packet section 8. Release condition: an authenticated owner answer to institution eligibility/discount interaction including additions, payer/renewal/term and unclaimed or existing-plan handling, and founding-cap/minimum treatment, recorded before any policy activation. The recommendations are unapproved. This owner-only pricing/plan call holds payable terms and GROUP-release, not contract/store/provider/consent work. D-399 build-ahead may prepare the answer record, never invent the answer. No legal edit, runtime or provider action. D-413 (4): owner answer recorded in the register; recorded in packet §8 (done Nov 27). Group sales stay off until GROUP-release."
     },
     {
       "id": "GROUP-contracts",
