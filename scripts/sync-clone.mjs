@@ -170,8 +170,11 @@ function saveMain(top, local, originMain, remoteOf, args, say, out) {
 }
 
 function sync(top, args, say) {
-  const fetched = spawnSync("git", ["fetch", "-q", "--prune", "origin"], { cwd: top, env: ENV, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
-  if (fetched.status !== 0) throw new Stop(`git fetch --prune origin failed: ${gitError(fetched)}`);
+  // One retry after 3 s: GitHub Desktop's own background fetch can hold the same ref locks for a moment.
+  const fetchOnce = () => spawnSync("git", ["fetch", "-q", "--prune", "origin"], { cwd: top, env: ENV, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  let fetched = fetchOnce();
+  if (fetched.status !== 0) { Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 3000); fetched = fetchOnce(); }
+  if (fetched.status !== 0) throw new Stop(`git fetch --prune origin failed twice: ${gitError(fetched)}`);
   say("fetched origin (gone branches pruned)");
   const { originMain, remotes, trees, branches } = facts(top);
   const out = { reports: [], failures: [] };
