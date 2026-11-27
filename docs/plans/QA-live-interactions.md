@@ -18,3 +18,4 @@ After each signed-in route loads at 1280 and 390, the runner clicks the visible 
 Required CI green; the first live QA run after release shows the account-menu check passing on every signed-in route at both widths (after `P0-goal-shell-sign-out` is live), with its run link in Status.
 
 ## Status
+Codex GPT-6 · f47f — 2026-11-27 — account-menu check implemented; focused tests 34/34 and `pnpm check` green; first live QA run remains unverified.
