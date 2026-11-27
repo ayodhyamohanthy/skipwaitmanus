@@ -2,7 +2,8 @@
 // "Browse roles worth a referral." The commit is "Request a referral" on the
 // chosen role; save and paste are the quiet actions; "No jobs match" is the
 // honest empty state. Same endpoints, canonical ?q= URL, ?job= deep link,
-// JSON-LD and referral-draft hand-off as the kit page.
+// JSON-LD and referral-draft hand-off as the kit page. With no posted role for a
+// search, the same query is answered from company careers sites (issue 1706, JobsCatalogAnswer).
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Bookmark, BookmarkCheck } from "lucide-react";
@@ -14,6 +15,7 @@ import { applySeo, jobsJsonLd } from "@/lib/seo";
 import { cn } from "@/lib/utils";
 import { isValidTargetRoleUrl, normalizeTargetRoleUrl } from "@shared/referralUrl";
 import { DiscoveryFrame } from "./DiscoveryFrame";
+import { emptyBody, JobsCatalogAnswer, searchCatalog, type CatalogAnswer } from "./JobsCatalogAnswer";
 
 export const GOAL_PAGE = { goalLine: "Browse roles worth a referral." } as const;
 export const SIGN_IN_GOAL_PAGE = { goalLine: "Sign in to save roles." } as const;
@@ -44,6 +46,9 @@ export default function GoalJobs() {
   // A failed save or hand-off is said in a goal alert line on the page, never a kit toast.
   const [notice, setNotice] = useState("");
   const [signInGate, setSignInGate] = useState(false);
+  // Issue 1706: the submitted search and, when /api/jobs has no role for it, the careers-site answer.
+  const [searched, setSearched] = useState({ query: "", location: "" });
+  const [catalog, setCatalog] = useState<CatalogAnswer>({ status: "idle" });
 
   const loadJobs = async (nextQuery = query, nextLocation = location) => {
     setLoading(true); setError("");
@@ -57,7 +62,11 @@ export default function GoalJobs() {
       const response = await fetch(`/api/jobs${params.size ? `?${params.toString()}` : ""}`);
       const payload = await readApiJson<{ jobs?: JobRow[]; error?: string }>(response, LOAD_ERROR);
       if (!response.ok) throw new Error(payload.error || LOAD_ERROR);
-      setJobs(payload.jobs || []);
+      const rows = payload.jobs || [];
+      setJobs(rows);
+      setSearched({ query: nextQuery.trim(), location: nextLocation.trim() });
+      setCatalog(rows.length === 0 && nextQuery.trim() ? await searchCatalog(nextQuery.trim()) : { status: "idle" });
+      // JSON-LD lists the posted roles only; careers-site rows are never JobPosting markup (D-193).
       applySeo({ title: "Browse roles worth a referral", description: "Search published roles and request a private referral from a verified employee. Referrers stay anonymous.", path: "/jobs", jsonLd: jobsJsonLd(payload.jobs || []) });
     } catch (loadError) { setError(loadError instanceof Error ? loadError.message : LOAD_ERROR); }
     finally { setLoading(false); }
@@ -104,10 +113,11 @@ export default function GoalJobs() {
 
   const pasteInstead = () => { localStorage.setItem("skipwait-job-source", "sample"); go("/start"); };
 
-  const requestReferral = (job: JobRow) => {
-    if (!isValidTargetRoleUrl(job.targetRoleUrl)) return;
+  const requestReferral = (job: JobRow) => handOff(job.targetRoleUrl);
+  const handOff = (roleUrl: string | null | undefined) => {
+    if (!isValidTargetRoleUrl(roleUrl)) { setNotice("We could not use this job link. Open the role on the careers site and paste its link instead."); return; }
     try {
-      const targetUrl = normalizeTargetRoleUrl(job.targetRoleUrl!);
+      const targetUrl = normalizeTargetRoleUrl(roleUrl!);
       const draft = readReferralDraft();
       if (normalizeTargetRoleUrl(draft?.targetUrl || "") !== targetUrl) {
         localStorage.removeItem("bridge-target-compensation");
@@ -153,7 +163,9 @@ export default function GoalJobs() {
   } else if (!selected) {
     body = (
       <div className="mt-6 max-w-2xl">
-        <GoalEmptyState className="px-0 max-gdesk:px-0" title="No jobs match. Try a broader search." body="Clear the location or search for a role title instead." />
+        {jobs.length > 0
+          ? <GoalEmptyState className="px-0 max-gdesk:px-0" title="No jobs match. Try a broader search." body={emptyBody(searched.location)} />
+          : <JobsCatalogAnswer query={searched.query} location={searched.location} answer={catalog} onRetry={() => { void loadJobs(); }} onAsk={handOff} />}
         <div className="mt-4">
           <GoalNextStep reason="Have the employer’s job link? Paste it and request a referral for that role.">
             <div className="mt-4"><GoalButton variant="primary" onClick={pasteInstead}>Paste a job link</GoalButton></div>
