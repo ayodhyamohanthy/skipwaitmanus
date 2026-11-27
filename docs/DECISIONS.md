@@ -1354,3 +1354,49 @@ This applies the existing owner's release condition, not a new numbered decision
 new task, blanket hold clearance or permission to take another session's work.
 No old design, runtime code, price, sales switch, legal text, login method, money
 path or production setting is changed. Other owner-parked rows remain unchanged.
+
+### November 28 CEO review: account-menu repair carriers and claim cost (D-019, D-200, D-409, D-412)
+
+Official CEO REVIEW `GPT-6.1 Sol · 9186` checked main
+`3508530aaf046afe3145003feb2306169e617c5d`, current instructions and decisions
+through D-414, the prior [#1710](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1710)
+outcome and [Live QA 46065479203](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/46065479203).
+Its four Messages/Support captures at 1280 and 390 were inspected; both routes
+lack the account menu. Source explains the boundary: `GoalMessages` has only
+its local main element, and `Support` uses the public `PolicyPageShell`
+fallback. Neither renders the repaired goal app shell. Existing automated
+issues #1708/#1709 are open, with no implementation PR or assigned repair row.
+
+Register `P0-messages-account-menu` and `P0-support-account-menu` directly after
+the original shell P0 under D-019's broken-basic priority. Their shared
+[packet](plans/P0-account-menu-pages.md) gives disjoint source ownership,
+existing-shell reuse, behavioral regressions and exact-release 1280/390
+acceptance. Preserve public Support, actual policy frames, all content and
+DM privacy/idempotency. The existing QA checks stay enabled; only a later
+passing live run closes each issue. No automatic PR-close directive or new
+sign-out implementation. Existing rows retain their relative order and holders.
+
+The same session's normal claim exceeded a 300-second deadline in the shared
+worktree environment and a 900-second deadline in a clean full-history clone.
+One bounded retry completed in 847 seconds after three rival claims won,
+returning CEO REVIEW. Repeated state loads reported two unknown merged-branch
+histories beyond 12 closed-PR pages. This proves admission cost and contention,
+not a root cause or that unknown work is done. Append `PICKER-claim-cost` FIFO
+with its [measured-repair packet](plans/PICKER-claim-cost.md): phase attribution
+before implementation, reader-cost proof, and unchanged authoritative freshness,
+lease, unknown-read, sync and landing safeguards. No manual claim or hold waiver.
+
+The read-only scorecard's 100-PR sample covers only four days of its requested
+seven-day window: 94 merges, including 55 docs-only, with 214 `review` reports
+among 361 reports. These are engineering sample counts, not full-window totals
+or business outcomes. Its 18 no-independent-pass entries do not show a D-370
+violation: that decision removed the requirement. API and web both read
+`f02de526`; main is 18 commits ahead, not itself a release defect because
+deployment is path-filtered. No current production funnel, supply conversion
+or money-check result was read; those business measures remain unverified.
+
+This is execution routing within existing decisions, not a new owner ruling,
+runtime repair, production acceptance, product/price/plan change, login method,
+legal wording, settings, secret, paid tool or sales-switch authorization.
+Protected PR and green required CI remain mandatory. The menu repairs and
+claim-cost improvement remain unfinished after this documentation lands.
