@@ -12,7 +12,7 @@ import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@
 
 const ERROR_CLASS = "rounded-[10px] border border-g-crimson/40 p-3 text-g-small text-g-crimson";
 
-export function GoalReferrerCodeForm({ onSignedIn }: { onSignedIn?: () => void } = {}) {
+export function GoalReferrerCodeForm({ onSignedIn, compact = false }: { onSignedIn?: () => void; compact?: boolean } = {}) {
   const [email, setEmail] = useState(() => rememberedSignInEmail("referrer"));
   const [remembered, setRemembered] = useState(() => rememberedSignInEmail("referrer") !== "");
   const [code, setCode] = useState("");
@@ -48,10 +48,12 @@ export function GoalReferrerCodeForm({ onSignedIn }: { onSignedIn?: () => void }
   if (stage === "email") {
     return (
       <div className="w-full">
-        <p className="text-g-small leading-[1.6] text-g-ink">You can review the role and note before you choose. The seeker's name and resume stay hidden until you accept. After you accept, you can open the resume only while your document access is active. Decline or ask for context. Nothing is sent from your account.</p>
-        <p className="mt-2 text-g-meta text-g-ink-3">Work email verifies company access; it stays private.</p>
+        {compact ? <p className="text-g-meta text-g-ink-2">We'll send a code to confirm you work there. We use it only for that.</p> : <>
+          <p className="text-g-small leading-[1.6] text-g-ink">You can review the role and note before you choose. The seeker's name and resume stay hidden until you accept. After you accept, you can open the resume only while your document access is active. Decline or ask for context. Nothing is sent from your account.</p>
+          <p className="mt-2 text-g-meta text-g-ink-3">Work email verifies company access; it stays private.</p>
+        </>}
         <div className="mt-4">
-          <GoalField label="Company email" htmlFor="goal-otp-referrer-email">
+          <GoalField label={compact ? "Work email" : "Company email"} htmlFor="goal-otp-referrer-email">
             <GoalTextInput id="goal-otp-referrer-email" type="email" autoComplete="email" autoCapitalize="none" spellCheck={false} inputMode="email" placeholder="you@company.com" value={email}
               onChange={event => { setEmail(event.target.value); setError(""); }}
               onKeyDown={event => { if (event.key === "Enter") { event.preventDefault(); void send(); } }} />
@@ -59,7 +61,7 @@ export function GoalReferrerCodeForm({ onSignedIn }: { onSignedIn?: () => void }
         </div>
         {remembered ? <button type="button" className="mt-2 text-g-meta font-semibold text-g-ink underline underline-offset-2" onClick={() => { forgetSignInEmail("referrer"); setRemembered(false); setEmail(""); setError(""); document.getElementById("goal-otp-referrer-email")?.focus(); }}>Not you? Forget this email</button> : null}
         {error ? <p role="alert" className={`mt-3 ${ERROR_CLASS}`}>{error}</p> : null}
-        <div className="mt-4"><GoalButton variant="primary" busy={busy} busyLabel="Sending code…" disabledReason={email.trim() ? undefined : "Enter your company email first."} onClick={() => { void send(); }}>Send sign-in code</GoalButton></div>
+        <div className="mt-4"><GoalButton variant="primary" className={compact ? "w-full" : undefined} busy={busy} busyLabel="Sending code…" disabledReason={email.trim() ? undefined : "Enter your company email first."} onClick={() => { void send(); }}>{compact ? "Send my code" : "Send sign-in code"}</GoalButton></div>
       </div>
     );
   }

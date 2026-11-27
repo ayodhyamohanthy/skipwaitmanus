@@ -27,7 +27,7 @@ async function postJson(path: string, payload: object): Promise<{ ok: boolean; s
   return { ok: res.ok, status: res.status, body: await res.json().catch(() => ({})) };
 }
 
-export function GoalSeekerEmailCode({ returnTo, emailFieldId, passkeysEnabled, onUsePassword }: { returnTo: string; emailFieldId: string; passkeysEnabled: boolean; onUsePassword: () => void }) {
+export function GoalSeekerEmailCode({ returnTo, emailFieldId, passkeysEnabled, onUsePassword, compact = false, onCodeEntry }: { returnTo: string; emailFieldId: string; passkeysEnabled: boolean; onUsePassword: () => void; compact?: boolean; onCodeEntry?: (entering: boolean) => void }) {
   const online = useOnlineStatus();
   const [stage, setStage] = useState<"email" | "code">("email");
   const [email, setEmail] = useState(() => rememberedSignInEmail("seeker"));
@@ -44,7 +44,7 @@ export function GoalSeekerEmailCode({ returnTo, emailFieldId, passkeysEnabled, o
     setBusy(true); setError(""); setWorkEmail(false);
     try {
       const result = await postJson(SEND_PATH, { email: cleanEmail });
-      if (result.ok && result.body.sent) { setStage("code"); setCode(""); }
+      if (result.ok && result.body.sent) { setStage("code"); setCode(""); onCodeEntry?.(true); }
       else { setError(result.body.error || "We could not send the email. Try again shortly."); setWorkEmail(result.body.code === "use_work_email_code"); }
     } catch { setError("We could not send the email. Check your connection and try again."); }
     setBusy(false);
@@ -78,16 +78,16 @@ export function GoalSeekerEmailCode({ returnTo, emailFieldId, passkeysEnabled, o
           disabledReason={!online ? OFFLINE_REASON : code.length === 6 ? undefined : "Enter the six-digit code from your email"}>Sign in</GoalButton>
         <div className="flex flex-wrap justify-between gap-2">
           <GoalButton type="button" variant="ghost" onClick={() => { void send(); }}>Send a new email</GoalButton>
-          <GoalButton type="button" variant="ghost" onClick={() => { setStage("email"); setCode(""); setError(""); }}>Use a different email</GoalButton>
+          <GoalButton type="button" variant="ghost" onClick={() => { setStage("email"); setCode(""); setError(""); onCodeEntry?.(false); }}>Use a different email</GoalButton>
         </div>
       </form>
     );
   }
 
   return (
-    <form data-testid="seeker-sign-in" className="mt-4 grid gap-3" onSubmit={send} noValidate>
+    <form data-testid="seeker-sign-in" className={compact ? "grid gap-3" : "mt-4 grid gap-3"} onSubmit={send} noValidate>
       <PasskeyAutofill enabled={passkeysEnabled} returnTo={returnTo} />
-      <GoalField label="Email address" htmlFor={emailFieldId} help="We'll email you a sign-in link and a code. New here? This creates your free account.">
+      <GoalField label="Email address" htmlFor={emailFieldId} help={compact ? undefined : "We'll email you a sign-in link and a code. New here? This creates your free account."}>
         <GoalTextInput id={emailFieldId} name="email" type="email" placeholder="you@example.com" autoComplete={passkeysEnabled ? "username webauthn" : "email"} autoCapitalize="none" spellCheck={false} required
           value={email} onChange={event => { setEmail(event.target.value); setError(""); setWorkEmail(false); }} />
       </GoalField>
@@ -102,9 +102,9 @@ export function GoalSeekerEmailCode({ returnTo, emailFieldId, passkeysEnabled, o
       {!online ? <p role="status" className="text-g-meta text-g-ink-2">{OFFLINE_REASON}</p> : null}
       <GoalButton type="submit" variant="primary" className="w-full" busy={busy} busyLabel="Sending…"
         disabledReason={!online ? OFFLINE_REASON : cleanEmail ? undefined : "Enter your email"}>Email me a sign-in link</GoalButton>
-      <button type="button" className="min-h-11 text-center text-g-meta text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink" onClick={onUsePassword}>
+      {!compact ? <button type="button" className="min-h-11 text-center text-g-meta text-g-ink underline decoration-g-control-edge underline-offset-[3px] hover:decoration-g-ink" onClick={onUsePassword}>
         Use a password instead
-      </button>
+      </button> : null}
     </form>
   );
 }

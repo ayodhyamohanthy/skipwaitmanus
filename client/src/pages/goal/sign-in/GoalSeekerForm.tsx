@@ -9,6 +9,7 @@ import { type FormEvent, useState } from "react";
 import { Link } from "wouter";
 import { GoalButton } from "@/components/goal/GoalButton";
 import { GoalField, GoalTextInput } from "@/components/goal/GoalField";
+import { GoalSheet } from "@/components/goal/GoalSheet";
 import { PasskeyAutofill, PasskeyEnrollmentOffer, PasskeySignInButton, usePasskeyAvailability } from "@/components/goal/GoalPasskeySignIn";
 import { useOnlineStatus } from "@/components/goal/useOnlineStatus";
 import { forgetSignInEmail, rememberedSignInEmail, rememberSignInEmail } from "@/lib/rememberedSignInEmail";
@@ -60,9 +61,37 @@ function SeekerAlternatives({ returnTo, enabled }: { returnTo: string; enabled: 
 }
 
 /** D-406: emailed link + code by default when the switch is on; otherwise exactly the password form. */
-export function GoalSeekerForm({ returnTo, emailLinkEnabled = EMAIL_SIGN_IN_LINK_ENABLED }: { returnTo: string; emailLinkEnabled?: boolean }) {
+export function GoalSeekerForm({ returnTo, emailLinkEnabled = EMAIL_SIGN_IN_LINK_ENABLED, compact = false }: { returnTo: string; emailLinkEnabled?: boolean; compact?: boolean }) {
   const passkeys = usePasskeyAvailability();
   const [method, setMethod] = useState<"email" | "password">(emailLinkEnabled ? "email" : "password");
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [enteringCode, setEnteringCode] = useState(false);
+  if (compact && emailLinkEnabled) {
+    return (
+      <div className="grid gap-3">
+        <GoalSeekerEmailCode compact returnTo={returnTo} emailFieldId={SEEKER_EMAIL_FIELD_ID} passkeysEnabled={passkeys.enabled && !moreOpen} onUsePassword={() => setMethod("password")} onCodeEntry={setEnteringCode} />
+        {!enteringCode ? <>
+          <GoalButton variant="outline" className="w-full border-g-control-edge" onClick={() => window.location.assign(goalSeekerSocialUrl("google", returnTo))}>Continue with Google</GoalButton>
+          <GoalButton variant="ghost" className="w-full" onClick={() => { setMethod("email"); setMoreOpen(true); }}>More ways to sign in</GoalButton>
+        </> : null}
+        <GoalSheet open={moreOpen} onOpenChange={setMoreOpen} title="More ways to sign in" description="Use the same account with another sign-in method.">
+          <div className="max-h-[calc(100dvh-120px)] overflow-y-auto overscroll-contain">
+            {method === "password"
+              ? <GoalSeekerPasswordForm compact returnTo={returnTo} onUseEmail={() => setMoreOpen(false)} />
+              : <div className="mt-4 grid gap-2">
+                  <PasskeySignInButton enabled={passkeys.enabled} returnTo={returnTo} />
+                  {GOAL_SEEKER_SOCIAL.filter(item => item.id !== "google").map(item => (
+                    <GoalButton key={item.id} variant="outline" className="w-full border-g-control-edge" onClick={() => window.location.assign(goalSeekerSocialUrl(item.id, returnTo))}>Continue with {item.label}</GoalButton>
+                  ))}
+                  <GoalButton variant="outline" className="w-full border-g-control-edge" onClick={() => setMethod("password")}>Use a password instead</GoalButton>
+                  <GoalPasskeyManageLink />
+                </div>}
+            <GoalButton variant="ghost" className="mt-2 w-full" onClick={() => setMoreOpen(false)}>Back to email sign-in</GoalButton>
+          </div>
+        </GoalSheet>
+      </div>
+    );
+  }
   if (method === "email") {
     return (
       <div className="grid gap-3">
@@ -74,7 +103,7 @@ export function GoalSeekerForm({ returnTo, emailLinkEnabled = EMAIL_SIGN_IN_LINK
   return <GoalSeekerPasswordForm returnTo={returnTo} onUseEmail={emailLinkEnabled ? () => setMethod("email") : undefined} />;
 }
 
-function GoalSeekerPasswordForm({ returnTo, onUseEmail }: { returnTo: string; onUseEmail?: () => void }) {
+function GoalSeekerPasswordForm({ returnTo, onUseEmail, compact = false }: { returnTo: string; onUseEmail?: () => void; compact?: boolean }) {
   const passkeys = usePasskeyAvailability();
   const online = useOnlineStatus();
   const [mode, setMode] = useState<PasswordMode>("sign_in");
@@ -89,6 +118,7 @@ function GoalSeekerPasswordForm({ returnTo, onUseEmail }: { returnTo: string; on
   const cleanEmail = email.trim().toLowerCase();
   const creating = mode === "sign_up";
   const ready = cleanEmail !== "" && (creating || password !== "");
+  const emailFieldId = compact ? "seeker-password-email" : SEEKER_EMAIL_FIELD_ID;
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -162,11 +192,11 @@ function GoalSeekerPasswordForm({ returnTo, onUseEmail }: { returnTo: string; on
       <PasskeyAutofill enabled={passkeys.enabled} returnTo={returnTo} />
       <GoalField
         label="Email address"
-        htmlFor={SEEKER_EMAIL_FIELD_ID}
+        htmlFor={emailFieldId}
         help={creating ? "We'll email you a link to set your password. It's how we know the address is yours." : undefined}
       >
         <GoalTextInput
-          id={SEEKER_EMAIL_FIELD_ID}
+          id={emailFieldId}
           name="email"
           type="email"
           placeholder="you@example.com"
@@ -182,7 +212,7 @@ function GoalSeekerPasswordForm({ returnTo, onUseEmail }: { returnTo: string; on
         <button
           type="button"
           className="min-h-11 self-start text-g-meta text-g-ink-2 underline decoration-g-control-edge underline-offset-[3px] hover:text-g-ink"
-          onClick={() => { forgetSignInEmail("seeker"); setRemembered(false); setEmail(""); document.getElementById(SEEKER_EMAIL_FIELD_ID)?.focus(); }}
+          onClick={() => { forgetSignInEmail("seeker"); setRemembered(false); setEmail(""); document.getElementById(emailFieldId)?.focus(); }}
         >
           Not you? Forget this email
         </button>
@@ -270,7 +300,7 @@ function GoalSeekerPasswordForm({ returnTo, onUseEmail }: { returnTo: string; on
         </>
       )}
 
-      <SeekerAlternatives returnTo={returnTo} enabled={passkeys.enabled} />
+      {!compact ? <SeekerAlternatives returnTo={returnTo} enabled={passkeys.enabled} /> : null}
     </form>
   );
 }

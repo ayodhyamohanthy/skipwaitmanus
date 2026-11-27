@@ -18,7 +18,7 @@ export function serverWords(body: unknown, fallback: string): string {
   return fallback;
 }
 
-export function GoalAuthFrame({ screen, page, goalLine, lead, back = { href: "/", label: "Back to home" }, skip, children }: {
+export function GoalAuthFrame({ screen, page, goalLine, lead, back = { href: "/", label: "Back to home" }, skip, compact = false, children }: {
   screen: string;
   page: string;
   goalLine: string;
@@ -26,6 +26,7 @@ export function GoalAuthFrame({ screen, page, goalLine, lead, back = { href: "/"
   back?: { href: string; label: string } | null;
   /** A skip control, first in the tab order and visible only while focused (WCAG 2.4.1 bypass). */
   skip?: { label: string; onActivate: () => void };
+  compact?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -45,7 +46,7 @@ export function GoalAuthFrame({ screen, page, goalLine, lead, back = { href: "/"
           ) : null}
         </div>
       </header>
-      <main className="mx-auto w-full max-w-[480px] px-4 pb-16 pt-8 gdesk:pt-14">
+      <main className={compact ? "mx-auto flex min-h-[calc(100svh-57px)] w-full max-w-[480px] flex-col px-4 py-4" : "mx-auto w-full max-w-[480px] px-4 pb-16 pt-8 gdesk:pt-14"}>
         <h1 className="text-balance text-g-display text-g-ink">{goalLine}</h1>
         {lead ? <div className="mt-3 text-g-body text-g-ink-2">{lead}</div> : null}
         {children}

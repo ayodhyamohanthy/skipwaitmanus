@@ -36,3 +36,4 @@ Prices, plan contents, money rules, legal text (Terms, Privacy, Refund wording, 
 
 ## Status
 - MOBILE-app-flow: Claude Code · 33aa, 2026-11-27 — packet written from the owner-approved mocks; rows registered (D-414); nothing built.
+- MOBILE-signin-onescreen: GPT-6.1 Sol · 7070 — 2026-11-28 — role carry/Switch, compact email/work-code forms and seeker-method sheet built; 98 focused tests, typecheck, token audit and build pass; [1280/390/320 captures](../../design/goal-ui/captures/mobile-signin-onescreen/) show the local flagged preview; `MOBILE_SIGNIN_V2` stays false, required CI/release identity, funnel comparison and real-phone activation acceptance remain unverified.

@@ -82,3 +82,13 @@ payment never grants login, documents or application consent to the buyer. Comme
 `GROUP-terms`; other slices build disabled. Implementation and live acceptance remain pending. Required CI and
 all money/privacy rules apply (D-370); this is no price change or Group sales activation. Original sources:
 `phonemsg-01M6892F33T035JZSAA1917NKY`, `phonemsg-01M6896AS74F9S9T45Y9M9FY75`. No real recipients or payment.
+
+## Mobile sign-in (D-414)
+
+The [mobile flow](plans/MOBILE-app-flow.md) has a dormant one-screen sign-in presentation behind
+`MOBILE_SIGNIN_V2 = false` in `GoalSignInPage.tsx`. A carried role skips the role choice; Switch returns to it.
+Seekers keep email link/code and visible Google, with other social providers, password and available passkeys
+in a sheet. Referrers keep the existing work-email code flow only. Authentication endpoints and methods,
+desktop layout and the switch-off presentation are unchanged. Local 390x664/320x568 entry captures and
+1280 desktop captures establish preview layout, not live activation. The switch stays off until the
+landing/search-start and sign-in-completion comparison plus a real-phone check meet the packet's release gate.

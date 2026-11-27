@@ -7,7 +7,7 @@
 // referrers use the work-email code only (GoalReferrerCodeForm), never personal
 // email, social or passkey. Return targets are the kit page's, unchanged.
 import { Check, ShieldCheck, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { Link } from "wouter";
 import { BetaNoticeLine } from "@/components/BetaNotice";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
@@ -24,6 +24,18 @@ import { GoalAuthFrame } from "./GoalAuthFrame";
 import { GoalPasskeyManageLink, GoalSeekerForm, SEEKER_EMAIL_FIELD_ID } from "./GoalSeekerForm";
 
 export const GOAL_PAGE = { goalLine: "Sign in to find or give a referral." } as const;
+
+/** D-414: comparison and real-phone acceptance precede activation. */
+export const MOBILE_SIGNIN_V2 = false;
+
+const PHONE_QUERY = "(max-width: 640px)";
+function subscribePhone(onChange: () => void) {
+  const query = window.matchMedia?.(PHONE_QUERY);
+  query?.addEventListener("change", onChange);
+  return () => query?.removeEventListener("change", onChange);
+}
+const isPhone = () => window.matchMedia?.(PHONE_QUERY).matches ?? window.innerWidth < 641;
+const notPhone = () => false;
 
 type Intent = "seeker" | "referrer";
 
@@ -66,10 +78,13 @@ function emailedLink(enabled: boolean): EmailedLinkState {
   return { status: "invalid", plane: params.get("p") === "r" ? "r" : "s" };
 }
 
-export default function GoalSignInPage({ emailLinkEnabled = EMAIL_SIGN_IN_LINK_ENABLED }: { emailLinkEnabled?: boolean } = {}) {
+export default function GoalSignInPage({ emailLinkEnabled = EMAIL_SIGN_IN_LINK_ENABLED, mobileSignInEnabled = MOBILE_SIGNIN_V2 }: { emailLinkEnabled?: boolean; mobileSignInEnabled?: boolean } = {}) {
   const [link, setLink] = useState<EmailedLinkState>(() => emailedLink(emailLinkEnabled));
   const linkPlane = link.status === "valid" ? link.link.plane : link.status === "invalid" ? link.plane : null;
   const [intent, setIntent] = useState<Intent>(() => (linkPlane === "r" || searchParam("intent") === "referrer" ? "referrer" : "seeker"));
+  const phone = useSyncExternalStore(subscribePhone, isPhone, notPhone);
+  const compact = mobileSignInEnabled && phone;
+  const [roleChosen, setRoleChosen] = useState(() => link.status !== "absent" || searchParam("intent") === "seeker" || searchParam("intent") === "referrer");
   useEffect(() => {
     if (link.status === "absent") return;
     // Clear every marked link, including malformed ones, without changing the path or query.
@@ -87,6 +102,47 @@ export default function GoalSignInPage({ emailLinkEnabled = EMAIL_SIGN_IN_LINK_E
   const passwordElsewhere = intent === "seeker" && reason === USE_PASSWORD_SIGN_IN_REASON;
   const copy = COPY[intent];
 
+  if (compact) {
+    const choosing = !roleChosen && link.status === "absent";
+    const roleLabel = intent === "seeker" ? "I want a referral" : "I can refer someone";
+    return (
+      <GoalAuthFrame screen="sign-in" page="sign-in" compact
+        goalLine={choosing ? "What brings you here?" : intent === "seeker" ? "Sign in to get referred." : "Sign in with your work email."}>
+        {choosing ? (
+          <div role="group" aria-label="I am here to" className="mt-6 grid gap-3">
+            {SIDES.map(({ id, Icon }) => (
+              <button key={id} type="button" onClick={() => { setIntent(id); setRoleChosen(true); }}
+                className="flex min-h-20 items-center gap-3 rounded-g-tile border border-g-control-edge p-4 text-left hover:bg-g-surface-hover">
+                <Icon aria-hidden="true" className="size-5 shrink-0" strokeWidth={1.75} />
+                <span><span className="block text-g-label">{id === "seeker" ? "I want a referral" : "I can refer someone"}</span>
+                  <span className="mt-1 block text-g-meta text-g-ink-2">{id === "seeker" ? "Get introduced by someone inside." : "Help people through your company's process."}</span></span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <>
+            {link.status === "absent" ? (
+              <div className="mt-2 flex min-h-11 items-center justify-between gap-2 text-g-meta text-g-ink-2">
+                <span>You chose {roleLabel}</span>
+                <button type="button" className="min-h-11 px-2 font-semibold text-g-ink underline underline-offset-2" onClick={() => setRoleChosen(false)}>Switch</button>
+              </div>
+            ) : null}
+            <section aria-label="Your next step" className="mt-3">
+              {workEmailRefused ? <p role="status" className="mb-2 text-g-meta text-g-crimson">{PASSWORD_AUTH_COPY.use_work_email_code}</p> : null}
+              {passwordElsewhere ? <p role="status" className="mb-2 text-g-meta text-g-crimson">{USE_PASSWORD_SIGN_IN_COPY}</p> : null}
+              {link.status !== "absent"
+                ? <GoalEmailLinkConfirm link={link.status === "valid" ? link.link : null} returnTo={linkPlane === "r" ? referrerReturnTo : seekerReturnTo} onRestart={() => { setLink({ status: "absent" }); setIntent(linkPlane === "r" ? "referrer" : "seeker"); setRoleChosen(true); }} />
+                : intent === "referrer"
+                  ? <div data-testid="referrer-work-email-otp"><GoalReferrerCodeForm compact onSignedIn={() => window.location.assign(referrerReturnTo)} /></div>
+                  : <GoalSeekerForm compact returnTo={seekerReturnTo} emailLinkEnabled={emailLinkEnabled} />}
+            </section>
+            {intent === "referrer" ? <p className="mt-4 text-g-meta text-g-ink-2">Always free. Referrers are never paid.</p> : null}
+          </>
+        )}
+        <p className="mt-auto pt-4 text-g-badge text-g-ink-3">By continuing, you agree to the <Link href="/terms" className={LINK}>Terms</Link> and acknowledge the <Link href="/privacy" className={LINK}>Privacy Policy</Link>.</p>
+      </GoalAuthFrame>
+    );
+  }
   return (
     <GoalAuthFrame
       screen="sign-in"
