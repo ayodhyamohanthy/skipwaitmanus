@@ -12,7 +12,8 @@ import { describe, expect, it } from "vitest";
 import {
   HOOK_MARKER, NEVER_PUSH, PRIVATE_PREFIXES, addedLines, autoSetupAllowed, exitCodeOf, findSensitive, hookScript, planBranch, planHook, planMain, pullMethod, sideBranchForMain,
 } from "./syncCloneCore.mjs";
-import { crontabWith, crontabWithout, nextDelay, parseRemoteHeads, remoteMoved, watchInterval, watchLoop } from "./syncCloneWatch.mjs";
+import { nextDelay, parseRemoteHeads, remoteMoved, watchInterval, watchLoop } from "./syncCloneCore.mjs";
+import { crontabWith, crontabWithout } from "./syncCloneSetup.mjs";
 
 const root = path.resolve(__dirname, "..");
 const SCRIPT = path.join(root, "scripts/sync-clone.mjs");

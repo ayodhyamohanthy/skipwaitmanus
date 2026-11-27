@@ -14,7 +14,6 @@ import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { HOOK_MARKER, autoSetupAllowed, hookScript, planHook } from "./syncCloneCore.mjs";
-import { crontabWith, crontabWithout } from "./syncCloneWatch.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const LABEL = "me.skipwait.sync-clone";
@@ -178,4 +177,29 @@ export function autoSetup(top, say, env = process.env) {
     }
   }
   return code;
+}
+
+/**
+ * SYNC-auto-pull on Linux without a systemd user session: the crontab with the watcher's @reboot line added once.
+ * Every other line is kept as it is; an older line of ours (the 15-minute sync or a watcher for another path) is replaced.
+ * @param {string|null} existing the current table (`crontab -l`), null when there is none
+ * @param {string} line the full @reboot line to keep
+ * @returns {string|null} the new table, or null when it already has exactly that line
+ */
+export function crontabWith(existing, line) {
+  if (!line.includes("sync-clone.mjs")) throw new Error("crontabWith: the line must run sync-clone.mjs");
+  const lines = String(existing ?? "").split("\n").filter((l, i, all) => l !== "" || i < all.length - 1);
+  if (lines.includes(line)) return null;
+  const kept = lines.filter(l => !(l.includes("sync-clone.mjs") && !l.trimStart().startsWith("#")));
+  return `${[...kept, line].join("\n")}\n`;
+}
+
+/**
+ * The same table with every line of ours removed (--uninstall-timer); null when there was nothing to remove.
+ * @param {string|null} existing
+ */
+export function crontabWithout(existing) {
+  const lines = String(existing ?? "").split("\n");
+  const kept = lines.filter(l => !(l.includes("sync-clone.mjs") && !l.trimStart().startsWith("#")));
+  return kept.length === lines.length ? null : kept.join("\n");
 }

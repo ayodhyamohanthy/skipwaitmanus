@@ -24,8 +24,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { closeSync, openSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { addedLines, exitCodeOf, findSensitive, planBranch, planMain, pullMethod, sideBranchForMain } from "./syncCloneCore.mjs";
-import { watchInterval, watchLoop } from "./syncCloneWatch.mjs";
+import { addedLines, exitCodeOf, findSensitive, planBranch, planMain, pullMethod, sideBranchForMain, watchInterval, watchLoop } from "./syncCloneCore.mjs";
 import { autoSetup, hook, timer } from "./syncCloneSetup.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));

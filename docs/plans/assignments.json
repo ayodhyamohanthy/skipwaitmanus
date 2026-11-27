@@ -9899,7 +9899,6 @@
         "scripts/syncCloneCore.mjs",
         "scripts/sync-clone.mjs",
         "scripts/syncCloneSetup.mjs",
-        "scripts/syncCloneWatch.mjs",
         "scripts/syncClone.test.ts",
         "scripts/sync-check.sh",
         "AGENTS.md",
