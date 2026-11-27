@@ -9,6 +9,15 @@ it("banded billing defaults off and reaches the server through the Worker", () =
   expect(workerPassthroughKeys()).toContain("BANDED_SALES_ENABLED");
 });
 
+// BANDED-release (D-370 (6), D-383 (3)): production turns banded sales on through the reviewed
+// release-time path, wrangler.jsonc `vars`, which deploy-api.yml ships only after exact-SHA green CI.
+// Both readers accept only the exact string "true", so the manifest must carry exactly that.
+it("production manifest turns banded sales on with the exact value both readers accept", () => {
+  const manifest = readFileSync(join(ROOT, "wrangler.jsonc"), "utf8");
+  const vars = manifest.match(/"vars"\s*:\s*\{(.*?)\}/s)?.[1] ?? "";
+  expect(vars).toMatch(/"BANDED_SALES_ENABLED"\s*:\s*"true"/);
+});
+
 it("demo test billing defaults off and reaches the server through the Worker", () => {
   expect(readFileSync(join(ROOT, ".env.example"), "utf8")).toMatch(/^DEMO_TEST_BILLING_ENABLED=false$/m);
   expect(workerPassthroughKeys()).toContain("DEMO_TEST_BILLING_ENABLED");
