@@ -9150,10 +9150,10 @@
       "tier": 2,
       "lane": "d179-docs",
       "branch": "agent/coordinator/ats-referral-validation",
-      "status": "todo",
-      "syncedTo": "D-413",
+      "status": "done",
+      "syncedTo": "D-414",
       "dependsOn": [],
-      "note": "Docs-only direction record in PR #608 (owner iMessage Oct 24 1:09 IST, phonemsg-01M5N4DC140W9347XWW34NAWX1); the DECISIONS.md D-179 entry is already on main via #610. Packet doc lives on the #608 branch and arrives with it. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. D-344 (5) (Nov 16): parked (was in-review). PR #608 is more than 1,800 commits behind main and has had no push for over two weeks. Nothing is deleted. To resume, the owner or any session under D-200 sets the row back to todo, and the work restarts from current main, reusing what still applies from #608. D-413 (5): owner said resume (Nov 27); restart from current main reusing what applies from PR #608."
+      "note": "Docs-only direction record in PR #608 (owner iMessage Oct 24 1:09 IST, phonemsg-01M5N4DC140W9347XWW34NAWX1); the DECISIONS.md D-179 entry is already on main via #610. Packet doc lives on the #608 branch and arrives with it. Registered under the Owner one-time grant Oct 24 12:34 IST (iMessage approval of the enumerated six-action registry exception, ask phonemsg-01M5PBJB6H50G3TAE6CXHZQVY1); exhausted on use; wider D-083 restriction intact. D-344 (5) (Nov 16): parked (was in-review). PR #608 is more than 1,800 commits behind main and has had no push for over two weeks. Nothing is deleted. To resume, the owner or any session under D-200 sets the row back to todo, and the work restarts from current main, reusing what still applies from #608. D-413 (5): owner said resume (Nov 27); restart from current main reusing what applies from PR #608. Nov 27: restarted from current main as a fresh docs-only pull request carrying the one change from #608 that still applied (the D-179 register status wording: money references historical, superseded by D-219); the packet was already on main via c14a0a2e6, the Automation-default note was already present, and #608's conflict-marker scanner is unrelated to D-179 and was not carried. #608 closed in favour of #1717; done when it lands. The packet's open owner questions stay open."
     },
     {
       "id": "DEVICE-SIGNIN-passkeys",
@@ -10550,6 +10550,27 @@
       ],
       "note": "D-321/D-324/D-412 technical follow-through; appended FIFO. Session 9186 observed 300/900-second deadlines and an 847-second official retry with lost races before CEO REVIEW. Attribute phases first, then prove lower reader cost and unchanged freshness/unknown/lease/hold semantics; no manual claim or optimistic evidence. Coordinate shared picker files, never duplicate PICKER-bug-issues.",
       "epic": "D-212"
+    },
+    {
+      "id": "PICKER-common-dir-lock",
+      "title": "One picker per Git common directory: linked worktrees share the run lock without stealing a live legacy owner",
+      "row": "D-212",
+      "packet": "docs/plans/PICKER-common-dir-lock.md",
+      "tier": 2,
+      "lane": "picker-single-flight",
+      "branch": "agent/queue/picker-common-dir-lock",
+      "status": "todo",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "epic": "D-212",
+      "owns": [
+        "scripts/next-task.mjs",
+        "scripts/nextTaskSingleFlight.test.ts",
+        "docs/plans/PICKER-common-dir-lock.md",
+        "docs/plans/PICKER-single-flight.md",
+        "docs/BUILD_CONTINUITY.md"
+      ],
+      "note": "CEO review GPT-6.1 Sol · 02ca, main 3508530aa, D-200/D-324: production lock helper acquired separate locks for root and linked worktree sharing one canonical Git common directory. Append-only FIFO corrective row; original PICKER-single-flight remains done. Resolve a canonical common-directory lock, refuse live legacy worktree-local owners during cutover, preserve liveness/takeover and heartbeat/report exemptions, and prove root/sibling/symlink exclusion plus independent-clone concurrency with real-CLI fixtures. No claim, eligibility, product, settings or money change. Registration is not implementation acceptance."
     }
   ]
 }
