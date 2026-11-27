@@ -102,6 +102,10 @@ vi.mock("@/hooks/useCreditBalance", () => ({
   },
 }));
 
+// P0-goal-shell-sign-out (D-412 (6)): the shell's account menu carries the unread-alerts bell, which fetches on
+// its own; it has its own tests, so the harness stubs it and the network stays impossible here.
+vi.mock("@/components/NotificationBell", () => ({ NotificationBell: () => null }));
+
 vi.mock("wouter", () => ({
   Link: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
     <a href={href} {...rest}>{children}</a>

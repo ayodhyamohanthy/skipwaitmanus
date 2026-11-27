@@ -124,3 +124,13 @@ Import only from `@/components/goal`. Screens add layout utilities, never new co
 - `node scripts/design-token-audit.mjs` enforces the token rules (no hex in goal components, `g-trust` only in `GoalVerifiedMark`, status hues only in goal primitives, no Kit/shadcn tokens in goal files, no comp sample data in `client/src`, index.css tokens match this file).
 - Primitive behaviour tests live beside the primitives (`client/src/components/goal/*.test.tsx`).
 - Captures at 1280 and 390: phase 2 from the dev-only gallery (`/components#goal-ui`, the existing DEV-only route, compiled out of production builds); phase 3 from each moved surface, compared with `design/goal-ui/pick/*.png`.
+
+## Mobile app rules (D-414, owner, Nov 27 2026)
+On phones skipwait.me is an app, not a website. Every mobile screen follows these:
+1. **One goal per screen.** The screen fits one viewport (check 390x664 and 320x568) with one primary action in thumb reach. Anything longer moves to a sheet or the next screen; never a long scroll.
+2. **Signed-in people never see the marketing landing.** `/` and the installed app open their home (seeker home, or Queue for a verified referrer).
+3. **Installed app stays full screen** (`display: standalone`, `start_url` `/`).
+4. **Notices are slim.** The cookie notice is a one-line bottom bar; it never covers the primary action.
+5. **Copy states the benefit in a few words.** Proof and detail live on "How it works", linked once.
+6. **Both roles are offered up front.** Entry points let a person choose "I want a referral" or "I can refer someone", and that choice carries through sign-in.
+Packet: `docs/plans/MOBILE-app-flow.md`.

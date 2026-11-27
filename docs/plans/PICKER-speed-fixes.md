@@ -9,7 +9,7 @@ Row `PICKER-speed-fixes` (Tier 2, picker only). Ruling: D-412 (3) and (4).
 4. **Quiet claims read as free on the board (D-412 (4)(c)).** A holder quiet for the 2 h lease prints as `free (last: <holder>, quiet Nh)`.
 
 ## Owns
-`scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/next-task.mjs`, `scripts/nextTaskSpeedFixes.test.ts`, this packet.
+`scripts/nextTaskCore.mjs`, `scripts/nextTaskText.mjs`, `scripts/next-task.mjs`, `scripts/nextTaskSpeedFixes.test.ts`, this packet; and `scripts/nextTask.test.ts` plus `scripts/nextTaskRefreshDrafts.test.ts`, whose D-407 (4) fixtures gain a green open pull request on the unmet dependency (assertions unchanged).
 
 ## Done when
 Each change has a test that fails before and passes after, every existing `scripts/nextTask*.test.ts` stays green, `pnpm check` passes and required CI is green.
