@@ -15,12 +15,12 @@ describe("D-093 language registry", () => {
     ]);
   });
 
-  it("shows only reviewed English and capture starts switched off", () => {
+  it("shows only reviewed English while capture is enabled", () => {
     expect(visibleLanguages().map(entry => entry.code)).toEqual(["en"]);
     expect(isVisibleLanguage("en")).toBe(true);
     expect(isVisibleLanguage("te")).toBe(false);
     expect(isVisibleLanguage(null)).toBe(false);
-    expect(LANGUAGE_CAPTURE_ENABLED).toBe(false);
+    expect(LANGUAGE_CAPTURE_ENABLED).toBe(true);
   });
 
   it("reduces a browser tag to its primary subtag only", () => {
