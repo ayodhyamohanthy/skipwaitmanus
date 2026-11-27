@@ -14,7 +14,9 @@ const cssName = readdirSync(join(root, "dist/public/assets")).find(name => /^ind
 if (!cssName) throw new Error("Run pnpm build first: production CSS is required");
 const css = readFileSync(join(root, "dist/public/assets", cssName));
 const flagSource = readFileSync(join(root, "shared/askReconfirm.ts"), "utf8");
-if (!flagSource.includes("export const ASK_RECONFIRM_ENABLED = false;")) throw new Error("The production switch must remain off");
+// D-174-no-expiry-release (D-411): the switch shipped on, together with ASK_NO_EXPIRY_ENABLED (D-193 (5)).
+const noExpirySource = readFileSync(join(root, "shared/askNoExpiry.ts"), "utf8");
+if (!flagSource.includes("export const ASK_RECONFIRM_ENABLED = true;") || !noExpirySource.includes("export const ASK_NO_EXPIRY_ENABLED = true;")) throw new Error("The released switches must be on together (D-411, D-193 (5))");
 const auth = `export const useAuth=()=>({isLoaded:true,isSignedIn:true,userId:'synthetic-capture',getToken:async()=>null,openSignIn:()=>{}});
 export const useUser=()=>({user:{fullName:'Example Person',primaryEmailAddress:{emailAddress:'person@example.com'},emailAddresses:[]}});
 export const SignInButton=({children})=>children;`;

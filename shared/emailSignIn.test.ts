@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { EMAIL_LINK_VERIFY_PATH, EMAIL_SIGN_IN_LINK_ENABLED, emailSignInLink, parseEmailSignInHash } from "./emailSignIn";
 
 describe("D-406 email sign-in link", () => {
-  it("starts switched off until AUTH-email-link-release", () => {
-    expect(EMAIL_SIGN_IN_LINK_ENABLED).toBe(false);
+  it("is switched on by AUTH-email-link-release", () => {
+    expect(EMAIL_SIGN_IN_LINK_ENABLED).toBe(true);
   });
 
   it("puts the email and code only in the fragment, and round-trips", () => {
