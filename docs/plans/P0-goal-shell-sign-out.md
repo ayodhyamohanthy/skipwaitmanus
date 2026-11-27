@@ -12,7 +12,7 @@ On every page that renders `GoalAppShell` (`/explore`, `/explore/:company`, `/re
 `client/src/components/goal/goalAppShell.signOut.test.tsx`: signed in, the avatar opens a menu with "Sign out"; choosing it clears private browser data and calls the session sign-out once; signed out, no account button renders.
 
 ## 4. Owns
-`client/src/components/goal/GoalAppShell.tsx`, `client/src/components/goal/goalAppShell.signOut.test.tsx`, this packet.
+`client/src/components/goal/GoalAppShell.tsx`, `client/src/components/goal/goalAppShell.signOut.test.tsx`, this packet; and, because the account menu now renders on goal pages: `client/src/test/goalPagesBoundary.test.ts` (AccountMenu and NotificationBell audited as goal-styled), `client/src/test/goalShellHarness.tsx` (stubs the bell so the harness stays network-free), `client/src/pages/myRequests.goal.test.tsx` and `client/src/pages/myRequests.pendingStates.test.tsx` (stub the menu so their fetch counts stay their own).
 
 ## 5. Done when
 Required CI green; after deploy, a signed-in session on skipwait.me opens the menu from the avatar on `/explore` at 1280 and 390 and signs out.

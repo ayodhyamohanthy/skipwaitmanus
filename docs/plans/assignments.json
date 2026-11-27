@@ -67,7 +67,11 @@
       "owns": [
         "client/src/components/goal/GoalAppShell.tsx",
         "client/src/components/goal/goalAppShell.signOut.test.tsx",
-        "docs/plans/P0-goal-shell-sign-out.md"
+        "docs/plans/P0-goal-shell-sign-out.md",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "client/src/test/goalShellHarness.tsx",
+        "client/src/pages/myRequests.goal.test.tsx",
+        "client/src/pages/myRequests.pendingStates.test.tsx"
       ],
       "note": "Owner report, Nov 27. GoalAppShell passes no account.menu, so the avatar is inert; pass the AppShell AccountMenu.",
       "epic": "D-212"
@@ -88,7 +92,9 @@
         "scripts/nextTaskText.mjs",
         "scripts/next-task.mjs",
         "scripts/nextTaskSpeedFixes.test.ts",
-        "docs/plans/PICKER-speed-fixes.md"
+        "docs/plans/PICKER-speed-fixes.md",
+        "scripts/nextTask.test.ts",
+        "scripts/nextTaskRefreshDrafts.test.ts"
       ],
       "note": "Owner, Nov 27: fix what slows the team. Picker only; no landing, block, review or owner rule is relaxed.",
       "epic": "D-212"
