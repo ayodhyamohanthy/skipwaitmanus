@@ -1,14 +1,17 @@
 // @vitest-environment jsdom
-// @vitest-environment jsdom
+// D-048-K-post-opportunity (D-332): /post-opportunity renders only the goal page, so these
+// wrapper-level guarantees now run against it.
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PostOpportunity from "./PostOpportunity";
+import { referrerSignInHref } from "@/lib/referrerSignIn";
 
 const { authState, go } = vi.hoisted(() => ({ authState: { isLoaded: true, isSignedIn: true }, go: vi.fn() }));
 const getToken = vi.fn().mockResolvedValue("test-token");
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: authState.isLoaded, isSignedIn: authState.isSignedIn, userId: "12", getToken }) }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: authState.isLoaded, isSignedIn: authState.isSignedIn, userId: "12", getToken }), useUser: () => ({ user: null }) }));
+vi.mock("@/hooks/useCreditBalance", () => ({ useCreditBalance: () => null }));
 vi.mock("wouter", () => ({
   Link: ({ href, children }: { href: string; children: React.ReactNode }) => <a href={href}>{children}</a>,
   useLocation: () => ["/post-opportunity", go],
@@ -18,6 +21,9 @@ afterEach(() => { cleanup(); vi.unstubAllGlobals(); getToken.mockClear(); go.moc
 
 const renderPost = () => render(<QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false, retryDelay: 0 } } })}><PostOpportunity /></QueryClientProvider>);
 const ACCESS_PATH = "/api/company-referrals/access";
+// The goal shell makes its own reads, so a call is found by its URL, not by its index.
+const callTo = (fetchMock: { mock: { calls: unknown[][] } }, url: string) => fetchMock.mock.calls.findIndex(call => call[0] === url);
+const postBody = (fetchMock: { mock: { calls: unknown[][] } }) => String((fetchMock.mock.calls[callTo(fetchMock, "/api/opportunities")]?.[1] as RequestInit | undefined)?.body);
 const VERIFIED = { ok: true, status: 200, json: async () => ({ verifiedCompanyAccess: true, workEmailDomain: "acme.com", companyName: "Acme", companyInitials: "A" }) };
 
 describe("verified employee opportunity post", () => {
@@ -30,14 +36,14 @@ describe("verified employee opportunity post", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     fireEvent.change(screen.getByLabelText(/Public job link/i), { target: { value: "https://careers.acme.com/jobs/design" } });
     const publicJobLink = screen.getByLabelText("Public job link") as HTMLInputElement;
-    expect(publicJobLink.closest("label")?.textContent).toContain("(required)");
+    expect(screen.getByText("Required for hiring-now posts. We check the link before publishing.")).toBeTruthy();
     expect(publicJobLink.required).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Publish privately" }));
     await waitFor(() => expect(screen.getByText("Your opportunity is live.")).toBeTruthy());
     expect(getToken).toHaveBeenCalled();
-    expect(fetchMock.mock.calls[0][0]).toBe("/api/company-referrals/access");
-    expect(fetchMock.mock.calls[1][0]).toBe("/api/opportunities");
-    expect(String(fetchMock.mock.calls[1][1]?.body)).toContain("Product Designer");
+    expect(callTo(fetchMock, "/api/company-referrals/access")).toBeGreaterThanOrEqual(0);
+    expect(callTo(fetchMock, "/api/opportunities")).toBeGreaterThan(callTo(fetchMock, "/api/company-referrals/access"));
+    expect(postBody(fetchMock)).toContain("Product Designer");
     expect(screen.queryByText("employee@acme.com")).toBeNull();
   });
 
@@ -56,7 +62,7 @@ describe("verified employee opportunity post", () => {
     fireEvent.change(compensationInput, { target: { value: "₹12–18 LPA" } });
     fireEvent.click(screen.getByRole("button", { name: "Publish privately" }));
     await waitFor(() => expect(screen.getByText("Your opportunity is live.")).toBeTruthy());
-    expect(String(fetchMock.mock.calls[1][1]?.body)).toContain('"compensation":"₹12–18 LPA"');
+    expect(postBody(fetchMock)).toContain('"compensation":"₹12–18 LPA"');
   });
 
   it("requires a start time when the verified employee selects a Walk-in", async () => {
@@ -68,10 +74,14 @@ describe("verified employee opportunity post", () => {
     fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     expect(screen.getByLabelText("Starts at")).toBeTruthy();
     const publicJobLink = screen.getByLabelText("Public job link") as HTMLInputElement;
-    expect(publicJobLink.closest("label")?.textContent).toContain("(optional)");
+    expect(screen.getByText("Public job link (optional)", { exact: true })).toBeTruthy();
     expect(publicJobLink.required).toBe(false);
+    // Goal buttons are never natively disabled (D-120 doctrine): aria-disabled swallows the press.
     const continueButton = screen.getByRole("button", { name: "Continue" }) as HTMLButtonElement;
-    expect(continueButton.disabled).toBe(true);
+    expect(continueButton.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(continueButton);
+    expect(screen.getByLabelText("Starts at")).toBeTruthy();
+    expect(screen.queryByText("Confirm the timing.")).toBeNull();
   });
 
   it("keeps the card anonymous by default and publishes without a name choice", async () => {
@@ -89,7 +99,7 @@ describe("verified employee opportunity post", () => {
     fireEvent.change(screen.getByLabelText("Public job link"), { target: { value: "https://careers.acme.com/jobs/design" } });
     fireEvent.click(screen.getByRole("button", { name: "Publish privately" }));
     await waitFor(() => expect(screen.getByText("Your opportunity is live.")).toBeTruthy());
-    expect(String(fetchMock.mock.calls[1][1]?.body)).not.toContain("showPosterFirstName");
+    expect(postBody(fetchMock)).not.toContain("showPosterFirstName");
     expect(screen.getByText(/Your identity is never shown/)).toBeTruthy();
   });
 
@@ -107,7 +117,7 @@ describe("verified employee opportunity post", () => {
     fireEvent.change(screen.getByLabelText("Public job link"), { target: { value: "https://careers.acme.com/jobs/design" } });
     fireEvent.click(screen.getByRole("button", { name: "Publish privately" }));
     await waitFor(() => expect(screen.getByText("Your opportunity is live.")).toBeTruthy());
-    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toMatchObject({ showPosterFirstName: true });
+    expect(JSON.parse(postBody(fetchMock))).toMatchObject({ showPosterFirstName: true });
     expect(screen.getByText(/Your first name is shown on the card/)).toBeTruthy();
     expect(screen.getByText(/Your last name and work email never appear/)).toBeTruthy();
   });
@@ -116,8 +126,10 @@ describe("verified employee opportunity post", () => {
     authState.isSignedIn = false;
     renderPost();
     await screen.findByText("Verify your work email first.");
-    fireEvent.click(screen.getByRole("button", { name: "Verify work email" }));
-    expect(go).toHaveBeenCalledWith("/referrer?returnTo=%2Fpost-opportunity");
+    // The goal gate is the canonical referrer sign-in link (work-email code only), not a button.
+    const verify = screen.getByRole("link", { name: "Verify work email" });
+    expect(verify.getAttribute("href")).toBe(referrerSignInHref("/post-opportunity"));
+    expect(screen.queryByLabelText("Role or job title")).toBeNull();
   });
 
   it("blocks a signed-in personal account before it can start the opportunity wizard", async () => {
