@@ -64,18 +64,6 @@
       "decision": "D-332"
     },
     {
-      "file": "client/src/components/employer/EmployerFrame.tsx",
-      "kitImport": true,
-      "surfaceSwitch": false,
-      "decision": "D-332"
-    },
-    {
-      "file": "client/src/components/employer/EmployerOverview.tsx",
-      "kitImport": true,
-      "surfaceSwitch": false,
-      "decision": "D-332"
-    },
-    {
       "file": "client/src/components/plans/BillingPanels.tsx",
       "kitImport": true,
       "surfaceSwitch": false,
@@ -239,18 +227,6 @@
     },
     {
       "file": "client/src/pages/EmployerBilling.tsx",
-      "kitImport": false,
-      "surfaceSwitch": true,
-      "decision": "D-332"
-    },
-    {
-      "file": "client/src/pages/EmployerDashboard.tsx",
-      "kitImport": true,
-      "surfaceSwitch": true,
-      "decision": "D-332"
-    },
-    {
-      "file": "client/src/pages/EmployerOpportunities.tsx",
       "kitImport": false,
       "surfaceSwitch": true,
       "decision": "D-332"
