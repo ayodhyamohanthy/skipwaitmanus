@@ -122,6 +122,28 @@
       "epic": "D-212"
     },
     {
+      "id": "FIX-jobs-catalog-search",
+      "title": "/jobs answers a search from company careers sites when no posted role matches, instead of always 'No jobs match' (automated bug #1706)",
+      "row": "D-212",
+      "packet": "docs/plans/FIX-jobs-catalog-search.md",
+      "tier": 2,
+      "lane": "fix-jobs-catalog-search",
+      "branch": "agent/queue/fix-jobs-catalog-search",
+      "status": "todo",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/discovery/GoalJobs.tsx",
+        "client/src/pages/goal/discovery/JobsCatalogAnswer.tsx",
+        "client/src/pages/goal/discovery/discovery.goal.test.tsx",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "design/goal-ui/captures/jobs/**",
+        "docs/plans/FIX-jobs-catalog-search.md"
+      ],
+      "note": "D-409/D-412 (7) bug fix, D-360/D-394 search. /api/jobs stays legacy-only (D-193: catalog rows never in /api/jobs, the sitemap or JobPosting markup); the page answers an unmatched search through /api/search. Issue #1706 closes after the live /jobs?q=engineer check, not on merge.",
+      "epic": "D-212"
+    },
+    {
       "id": "PICKER-speed-fixes",
       "title": "Picker: refresh only drafts that can land, a landed ruling's unblocker clears the block, a docs-only PR is never landed for a code row, quiet claims show as free (D-412)",
       "row": "D-212",

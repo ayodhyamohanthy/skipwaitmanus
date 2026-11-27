@@ -63,6 +63,7 @@ const AUDITED: AuditEntry[] = [
   { file: "components/admin/paymentReviewCopy.ts", kind: "behavior-only", reason: "payment-review copy and formatting helpers (dates, amounts, decision labels), no UI; imported read-only by the goal money pages (D-048-p3-admin-money, packet §3)" },
   { file: "components/thread/threadModel.ts", kind: "behavior-only", reason: "pure thread stage/copy helpers (STAGES, stageOf, credit and pending copy strings), 87 lines, no JSX and no className; imported read-only by the goal conversation page (D-048-p3-conversation)" },
   { file: "components/inbox/inboxThreads.ts", kind: "behavior-only", reason: "inbox data loading and threading model (zod contracts, fetchers, split logic), no UI; the goal inbox imports it read-only for the packet-mandated shared data contract carrying the pre-acceptance privacy invariants (D-048-p3-inbox)" },
+  { file: "pages/explore/UniversalSearchResults.tsx", kind: "goal-styled", reason: "SEARCH-universal results (careers-site jobs, presence label, Apply on the careers site and Ask for a referral), goal tokens and GoalButton only; /explore renders it and goal /jobs reuses it when no posted role matches a search (FIX-jobs-catalog-search, issue 1706)" },
 ];
 
 type Read = (file: string) => string | null;
