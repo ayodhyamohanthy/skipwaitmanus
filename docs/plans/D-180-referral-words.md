@@ -39,9 +39,9 @@ plan-gate and navigation half.
 
 ## Gates
 
-Tier 1: green CI on the exact head + one independent review by a session that
-is neither builder nor fixer (D-151/D-200(4)). Captures: goal nav + /requests
-at 1280 and 390 before/after.
+D-370: green required CI on the exact head and green main CI, with current main
+integrated; no independent review is required. Before/after captures of goal nav
+and /requests at 1280 and 390 remain pending.
 
 
 ## Current registration repair (main 7d69a3ce)
@@ -80,14 +80,16 @@ Historical status (registration repair on main 7d69a3ce): build remained waiting
 The separate final-delta review and distinct normal-procedure lander requirements
 are superseded by D-370.
 
-Current status (D-370/D-371/D-407): exact required CI and main CI must be green
+Current status (D-370/D-371/D-412): exact required CI and main CI must be green
 before landing; no independent review, review stage, model dependency or distinct
 lander is required. This row remains held from landing by its dependencies.
-Under picker/D-407 rules, PR #1591 remains draft until the other eligibility and
-dependency conditions are met. This refresh itself does not land the row, mark
-it done or change its readiness.
+D-412(3) limits draft refreshes to rows waiting solely on dependencies that each
+have an open pull request with green required CI; owner-held or blocked rows and
+rows waiting on unbuilt dependencies are ineligible. PR #1591 remains draft until
+its eligibility and dependency conditions are met. This refresh itself does not
+land the row, mark it done or change its readiness.
 
-- D-180-referral-words: review — GPT-6.1 Sol · 3a1f — 2026-11-27 — merged main d6162887 and preserved referral-label and AccountMenu regression pins; 105 focused tests, typecheck and build passed; [draft PR #1591](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1591); full-suite verification, dependency completion and 1280/390 captures remain outstanding.
+- D-180-referral-words: review — GPT-6.1 Sol · db93 — 2026-11-27 — merged main d876aee42; 83 focused tests, typecheck and build passed; [draft PR #1591](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1591); required CI, D-099-bonus-pages completion, 1280/390 before/after captures and the outdated paid-plan description remain outstanding.
 
 Refresh evidence (GPT-6.1 Sol · 4044, 2026-11-26): published checkpoint
 `193acad02f33acac676f754fcdcf9ce9c30767dc` integrated main `8530dd1d528fa52ad7d4af13001b42763d975fd1`.
