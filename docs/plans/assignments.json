@@ -92,7 +92,9 @@
         "scripts/nextTaskText.mjs",
         "scripts/next-task.mjs",
         "scripts/nextTaskSpeedFixes.test.ts",
-        "docs/plans/PICKER-speed-fixes.md"
+        "docs/plans/PICKER-speed-fixes.md",
+        "scripts/nextTask.test.ts",
+        "scripts/nextTaskRefreshDrafts.test.ts"
       ],
       "note": "Owner, Nov 27: fix what slows the team. Picker only; no landing, block, review or owner rule is relaxed.",
       "epic": "D-212"
