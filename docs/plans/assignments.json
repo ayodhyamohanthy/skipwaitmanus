@@ -67,7 +67,11 @@
       "owns": [
         "client/src/components/goal/GoalAppShell.tsx",
         "client/src/components/goal/goalAppShell.signOut.test.tsx",
-        "docs/plans/P0-goal-shell-sign-out.md"
+        "docs/plans/P0-goal-shell-sign-out.md",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "client/src/test/goalShellHarness.tsx",
+        "client/src/pages/myRequests.goal.test.tsx",
+        "client/src/pages/myRequests.pendingStates.test.tsx"
       ],
       "note": "Owner report, Nov 27. GoalAppShell passes no account.menu, so the avatar is inert; pass the AppShell AccountMenu.",
       "epic": "D-212"
