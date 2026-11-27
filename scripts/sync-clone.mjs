@@ -33,6 +33,11 @@ const EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 const LOCK_WAIT_MS = 120_000, LOCK_STALE_MS = 600_000;
 
 class Stop extends Error {}
+/** git's own last error lines (never a URL's credentials), so a failed fetch says why instead of guessing "offline". */
+const gitError = r => {
+  const lines = String(r.stderr || "").split("\n").map(l => l.replace(/\/\/[^/@\s]+@/g, "//").trim()).filter(Boolean);
+  return lines.length ? lines.slice(-3).join(" | ") : r.error ? String(r.error.message) : `exit ${r.status}`;
+};
 // A background run must never wait on a credential prompt: it fails and reports instead.
 const ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0" };
 delete ENV.GIT_INDEX_FILE;
@@ -165,7 +170,8 @@ function saveMain(top, local, originMain, remoteOf, args, say, out) {
 }
 
 function sync(top, args, say) {
-  if (tryGit(["fetch", "-q", "--prune", "origin"], top) === null) throw new Stop("git fetch origin failed (offline, or origin is unreachable)");
+  const fetched = spawnSync("git", ["fetch", "-q", "--prune", "origin"], { cwd: top, env: ENV, encoding: "utf8", maxBuffer: 64 * 1024 * 1024 });
+  if (fetched.status !== 0) throw new Stop(`git fetch --prune origin failed: ${gitError(fetched)}`);
   say("fetched origin (gone branches pruned)");
   const { originMain, remotes, trees, branches } = facts(top);
   const out = { reports: [], failures: [] };
