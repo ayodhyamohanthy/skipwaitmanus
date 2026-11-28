@@ -276,7 +276,7 @@
       "tier": 1,
       "lane": "privacy-own-employer-guard",
       "branch": "agent/queue/privacy-own-employer-guard",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-415",
       "dependsOn": [],
       "owns": [
@@ -285,7 +285,14 @@
         "server/ownEmployerGuard.test.ts",
         "shared/ownEmployer.ts",
         "client/src/pages/explore/useAskComposer.tsx",
-        "docs/plans/MOBILE-app-flow.md"
+        "docs/plans/MOBILE-app-flow.md",
+        "server/privateReferralRoutes.ts (own_employer refusal branch only)",
+        "server/db.companyCap.test.ts (fixture filter only)",
+        "server/db.openAskSlots.test.ts (fixture filter only)",
+        "server/db.askOutOfCredits.test.ts (fixture filter only)",
+        "client/src/pages/exploreDrawer.test.tsx (own-employer case only)",
+        "e2e/own-employer.e2e.ts",
+        "AGENTS.md (living map line only)"
       ],
       "note": "Owner, Nov 27: lands before MOBILE-both-prompt. Guard call only in server/db.ts; refusal state only in the composer. D-415 (2): every company-directory domain of the company and subdomains count; only verified work emails, not work-provider sign-ins.",
       "epic": "D-212"

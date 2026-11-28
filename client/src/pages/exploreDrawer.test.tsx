@@ -21,6 +21,7 @@ import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "@shared/referral";
 import { OPPORTUNITY_FIRST_LOOK_HOURS } from "@shared/companyOpportunities";
 import { CREDIT_ENDED_CAVEAT, MONEY_SENTENCE } from "@shared/moneyCopy";
 import { COMPANY_CAP_REACHED, companyCapCopy, SLOT_CAP_REACHED } from "@shared/openAskSlots";
+import { OWN_EMPLOYER, OWN_EMPLOYER_ACTION, ownEmployerMessage } from "@shared/ownEmployer";
 import { ASK_PREFILL_KEY } from "@/lib/askPrefill";
 import { ASK_NETWORK_ERROR } from "@/components/ask/askApi";
 import Explore from "./Explore";
@@ -257,6 +258,20 @@ describe("ask drawer", () => {
     fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
     const alert = await within(drawer).findByRole("alert");
     expect(alert.textContent).toBe(companyCapCopy("wipro.com"));
+  });
+
+  it("refuses a request to the seeker's own employer in plain words, with a way to another company (D-414 (3))", async () => {
+    stub({ send: () => ({ status: 409, body: { code: OWN_EMPLOYER, error: ownEmployerMessage("Wipro"), companyDomain: "wipro.com", companyName: "Wipro" } }) });
+    const drawer = await openWipro();
+    fillLink(drawer);
+    fillReasons(drawer);
+    await within(drawer).findByText("ada-resume.pdf");
+    fireEvent.click(within(drawer).getByRole("button", { name: "Send referral request" }));
+    const alert = await within(drawer).findByRole("alert");
+    expect(alert.textContent).toContain(ownEmployerMessage("Wipro"));
+    expect(within(alert).getByRole("link", { name: OWN_EMPLOYER_ACTION }).getAttribute("href")).toBe("/explore");
+    expect(screen.queryByText(/Referral request sent to/)).toBeNull();
+    expect((within(drawer).getByLabelText("Job link") as HTMLInputElement).value).toBe("https://careers.wipro.com/jobs/1234567-product-designer");
   });
 
   it("keeps the form when the network drops, with the plain network copy", async () => {
