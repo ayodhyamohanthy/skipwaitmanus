@@ -11,7 +11,6 @@ const flags = vi.hoisted(() => ({ mobileLanding: false }));
 const clarity = vi.hoisted(() => ({ trackClarityEvent: vi.fn() }));
 
 vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isLoaded: true, isSignedIn: false }) }));
-vi.mock("@/lib/goalSurfaces", () => ({ goalSurfaceOn: (id: string) => id === "home" }));
 vi.mock("@/lib/clarity", async (importOriginal) => ({ ...(await importOriginal<object>()), trackClarityEvent: clarity.trackClarityEvent }));
 vi.mock("@shared/landingContent", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@shared/landingContent")>();
