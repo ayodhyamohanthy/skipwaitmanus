@@ -38,6 +38,7 @@ import { readApiJson } from "@/lib/apiResponse";
 import { cn } from "@/lib/utils";
 import { GoalWorkEmailStepUp } from "@/components/goal/GoalWorkEmailStepUp";
 import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "@/lib/referrerStepUpApi";
+import { isAskedYouDirectly } from "@/components/referrer-home/referrerData";
 
 type QueueItem = {
   id: number;
@@ -57,6 +58,8 @@ type QueueItem = {
   decisionDueAt?: string | null;
   waitingForCoverage?: boolean | null;
   coverageVisibleAt?: string | null;
+  /** D-089 §4.7: sent to you alone and not yet acted on; only while REQUEST_INBOX_LINK_ENABLED is on (read through isAskedYouDirectly). */
+  askedYouDirectly?: boolean;
 };
 type Preview = { id: number; candidateMessage: string; targetRoleUrl: string | null; attachments: unknown[]; publicRef?: string; /** Task 13: parsed at this boundary (below). */ workItems?: unknown; /** SKIPPY-6 (D-142): true only for an ask a seeker's own agent drafted and the seeker approved. */ sentViaAssistant?: boolean };
 type InboxPayload = { requests?: QueueItem[] };
@@ -322,6 +325,7 @@ export default function MyCompanyInbox() {
                 title={roleTitle(item)}
                 trailing={<GoalStatus status={claimed ? "queue_review" : "queue_new"} label={claimed ? "Under review" : "New"} />}
                 meta={<span>{displayJobFunction(item.jobFunction) ?? item.companyName ?? item.companyDomain}{left ? <>{" · "}<GoalNum tone={left.soon ? "warn" : undefined}>{left.label}</GoalNum></> : null}{due ? <>{" · "}<GoalNum>{due}</GoalNum></> : null}</span>}
+                footer={isAskedYouDirectly(item) ? <DirectMarker /> : undefined}
               />
             );
           })}
@@ -362,6 +366,17 @@ export default function MyCompanyInbox() {
     </div>
   );
   return shell(body);
+}
+
+/** D-089 §5.2 step 3: dot-and-text in the row's own ink, no new colour; screen readers hear "Asked you directly". */
+function DirectMarker() {
+  return (
+    <span data-testid="asked-you-directly" className="inline-flex items-center gap-2 text-g-ink-2">
+      <span aria-hidden="true" className="size-(--g-dot) shrink-0 rounded-full bg-current" />
+      <span aria-hidden="true">Sent to you directly</span>
+      <span className="sr-only">Asked you directly</span>
+    </span>
+  );
 }
 
 function QueueDetail({ item, index, count, preview, previewLoading, previewError, onRetryPreview, nowMs, working, passOpen, onMove, onPassOpen, onAccept, onPass, onBack }: {

@@ -7,6 +7,8 @@ import { Link } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { GoalButton, GoalEmptyState, GoalErrorState, GoalNextStep, GoalNum, GoalSkeletonRows, GoalVerifiedMark, useOnlineStatus } from "@/components/goal";
 import { askCountdown, deriveReferrerHome, fetchReferrerHome, saveReferrerPreferences, type InboxRow, type ReferrerHomeData, type ReferrerHomeView } from "@/components/referrer-home/referrerData";
+import { GoalReferralLinkPanel } from "@/components/referrer-home/GoalReferralLinkPanel";
+import { REQUEST_INBOX_LINK_ENABLED } from "@shared/requestInboxLink";
 import { usePersistFn } from "@/hooks/usePersistFn";
 import { referrerSignInHref } from "@/lib/referrerSignIn";
 import { displayJobFunction } from "@shared/jobFunctions";
@@ -247,6 +249,8 @@ export default function GoalReferrerHome() {
                   <p className="mt-2 text-g-meta text-g-ink-2">More verified colleagues can help more people find a referral.</p>
                   <Link href="/invite?mode=invite" className="mt-2 inline-block text-g-meta font-medium text-g-ink underline underline-offset-2">Invite someone inside</Link>
                 </section>
+                {/* D-089.ui (§4.8, D-414 (2)): the referral-link panel, only while REQUEST_INBOX_LINK_ENABLED is on. */}
+                {REQUEST_INBOX_LINK_ENABLED ? <GoalReferralLinkPanel /> : null}
                 <section className="rounded-g-tile border border-g-hairline p-4" aria-label="Your private referral record">
                   <h2 className="text-g-label font-semibold text-g-ink">Your private record</h2>
                   <dl className="mt-3 grid grid-cols-2 gap-3">
