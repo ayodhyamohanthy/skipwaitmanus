@@ -476,6 +476,6 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-send: todo — §6.8; disabled.
 - GROUP-api: todo — §6.9; disabled.
 - GROUP-buyer-ui: todo — §6.10; hidden.
-- GROUP-candidate-ui: todo — §6.10; hidden.
+- GROUP-candidate-ui: todo — D-315 build-ahead readiness checkpoint, GPT-6.1 Sol · c3fa, 2026-11-25; branch `agent/queue/group-candidate-ui`; main `8951b1518`, integration `67e6c97c1`, claim `9bf3fe019`; D-398–D-405 read against newer entry docs. Prior markers `5aaa6c029`/`b3f450c03`: no source delta. Main preflight read: BRIEF, AGENTS, BUILD_CONTINUITY, COLLABORATION, PRD, DECISIONS, KIT §3–6, BUGFREE_GATE, DELEGATION, GROUP-bulk-oct31, this packet, PRICING, PAYMENTS_TEST_RUNBOOK, DESIGN, goal doctrine. GROUP-api candidate contract is an acceptance prerequisite; no accepted candidate payload/route/flag on main. Next: consume validated shared/API payloads; test off/ownership/loading/empty/error/offline; integrate `/groups/claim`, `/groups/permissions` and Requests/approval entry; prove claim separate from delegation, exact resume/note/current-cost approval, decline/revoke no send; inspect 1280/390. Runtime/candidate tests/screenshots/full-stack acceptance UNVERIFIED; draft only; GROUP-api dependency and release gates stay.
 - GROUP-qa: todo — §6.11; full-stack acceptance unverified.
 - GROUP-release: todo — §6.11; needs recorded Group activation authority, policy and QA; switches stay off.
