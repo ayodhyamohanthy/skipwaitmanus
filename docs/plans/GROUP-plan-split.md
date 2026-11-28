@@ -469,7 +469,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-checkout: todo — §6.5; disabled.
 - GROUP-payments: todo — §6.5.
 - GROUP-claim: todo — §6.6.
-- GROUP-grants: todo — §6.6.
+- GROUP-grants: GPT-6.1 Sol · 8b3f — 2026-11-27 — draft refreshed against `d876aee42` (D-412); [PR #1636](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1636); runtime/ledger implementation remains unverified, awaiting `GROUP-claim`.
 - GROUP-notifications: todo — §6.7; no real recipients.
 - GROUP-recovery: todo — §6.7.
 - GROUP-delegation: todo — §6.8; no permission by default.
