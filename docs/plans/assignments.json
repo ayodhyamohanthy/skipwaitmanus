@@ -10217,7 +10217,7 @@
       "lane": "group-migration",
       "branch": "agent/queue/group-migration-implementation",
       "status": "todo",
-      "syncedTo": "D-407",
+      "syncedTo": "D-409",
       "dependsOn": [
         "GROUP-contracts"
       ],
