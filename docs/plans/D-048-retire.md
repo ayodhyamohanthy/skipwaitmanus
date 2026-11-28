@@ -40,6 +40,13 @@ For `D-048-K-admin-money`, `docs/DECISIONS.md` is also declared for the bounded 
 
 For `D-048-K-post-opportunity`, the same one-path declaration is limited to the D-200 ruling on the missing hiring-now required-link constraint recorded in PR #1297. The scope prerequisite alone neither dispatches the source repair nor clears the retirement hold; the ruling follows separately on the official architect branch.
 
+For `D-048-K-home`, `docs/DECISIONS.md` and `docs/plans/D-048-phase-3-split.md` are declared
+only for the bounded D-200/D-373/D-407 ruling on its obsolete credential block and unfinished
+signed-in root-release acceptance in PR #1721. This prerequisite widens no runtime path and
+changes no status, holder, dependency, release gate or acceptance result. Publish it on main
+before the architect ruling because scope-check reads main's ownership declarations.
+
+
 `D-048-K-system` also owns `scripts/r7ReleaseAcceptance.test.ts` solely to retire its obsolete Kit/goal source-text and wording comparison once the old Emails implementation is removed. Its useful consumer guarantees stay in public Emails/goal tests and the Ported assertions table; policy assertions are not part of that source-only file. This one-path declaration is published on main before deletion because test-integrity rule 1 reads main's owns even for GPT/Claude scope-exempt builders. No gate exception, status, dependency, runtime or assertion weakening is authorized.
 
 1. Confirm the release row in `dependsOn` is `done`, the id is in `RELEASED` on `origin/main`, and the soak has ended. Record the release commit, the date, and the Sentry check (query and result, no personal data) in the pull request.
@@ -275,6 +282,8 @@ Release rows are not slowed by it: adding an id to `RELEASED` passes rule 1 unch
 - **Prices, legal text, the login rule, what is on sale.** Untouched.
 
 ## Status
+
+- D-048-K-post-opportunity: done — e622f4a3d — Claude Code · 3770, 2026-11-27. Kit wizard and `goalSurfaceOn` switch deleted; `PostOpportunity.tsx` lazy-loads the goal page alone; ratchet baseline entry removed. Drift check: kit edits `a1dfd53f3` and `dfc555b97` (after the goal landed) both exist in the goal page. All 13 wrapper cases kept and run on the goal page (55→58 assertion lines), goal test 44→44. Synthetic 1280/390 captures, main vs candidate: 8/10 byte-identical, 2 differ only in the native validation-bubble frame ([receipt](../../design/goal-ui/captures/post-opportunity/retire-3770/receipt.json)). Unverified: canonical web deploy of the merge commit.
 
 - D-048-p3-post-link-parity: done — f541f5a5 — Claude Code · 695b, 2026-11-24. `required` on the hiring-now job link only; blank publish stopped in the browser with no POST, bare link published, walk-in continues without a link (tests + 1280/390 captures in `design/goal-ui/captures/post-opportunity/`). Canonical web acceptance after deploy. Unblocks the job-link gap named for `D-048-K-post-opportunity`; that retirement stays parked by D-370.
 

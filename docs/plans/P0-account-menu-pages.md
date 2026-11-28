@@ -101,6 +101,7 @@ Branch `agent/queue/p0-support-account-menu`; issue #1709; loop L6.
 ### Owns
 
 - `client/src/pages/Support.tsx`
+- `client/src/App.tsx` (Support lazy route binding only; default Support remains auth-free for public prerendering)
 - `client/src/components/PolicyPageShell.tsx`
 - `client/src/pages/supportAccountMenu.test.tsx`
 - `client/src/pages/goal/policy/policyText.goal.test.tsx`
@@ -138,5 +139,5 @@ and exact production acceptance are separate from this registration.
 
 ## Status
 
-- P0-messages-account-menu: in progress — GPT-6.1 Sol · 9186 — 2026-11-28 — branch `agent/queue/p0-messages-account-menu` reuses AppShell with one main landmark; [#1708](https://github.com/ayodhyamohanthy/skipwaitmanus/issues/1708) regression red 6, new menu 8 + DM 23 + sign-in 2 + shared-shell 3 tests pass; typecheck/build/tokens/migration lint/deploy triggers/scope pass; exact-release 1280/390 proof remains unverified.
-- P0-support-account-menu: todo — registered by GPT-6.1 Sol · 9186, 2026-11-28; issue #1709 is reproduced by live run 46065479203; repair and current-release passing proof remain unverified.
+- P0-messages-account-menu: make green — Claude Code · 3770 — 2026-11-28 — takeover of #1720 (red: the AppShell wrap inside GoalMessages pulled unaudited legacy modules into a goal page, and messagesIdempotency's auth mock lacked useUser). Signed-in Messages now sits in GoalAppShell (inbox, "Messages"), the goal shell that carries the shared account menu since P0-goal-shell-sign-out; signed-out stays the bare page. 109 Messages/boundary tests pass, typecheck and token audit clean. Unverified: live /messages after deploy.
+- P0-support-account-menu: in progress — GPT-6.1 Sol · ee18 — 2026-11-28 — implementation `35cfa6397`; 49 focused tests, typecheck, token audit and production/prerender build pass; six local Chromium captures at 1280/390 show working menu/Escape and unchanged public/policy frames (`design/goal-ui/captures/support/account-menu-ee18/`); required CI and exact-release QA pending.

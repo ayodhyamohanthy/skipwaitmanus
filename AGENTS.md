@@ -211,7 +211,8 @@ pnpm dev              # Express+Vite on :3000 (dev sign-in widget appears)
 pnpm check            # tsc --noEmit
 pnpm test             # vitest (unit + component + route regressions)
 pnpm build            # client PWA + server bundle -> dist/
-./scripts/sync-check.sh   # two-way clone sync (D-373): push committed branch work, fast-forward main, delete merged branches; every commit also pushes itself once the post-commit hook is in (the picker installs it on --claim, with the 15-min Mac timer; or --install-hook / --install-timer by hand, D-375)
+./scripts/sync-check.sh   # two-way clone sync (D-373): push committed branch work, fast-forward main, delete merged branches; branches strictly behind origin are fast-forwarded too (a dirty worktree or a diverged branch is only reported); every commit also pushes itself once the post-commit hook is in, and the --watch service pulls within ~30 s of any change on GitHub (the picker installs both on --claim on a Mac and upgrades the old 15-min timer; elsewhere, or by hand: --install-timer; D-375, SYNC-auto-pull)
+node scripts/sync-tidy.mjs   # SYNC-tidy: list leftover worktrees and local branches that hold nothing unsaved (every commit on GitHub, idle 24 h); --apply removes exactly those, never --force
 ```
 
 ## Plan and inspect before edits

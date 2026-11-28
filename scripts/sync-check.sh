@@ -3,4 +3,5 @@
 # It pushes committed branch work to its own branch (never main, never force), fast-forwards main,
 # deletes merged branches and reports uncommitted work without touching it. Same flags: --dry-run, --install-timer.
 # SYNC-auto-push (D-375): --install-hook pushes every commit right after it is made; the picker installs it on --claim.
+# SYNC-auto-pull: branches strictly behind origin are fast-forwarded; --watch checks GitHub every ~30 s instead of every 15 minutes.
 exec node "$(dirname "$0")/sync-clone.mjs" "$@"

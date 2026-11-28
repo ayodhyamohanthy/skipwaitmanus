@@ -122,6 +122,28 @@
       "epic": "D-212"
     },
     {
+      "id": "FIX-jobs-catalog-search",
+      "title": "/jobs answers a search from company careers sites when no posted role matches, instead of always 'No jobs match' (automated bug #1706)",
+      "row": "D-212",
+      "packet": "docs/plans/FIX-jobs-catalog-search.md",
+      "tier": 2,
+      "lane": "fix-jobs-catalog-search",
+      "branch": "agent/queue/fix-jobs-catalog-search",
+      "status": "done",
+      "syncedTo": "D-414",
+      "dependsOn": [],
+      "owns": [
+        "client/src/pages/goal/discovery/GoalJobs.tsx",
+        "client/src/pages/goal/discovery/JobsCatalogAnswer.tsx",
+        "client/src/pages/goal/discovery/discovery.goal.test.tsx",
+        "client/src/test/goalPagesBoundary.test.ts",
+        "design/goal-ui/captures/jobs/**",
+        "docs/plans/FIX-jobs-catalog-search.md"
+      ],
+      "note": "D-409/D-412 (7) bug fix, D-360/D-394 search. /api/jobs stays legacy-only (D-193: catalog rows never in /api/jobs, the sitemap or JobPosting markup); the page answers an unmatched search through /api/search. Issue #1706 closes after the live /jobs?q=engineer check, not on merge.",
+      "epic": "D-212"
+    },
+    {
       "id": "PICKER-speed-fixes",
       "title": "Picker: refresh only drafts that can land, a landed ruling's unblocker clears the block, a docs-only PR is never landed for a code row, quiet claims show as free (D-412)",
       "row": "D-212",
@@ -580,7 +602,7 @@
       "tier": 2,
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa-acceptance",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-390",
       "dependsOn": [
         "OPS-deploy-secrets-file",
@@ -623,9 +645,9 @@
       "packet": "docs/plans/OPS-live-qa-journeys.md",
       "tier": 1,
       "lane": "live-qa-journeys",
-      "branch": "agent/queue/ops-live-qa-journeys-acceptance-2431",
-      "status": "todo",
-      "syncedTo": "D-407",
+      "branch": "agent/queue/ops-live-qa-journeys-proof-6155",
+      "status": "done",
+      "syncedTo": "D-414",
       "dependsOn": [
         "OPS-live-qa-hardening",
         "QA-sandbox-requests",
@@ -645,7 +667,7 @@
         "docs/plans/OPS-live-qa-journeys.md",
         "docs/plans/assignments.json"
       ],
-      "note": "Owner-approved Nov 24 (D-389, D-393). PR #1558 merged as f25eb09c7 with pre-D-393 public walk-in routing and no dispatched acceptance; that history and PR #1672's published helper-only state are retained. GPT-6.1 Sol · 42fc continues the sandbox repair on agent/queue/ops-live-qa-journeys-sandbox after official takeover ec3014d30 on Nov 26; the packet retains prior holder receipts. D-407 explicitly supersedes f8bf's unpublished-work blocker: continue from published history and leave other checkouts untouched. Under D-373 (6), this existing row stays todo on the fresh acceptance carrier after that script merge, preserving its FIFO position and dependencies so an implementation merge cannot prematurely release LAUNCH-live-qa. Normal picker claim is required on the fresh branch. Completion needs one successful workflow_dispatch live-qa.yml mode=journeys run proving demo-only sandbox routing, current keyed ledger and privacy/transition contracts, failure cleanup, tested web/API SHAs and inspected 1280/390 captures, with sanitized evidence recorded in the packet. Navigation-only runs and fixture tests do not substitute. PR #1540 must not land before that evidence exists. The two demo identities, shared workflow concurrency, masked secrets, no admin or real recipient, no payment/provider call and all D-389/D-393 limits remain. Checked through D-407: reviewer-password proof still uses only the existing protected workflow secrets; no authentication or sales-switch change. Implementation and live acceptance remain UNVERIFIED; this session dispatched no live journeys.",
+      "note": "D-373 (6): implementation PR #1697 repairs sandbox routing, strict response/keyed-ledger proof, failure cleanup and capture failures on the former acceptance carrier. Preserve that implementation history and keep this existing row todo on this fresh proof branch so the code merge cannot release LAUNCH-live-qa. Normal picker claim is required before acceptance work. Completion still requires one successful manual live-qa.yml mode=journeys run on the landed runner, exact tested web/API SHAs, sanitized transition/ledger/cleanup results and inspected 1280/390 captures. PR #1540 must not land first (D-390). Only the two demo identities and protected workflow secrets; shared live-qa concurrency; no public opportunity, real recipient, admin, payment/provider call, product money/login rule or production-setting change. Checked through D-414; fixture success is not live acceptance.",
       "epic": "D-212"
     },
     {
@@ -4529,7 +4551,9 @@
         "client/src/pages/home.metadataHydration.test.tsx",
         "client/src/pages/home.mobileNav.test.tsx",
         "client/src/pages/home.opportunities.test.tsx",
-        "client/src/pages/home.world.test.tsx"
+        "client/src/pages/home.world.test.tsx",
+        "docs/DECISIONS.md",
+        "docs/plans/D-048-phase-3-split.md"
       ],
       "note": "Retirement row (D-332), one per surface so none waits on a slower sibling (D-223, D-317); it replaces this surface's share of the never-registered K1-K5 rows in docs/plans/D-048-phase-3-split.md. Surface ids: home, home-signed-in. Built by D-048-p3-home and D-048-p3-home-signed-in; released by D-048-R-home-signed-in (not live yet: the 7-day soak starts when that row lands). Follow docs/plans/D-048-retire.md exactly: delete the kit body and the goalSurfaceOn switch in each page file so the file renders the goal page alone; delete a kit test only after its assertions are ported (the Ported assertions table, GATE-test-integrity rule 4); delete a non-goal component only when nothing imports it any more; change no behaviour, copy, route or price. Never land before the soak ends with no new Sentry issue on the surface; before that this row may be built ahead as a draft (D-315). The owns list is the build row's files plus the tests that import its pages, measured on main baff2550; if the deletion needs a path outside it, stop and ask for a widening (D-200), never edit outside owns. D-349 (launch mode, Nov 16): no 7-day soak. This row may land as soon as its release row is done. The soak returns when the owner announces launch or the first real user signs up. D-388 launch hold satisfied: BANDED-release PR #1664 merged as b54c03eb5 on Nov 27; restored to todo on Nov 28, preserving queue order, current claims and every surface release/parity condition. Rebuild on fresh branch agent/queue/d048-k-home-fresh from current main instead of merging stale PR #1277 (on agent/queue/d048-k-home, over 1,100 commits behind main); close #1277 with a comment linking the new pull request. A signed-in Live QA run (OPS-live-qa-runner) capturing this surface at 1280 and 390 on the current release may serve as the signed-in acceptance its release row lacked; link the run.",
       "epic": "D-048-p3"
@@ -5627,7 +5651,7 @@
       "tier": 2,
       "lane": "d048-retire-post-opportunity",
       "branch": "agent/queue/d048-k-post-opportunity-fresh",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-414",
       "dependsOn": [
         "D-048-R4",
@@ -9891,9 +9915,9 @@
       "tier": 2,
       "lane": "sync-auto-pull",
       "branch": "agent/queue/sync-auto-pull",
-      "status": "todo",
+      "status": "done",
       "dependsOn": [],
-      "note": "Owner, Nov 25 2026: 'automatically pull ,push the comits to local so that the local and remote stays in sync' and 'the local pull requests are set for a timing cant it be as soon as a commmit or pull is available'. Push on commit already exists (D-375 hook). Never force, rebase, reset or touch a dirty worktree or a diverged branch.",
+      "note": "Owner, Nov 25 2026: 'automatically pull ,push the comits to local so that the local and remote stays in sync' and 'the local pull requests are set for a timing cant it be as soon as a commmit or pull is available'. Push on commit already exists (D-375 hook). Never force, rebase, reset or touch a dirty worktree or a diverged branch. Nov 27: PR #1610 landed only a packet Status line from this branch, so the board read done with no code; the watcher and behind-branch fast-forwards were built in the Claude Code pull request named in the packet Status, which sets this row done.",
       "epic": "D-212",
       "owns": [
         "scripts/syncCloneCore.mjs",
@@ -10570,6 +10594,27 @@
         "docs/BUILD_CONTINUITY.md"
       ],
       "note": "CEO review GPT-6.1 Sol · 02ca, main 3508530aa, D-200/D-324: production lock helper acquired separate locks for root and linked worktree sharing one canonical Git common directory. Append-only FIFO corrective row; original PICKER-single-flight remains done. Resolve a canonical common-directory lock, refuse live legacy worktree-local owners during cutover, preserve liveness/takeover and heartbeat/report exemptions, and prove root/sibling/symlink exclusion plus independent-clone concurrency with real-CLI fixtures. No claim, eligibility, product, settings or money change. Registration is not implementation acceptance."
+    },
+    {
+      "id": "SYNC-tidy",
+      "title": "One command lists the leftover worktrees and branches that hold nothing unsaved and removes them only after the owner confirms with --apply (owner, Nov 27)",
+      "row": "SYNC",
+      "packet": "docs/plans/SYNC-tidy.md",
+      "tier": 2,
+      "lane": "sync-tidy",
+      "branch": "agent/queue/sync-tidy",
+      "status": "todo",
+      "dependsOn": [],
+      "epic": "D-212",
+      "owns": [
+        "scripts/sync-tidy.mjs",
+        "scripts/syncTidyCore.mjs",
+        "scripts/syncTidy.test.ts",
+        "AGENTS.md",
+        "docs/plans/SYNC-tidy.md"
+      ],
+      "syncedTo": "D-414",
+      "note": "Owner, Nov 27 2026, in a Claude Code session: approved a safe clean-up after the first full sync on his Mac listed ~60 worktrees and 100+ branches as left for you. Never deletes anything unsaved or anything GitHub lacks; dry run by default. Claude Code builds it in the same session."
     }
   ]
 }
