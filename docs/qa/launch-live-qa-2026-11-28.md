@@ -33,7 +33,7 @@ checked that both stayed unchanged from start to finish (`release-stable` ok).
 - Across all 38 captures: 0 failed requests, 0 console errors, 0 page errors. The Nov 24 WorkOS 400 on every
   page is gone.
 - **Defect:** seeker `/messages` at 1280 and 390 renders 200 but has no account menu, so a signed-in person
-  cannot sign out there. Issue #1708, row `P0-messages-account-menu` (PR #1720). Not fixed by this row.
+  cannot sign out there. Issue #1708, row `P0-messages-account-menu`. **Fixed** by PR #1720 (`356a954b6`): the post-release signed-in run [46091325701](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/46091325701) passed every seeker and referrer route, `/messages` included.
 
 ## What the journeys run proves (46085771891)
 
