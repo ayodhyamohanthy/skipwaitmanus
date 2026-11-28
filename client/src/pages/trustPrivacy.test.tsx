@@ -45,6 +45,8 @@ describe("TrustPrivacy", () => {
       /Requests are reviewed rather than silently deleting records/,
       /not a substitute for jurisdiction-specific legal notices/,
     ]) expect(screen.getByText(text)).toBeTruthy();
+    expect(screen.getByText("Your language choice and, when you sign up, your browser's main language (for example Telugu), used only to decide which languages to offer and to count sign-ups by language.")).toBeTruthy();
+    expect(screen.getByText("Your language and display choices are saved on this device.")).toBeTruthy();
     const anchors = Array.from(screen.getByRole("navigation", { name: "On this page" }).querySelectorAll("a"));
     expect(anchors).toHaveLength(9);
     for (const anchor of anchors) expect(container.querySelector(anchor.getAttribute("href") ?? "#missing")).toBeTruthy();

@@ -40,6 +40,13 @@ For `D-048-K-admin-money`, `docs/DECISIONS.md` is also declared for the bounded 
 
 For `D-048-K-post-opportunity`, the same one-path declaration is limited to the D-200 ruling on the missing hiring-now required-link constraint recorded in PR #1297. The scope prerequisite alone neither dispatches the source repair nor clears the retirement hold; the ruling follows separately on the official architect branch.
 
+For `D-048-K-home`, `docs/DECISIONS.md` and `docs/plans/D-048-phase-3-split.md` are declared
+only for the bounded D-200/D-373/D-407 ruling on its obsolete credential block and unfinished
+signed-in root-release acceptance in PR #1721. This prerequisite widens no runtime path and
+changes no status, holder, dependency, release gate or acceptance result. Publish it on main
+before the architect ruling because scope-check reads main's ownership declarations.
+
+
 `D-048-K-system` also owns `scripts/r7ReleaseAcceptance.test.ts` solely to retire its obsolete Kit/goal source-text and wording comparison once the old Emails implementation is removed. Its useful consumer guarantees stay in public Emails/goal tests and the Ported assertions table; policy assertions are not part of that source-only file. This one-path declaration is published on main before deletion because test-integrity rule 1 reads main's owns even for GPT/Claude scope-exempt builders. No gate exception, status, dependency, runtime or assertion weakening is authorized.
 
 1. Confirm the release row in `dependsOn` is `done`, the id is in `RELEASED` on `origin/main`, and the soak has ended. Record the release commit, the date, and the Sentry check (query and result, no personal data) in the pull request.
@@ -143,6 +150,62 @@ Routing verification uses the actual picker APIs with the known merged-release e
 **Proof.** Port the focused native-constraint regression from #1297 without its two retirement assertions; run it red on current main, then green. Keep the legacy and step-up controls unchanged. In a clean browser at 1280 and 390 with synthetic API responses, prove that submitting the blank hiring-now field is stopped before `POST /api/opportunities`, a completed bare job link still publishes through the existing contract, and a walk-in can continue without a job link. Capture and inspect both viewports; make no real post. Require the applicable current-head quality/CI gates, path-computed review rules, protected merge, then canonical web release verification and a receipt. Merged ancestry alone is not live acceptance.
 
 `D-048-K-post-opportunity` keeps its branch, position, draft #1297 and R4 dependency. The new edge is an actual behavior prerequisite, not a shared-file or scheduling hold. Integrate the repaired goal source/test, reconcile the duplicated missing-link assertion without weakening it, and re-run §3's drift check before deletion. Preserve or explicitly port all legacy assertions. The draft is not a merge candidate before the repair and its canonical acceptance. D-349 removes the launch-mode soak, not the parity or exact-release gates. This ruling is docs-only; neither repair nor retirement is implemented, verified live, or marked done by it.
+
+## 3d. Launch hold satisfied: eight fresh retirement rows reopen (November 28, D-388)
+
+The D-370/D-388 hold ends when `BANDED-release` lands, not on a further owner answer.
+[PR #1664](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1664) merged as
+`b54c03eb57893365043741ec40fc98ebacdf9cdc` on November 27. On November 28, the canonical
+[`/api/chargebee/banded/offer`](https://skipwait.me/api/chargebee/banded/offer) returned
+`onSale: true`; API readiness identified `f02de526ad1dbb29fbfb5496980c64bf17f3d12e` as ready.
+This readback is not the remaining BANDED checkout-handshake or signed-in acceptance.
+
+Applying D-388 (4), restore these existing rows from `owner` to `todo`, in their existing order:
+`D-048-K-home`, `D-048-K-post-opportunity`, `D-048-K-admin-money`, `D-048-K-admin-people`,
+`D-048-K-inplace`, `D-048-K-employer`, `D-048-K-employer-talent`, `D-048-K-employer-billing`.
+Their `-fresh` branches, lanes, tiers, ownership and dependencies stay unchanged; their
+decision-sync stamp advances to D-414. Existing claims and unpublished work remain their holders'.
+Take each row only through the picker, and replace its stale PR only when the new PR exists.
+
+Reopening is permission to resume the assigned work, never proof of deletion or release acceptance.
+Before removing a Kit body, still prove its goal page is live, resolve parity/drift, port assertions,
+preserve current approved copy and sign-in/privacy/money behavior, and complete exact-head CI and
+1280/390 verification. Sections 3b/3c and each release dependency remain binding. Preserve D-414's
+mobile work when integrating `Home.tsx`; overlapping work uses isolated branches, not a new hold.
+Other owner-parked rows and the kit-layer retirement are unchanged. No source, sales switch,
+production setting, legal wording or product-completion claim is part of this routing correction.
+
+## 3e. Admin-money unpublished-work block cleared (November 28, D-407)
+
+UNBLOCK `GPT-6.1 Sol · 8417` applies D-407 (1)(a)/(b) to reports
+`9f3bd6e9a` and `5d07f3d3f`: another worktree's uncommitted retirement edits
+are not an external prerequisite. Preserve them untouched; continue from
+published `agent/queue/d048-k-admin-money-fresh` (`a7d3a5813` when checked)
+in an isolated checkout, through the normal picker and without taking an
+active holder's claim. No unpublished-WIP handoff or owner answer is needed.
+Preserve all published history; this ruling does not claim the private edits
+were recovered or inspected.
+
+Section 3d already satisfied the BANDED launch hold; it is not an owner wait.
+Release repair #1365 merged as `3d1656f13`, but retirement completion still
+requires the four-route parity/drift check, ported assertions, unconditional
+wrappers, exact-head required CI and canonical 1280/390 acceptance. Sections
+3/3b and the existing release dependency remain binding. Keep the row `todo`
+on its fresh branch with its current holder, scope and FIFO position. The
+unblocker's `review` report releases only this standing worktree block, not
+the source work or acceptance. No product code, money operation or live
+release is performed by this documentation.
+
+## 3f. Employer surfaces need a demo employer sign-in (November 28, D-416)
+
+UNBLOCK `Claude Code · 77ec` rules on the standing block of D-048-K-employer-talent: it is a real external
+prerequisite. The release rows D-048-R-employer-talent and D-048-R-employer-billing need signed-in 1280/390
+captures of `/employer/talent` and `/employer/billing` on the live release plus the 24 h Sentry check, and no
+employer can sign in on skipwait.me: `employer@reviewer.skipwait.me` exists in `server/_core/reviewerLogin.ts`,
+but the reviewer reset and the Live QA runner carry only the seeker and referrer passwords. Both release rows
+park at `owner` until the owner adds the repository secret `REVIEWER_EMPLOYER_PASSWORD`; then one agent row
+extends the reset and the runner to the employer role, and the release rows resume. The K rows keep waiting
+on them (D-134). The independent-review report on PR #1210 is void under D-370.
 
 ## 4. Rows
 
@@ -251,6 +314,10 @@ Release rows are not slowed by it: adding an id to `RELEASED` passes rule 1 unch
 - **Prices, legal text, the login rule, what is on sale.** Untouched.
 
 ## Status
+
+- D-048-K-admin-money: unblock ruling — GPT-6.1 Sol · 8417 — 2026-11-28 — [coordination](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/811#issuecomment-7234812344); unpublished-WIP handoff is not a task block (D-407); retirement implementation and current-release acceptance remain unverified.
+
+- D-048-K-post-opportunity: done — e622f4a3d — Claude Code · 3770, 2026-11-27. Kit wizard and `goalSurfaceOn` switch deleted; `PostOpportunity.tsx` lazy-loads the goal page alone; ratchet baseline entry removed. Drift check: kit edits `a1dfd53f3` and `dfc555b97` (after the goal landed) both exist in the goal page. All 13 wrapper cases kept and run on the goal page (55→58 assertion lines), goal test 44→44. Synthetic 1280/390 captures, main vs candidate: 8/10 byte-identical, 2 differ only in the native validation-bubble frame ([receipt](../../design/goal-ui/captures/post-opportunity/retire-3770/receipt.json)). Unverified: canonical web deploy of the merge commit.
 
 - D-048-p3-post-link-parity: done — f541f5a5 — Claude Code · 695b, 2026-11-24. `required` on the hiring-now job link only; blank publish stopped in the browser with no POST, bare link published, walk-in continues without a link (tests + 1280/390 captures in `design/goal-ui/captures/post-opportunity/`). Canonical web acceptance after deploy. Unblocks the job-link gap named for `D-048-K-post-opportunity`; that retirement stays parked by D-370.
 

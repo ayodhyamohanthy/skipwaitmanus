@@ -62,6 +62,7 @@ import { agentPortalAllowed } from "./agentPortalAccess";
 import { MAX_OPEN_ASKS_PER_COMPANY } from "../shared/planCatalog";
 import { HELD_ASK_RECONCILE_LIMIT, isHeldCandidate, isPastAskWindow, listHeldForReferrerIds, listStaleHeldForViewer, readQueueAllocationTx, recordHeldAskReleaseTx, selectStaleHeldAsks, type UnclaimedAssignmentKind, type UnclaimedAssignments } from "./heldAsk";
 import { BlockedPersonalLinkError, PERSONAL_LINK_UNAVAILABLE, blockedCounterpartsFailOpen } from "./blockedPairs";
+import { assertNotOwnEmployer, drizzleOwnEmployerStore } from "./ownEmployerGuard";
 import { POOL_NUDGES_ENABLED } from "../shared/poolNudges";
 import { notifyColleaguesOfReleasedRequest } from "./poolNudges";
 import { DEFAULT_REFERRAL_CAPACITY, isOpenReferrer, isVerifiedEmployeeOfCompany, referralCapacityRemaining } from "./referrerAvailability";
@@ -2279,6 +2280,9 @@ export async function createCompanyReferralRequest(userId: number, input: Create
   const fingerprint = companyReferralFingerprint(input, companyDomain);
   const realDb = db ?? (await getDb());
   if (!realDb) throw new Error("Database unavailable");
+  // PRIVACY-own-employer-guard (D-414 (3), D-415 (2)): a request never reaches the requester's own employer. Checked
+  // before any wallet read, lock or write, so a refusal creates, reserves and spends nothing and sends no notice.
+  await assertNotOwnEmployer(drizzleOwnEmployerStore(realDb), { userId, companyDomain, idempotencyKey: input.idempotencyKey, ...(input.selectedCompany ? { selectedCompany: input.selectedCompany } : {}) });
   if (input.opportunityId && (input.fastTrackCode || input.fastTrackCompanySlug || input.fastTrackAlias)) throw new Error("Use one private referral link at a time");
   if (input.fastTrackCode && (input.fastTrackCompanySlug || input.fastTrackAlias)) throw new Error("Use one private referral link at a time");
   const fastTrackLink = input.fastTrackCode ? await getActiveReferrerFastTrackLink(input.fastTrackCode) : input.fastTrackCompanySlug && input.fastTrackAlias ? await getActiveReferrerFastTrackVanityLink(input.fastTrackCompanySlug, input.fastTrackAlias) : undefined;

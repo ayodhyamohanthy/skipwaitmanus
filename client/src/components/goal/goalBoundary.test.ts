@@ -20,6 +20,9 @@ MOVED_SURFACES.add("pages/explore/JobLinkFromPosting.tsx");
 // D-394 (SEARCH-universal): the one-box results (a resolved posting and careers-site jobs), new and goal-native,
 // rendered only by the already-moved Explore page.
 MOVED_SURFACES.add("pages/explore/UniversalSearchResults.tsx");
+// MOBILE-both-prompt (D-414): the "Where do you work now?" sheet, new and goal-native, mounted only by the moved
+// composer (useAskComposer) in its sent state on the moved AskDrawer and Ask pages; switch BOTH_ROLES_PROMPT off.
+MOVED_SURFACES.add("components/requests/BothRolesSheet.tsx");
 
 function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {

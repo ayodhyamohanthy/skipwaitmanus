@@ -2,12 +2,16 @@
 // AGENT-LOOP-supervisor (D-402): a turn-capped agent restarts itself. The pure rules first (next action from the
 // run history, how the prompt reaches the command), then the script as a process against a throwaway git
 // repository with a fake agent, so every run, log line, stop and clean working tree is proven without a real agent.
-import { execFileSync, spawnSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-import { BACKOFF_AFTER, BACKOFF_MS, FAST_RUN_MS, STOP_AFTER, buildArgv, fastStreak, logLine, nextAction, parseArgs, usage, quoteWindowsArg, windowsCommandLine } from "./agent-loop.mjs";
+import {
+  BACKOFF_AFTER, BACKOFF_MS, FAST_RUN_MS, SESSION_ENV, STOP_AFTER, buildArgv, chooseLoopName, fastStreak, logLine, mintName, nextAction,
+  parseArgs, parseLoopSessions, releaseLoopName, usage, quoteWindowsArg, windowsCommandLine,
+} from "./agent-loop.mjs";
+import { sessionName } from "./nextTaskCore.mjs";
 
 const root = path.resolve(__dirname, "..");
 const SCRIPT = path.join(root, "scripts/agent-loop.mjs");
@@ -173,5 +177,159 @@ describe("windows command-line quoting", () => {
   });
   it("joins quoted arguments with single spaces", () => {
     expect(windowsCommandLine(["opencode", "run", "build now"])).toBe('opencode run "build now"');
+  });
+});
+
+// PICKER-durable-session (D-415 (4)(a)): `--session "<model>"` gives the loop one session name for its whole life,
+// saved beside the log and passed to every run in SKIPWAIT_SESSION_NAME, so a fresh conversation's bare claim
+// continues the loop's own claim instead of minting a tag (and orphaning the old claim for the 2-hour lease).
+describe("durable session name: the pure rules", () => {
+  const where = { cwd: "/clone", command: ["codex", "exec"], model: "GPT-6.1 Sol", pid: 4242, at: "2026-11-28T10:00:00.000Z" };
+  const tags = (...list: string[]) => { const left = [...list]; return () => left.shift() ?? "zz99"; };
+  const nobodyAlive = () => false;
+  const saved = (name: string, pid: number | null = null, extra: Record<string, unknown> = {}) =>
+    ({ cwd: "/clone", command: ["codex", "exec"], name, pid, at: "2026-11-27T10:00:00.000Z", ...extra });
+
+  it("parseArgs takes --session <model> and refuses a tagged, empty or missing one", () => {
+    expect(parseArgs(["--session", "GPT-6.1 Sol", "--", "codex", "exec"])).toEqual({ mode: "loop", prompt: "build", maxRuns: null, command: ["codex", "exec"], session: "GPT-6.1 Sol" });
+    expect(() => parseArgs(["--session", "GPT-6.1 Sol · ab12", "--", "x"])).toThrow(/model name only/);
+    expect(() => parseArgs(["--session", "  ", "--", "x"])).toThrow(/--session/);
+    expect(() => parseArgs(["--session", "GPT\n6.1", "--", "x"])).toThrow(/--session/);
+    expect(() => parseArgs(["--session"])).toThrow(/--session needs/);
+  });
+  it("mints exactly the name the picker would mint for that model and tag", () => {
+    const long = "A model name that is long enough to be cut before its tag fits";
+    for (const model of ["GPT-6.1 Sol", "Claude Code", long]) expect(mintName(model, "ab12")).toBe(sessionName(model, "ab12"));
+    expect(mintName(long, "ab12").length).toBeLessThanOrEqual(60);
+  });
+  it("a first loop mints a fresh name and saves it with its pid", () => {
+    const out = chooseLoopName([], { ...where, newTag: tags("ab12"), isAlive: nobodyAlive });
+    expect(out.name).toBe("GPT-6.1 Sol · ab12");
+    expect(out.entries).toEqual([{ cwd: "/clone", command: ["codex", "exec"], name: "GPT-6.1 Sol · ab12", pid: 4242, at: where.at }]);
+  });
+  it("a restarted loop reuses its saved name once the loop that held it has ended", () => {
+    const out = chooseLoopName([saved("GPT-6.1 Sol · ab12")], { ...where, newTag: tags("cd34"), isAlive: nobodyAlive });
+    expect(out.name).toBe("GPT-6.1 Sol · ab12");
+    expect(out.entries).toHaveLength(1);
+    expect(out.entries[0]).toMatchObject({ name: "GPT-6.1 Sol · ab12", pid: 4242 });
+    // A crashed loop leaves its pid behind; a pid that no longer runs is free too.
+    expect(chooseLoopName([saved("GPT-6.1 Sol · ab12", 999)], { ...where, newTag: tags("cd34"), isAlive: nobodyAlive }).name).toBe("GPT-6.1 Sol · ab12");
+  });
+  it("two live loops on one clone with the same command never share a name", () => {
+    const out = chooseLoopName([saved("GPT-6.1 Sol · ab12", 777)], { ...where, newTag: tags("cd34"), isAlive: (pid: number) => pid === 777 });
+    expect(out.name).toBe("GPT-6.1 Sol · cd34");
+    expect(out.entries.map((e: { name: string }) => e.name)).toEqual(["GPT-6.1 Sol · ab12", "GPT-6.1 Sol · cd34"]);
+    // A drawn tag already in the file is drawn again.
+    expect(chooseLoopName([saved("GPT-6.1 Sol · ab12", 777)], { ...where, newTag: tags("ab12", "ef56"), isAlive: (pid: number) => pid === 777 }).name).toBe("GPT-6.1 Sol · ef56");
+  });
+  it("another working directory, command or model gets its own name", () => {
+    for (const other of [saved("GPT-6.1 Sol · ab12", null, { cwd: "/elsewhere" }), saved("GPT-6.1 Sol · ab12", null, { command: ["opencode", "run"] }), saved("Claude Code · ab12")]) {
+      expect(chooseLoopName([other], { ...where, newTag: tags("cd34"), isAlive: nobodyAlive }).name).toBe("GPT-6.1 Sol · cd34");
+    }
+  });
+  it("a malformed saved file or entry gives a fresh name, never a wrong one", () => {
+    expect(parseLoopSessions("not json")).toEqual([]);
+    expect(parseLoopSessions(JSON.stringify({ version: 1, loops: "x" }))).toEqual([]);
+    const text = JSON.stringify({ version: 1, loops: [saved("GPT-6.1 Sol · ab12", null, { pid: "x" }), saved("GPT-6.1 Sol · cd34", null, { command: "codex exec" }), saved("GPT-6.1 Sol · ef56")] });
+    expect(parseLoopSessions(text).map((e: { name: string }) => e.name)).toEqual(["GPT-6.1 Sol · ef56"]);
+    for (const bad of ["GPT-6.1 Sol", "GPT-6.1 Sol · ", "GPT-6.1 Sol · a b", "GPT-6.1 · ab12", "GPT-6.1 Sol · ab12 · cd"]) {
+      expect(chooseLoopName([saved(bad)], { ...where, newTag: tags("cd34"), isAlive: nobodyAlive }).name).toBe("GPT-6.1 Sol · cd34");
+    }
+  });
+  it("releasing clears only this loop's pid", () => {
+    const entries = [saved("GPT-6.1 Sol · ab12", 4242), saved("GPT-6.1 Sol · cd34", 777)];
+    expect(releaseLoopName(entries, { name: "GPT-6.1 Sol · ab12", pid: 4242 }).map((e: { pid: number | null }) => e.pid)).toEqual([null, 777]);
+    expect(releaseLoopName(entries, { name: "GPT-6.1 Sol · ab12", pid: 1 }).map((e: { pid: number | null }) => e.pid)).toEqual([4242, 777]);
+  });
+  it("the usage names --session and the variable it sets", () => {
+    expect(usage()).toContain("--session");
+    expect(usage()).toContain(SESSION_ENV);
+    expect(SESSION_ENV).toBe("SKIPWAIT_SESSION_NAME");
+  });
+});
+
+describe("durable session name: agent-loop.mjs as a process", () => {
+  const dirs: string[] = [];
+  afterEach(() => { for (const d of dirs.splice(0)) rmSync(d, { recursive: true, force: true }); });
+  const repo = () => {
+    const dir = realpathSync(mkdtempSync(path.join(os.tmpdir(), "agent-loop-session-")));
+    dirs.push(dir);
+    execFileSync("git", ["init", "-q", dir]);
+    return dir;
+  };
+  const gitDir = (dir: string) => path.resolve(dir, execFileSync("git", ["rev-parse", "--git-common-dir"], { cwd: dir, encoding: "utf8" }).trim());
+  // The suite itself may run inside an agent loop: only a test that sets the variable passes one on.
+  const env = (extra: Record<string, string> = {}) => {
+    const out: Record<string, string | undefined> = { ...process.env, ...extra };
+    if (!("SKIPWAIT_SESSION_NAME" in extra)) delete out.SKIPWAIT_SESSION_NAME;
+    return out;
+  };
+  const loop = (dir: string, args: string[], extra: Record<string, string> = {}) =>
+    spawnSync(process.execPath, [SCRIPT, ...args], { cwd: dir, encoding: "utf8", env: env(extra), timeout: 60_000 });
+  const showName = [process.execPath, "-e", "console.log('name=' + (process.env.SKIPWAIT_SESSION_NAME ?? '-'))"];
+  const namesOf = (stdout: string) => [...stdout.matchAll(/^name=(.*)$/gm)].map(m => m[1]);
+  const NAME = /^GPT-6\.1 Sol · [0-9a-f]{4}$/;
+
+  it("each loop keeps its own name for every run and across three restarts of the loop", () => {
+    const dir = repo();
+    const first = loop(dir, ["--session", "GPT-6.1 Sol", "--max-runs", "3", "--", ...showName]);
+    expect(first.status, first.stderr).toBe(0);
+    const names = namesOf(first.stdout);
+    expect(names).toHaveLength(3);
+    expect(names[0]).toMatch(NAME);
+    expect(new Set(names).size).toBe(1);
+    expect(first.stderr).toContain(`session name "${names[0]}"`);
+    for (let restart = 1; restart <= 3; restart++) {
+      const again = loop(dir, ["--session", "GPT-6.1 Sol", "--max-runs", "1", "--", ...showName]);
+      expect(again.status, again.stderr).toBe(0);
+      expect(namesOf(again.stdout)).toEqual([names[0]]);
+    }
+    const saved = JSON.parse(readFileSync(path.join(gitDir(dir), "skipwait-agent-loop-sessions.json"), "utf8"));
+    expect(saved.loops).toEqual([expect.objectContaining({ cwd: dir, command: showName, name: names[0], pid: null })]);
+    expect(execFileSync("git", ["status", "--porcelain"], { cwd: dir, encoding: "utf8" })).toBe("");
+  });
+
+  it("two loops running at once on one clone get different names", async () => {
+    const dir = repo();
+    // Each run outlives the other loop's start by a wide margin, so both loops are running when each picks its name.
+    const slow = [process.execPath, "-e", "setTimeout(() => console.log('name=' + process.env.SKIPWAIT_SESSION_NAME), 3000)"];
+    const start = () => new Promise<string>((resolve, reject) => {
+      const child = spawn(process.execPath, [SCRIPT, "--session", "GPT-6.1 Sol", "--max-runs", "1", "--", ...slow], { cwd: dir, env: env() });
+      let out = "";
+      child.stdout.on("data", (chunk: Buffer) => { out += String(chunk); });
+      child.once("error", reject);
+      child.once("exit", code => (code === 0 ? resolve(out) : reject(new Error(`loop exited ${code}`))));
+    });
+    const [a, b] = await Promise.all([start(), start()]);
+    const [nameA, nameB] = [namesOf(a)[0], namesOf(b)[0]];
+    expect(nameA).toMatch(NAME);
+    expect(nameB).toMatch(NAME);
+    expect(nameA).not.toBe(nameB);
+  }, 60_000);
+
+  it("a malformed saved name file gives a fresh name, never a wrong one", () => {
+    const dir = repo();
+    const file = path.join(gitDir(dir), "skipwait-agent-loop-sessions.json");
+    writeFileSync(file, "{ not json");
+    const one = loop(dir, ["--session", "GPT-6.1 Sol", "--max-runs", "1", "--", ...showName]);
+    expect(one.status, one.stderr).toBe(0);
+    expect(namesOf(one.stdout)[0]).toMatch(NAME);
+    // An entry for this very loop whose name is not a GPT-6.1 Sol name is never handed to it.
+    for (const wrong of ["Claude Code · ab12", "GPT-6.1 Sol", "GPT-6.1 Sol · a b"]) {
+      writeFileSync(file, JSON.stringify({ version: 1, loops: [{ cwd: dir, command: showName, name: wrong, pid: null, at: "2026-11-27T10:00:00.000Z" }] }));
+      const run = loop(dir, ["--session", "GPT-6.1 Sol", "--max-runs", "1", "--", ...showName]);
+      expect(run.status, run.stderr).toBe(0);
+      const name = namesOf(run.stdout)[0];
+      expect(name).toMatch(NAME);
+      expect(name).not.toBe(wrong);
+    }
+  });
+
+  it("without --session the runs get no name, and an inherited one is not passed on", () => {
+    const dir = repo();
+    const result = loop(dir, ["--max-runs", "1", "--", ...showName], { SKIPWAIT_SESSION_NAME: "GPT-6.1 Sol · ab12" });
+    expect(result.status, result.stderr).toBe(0);
+    expect(namesOf(result.stdout)).toEqual(["-"]);
+    expect(existsSync(path.join(gitDir(dir), "skipwait-agent-loop-sessions.json"))).toBe(false);
   });
 });
