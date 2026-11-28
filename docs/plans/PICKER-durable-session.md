@@ -30,4 +30,4 @@ In `scripts/agentLoop.test.ts` and `scripts/nextTaskShortSession.test.ts`:
 Green required CI, the focused tests above, and the row set to `done`. After landing, the owner's Mac loops pick it up on their next `git pull`; nothing needs restarting by hand.
 
 ## Status
-- PICKER-durable-session: registered by Claude Code · 77ec, 2026-11-28 (D-415); nothing built.
+- PICKER-durable-session: done — Claude Code · 77ec, 2026-11-28. `agent-loop.mjs --session "<model>"` keeps one name per loop (saved in the git common dir, never one a running loop holds) and passes `SKIPWAIT_SESSION_NAME`; a bare `--claim` with a matching name continues that claim. 23 new tests failed first; 69 focused and 714 picker tests pass. Known edge: a sub-agent started inside a run inherits the variable and would continue the same claim.
