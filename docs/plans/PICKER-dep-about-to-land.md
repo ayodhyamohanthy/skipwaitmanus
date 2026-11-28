@@ -30,4 +30,4 @@ No other hand-out, hold, review or landing rule changes. PR #1691's CI is not re
 `scripts/nextTaskCore.mjs`, `scripts/nextTaskRefreshDrafts.test.ts`, this packet.
 
 ## Status
-- PICKER-dep-about-to-land: registered by Claude Code · 77ec, 2026-11-28 (D-415); nothing built.
+- PICKER-dep-about-to-land: done — Claude Code · 77ec, 2026-11-28. `depAboutToLand` also requires the dependency not be parked at `owner`, not blocked and without unmet dependencies of its own. Two new cases in `scripts/nextTaskRefreshDrafts.test.ts` failed before and pass after; 213 picker tests pass.
