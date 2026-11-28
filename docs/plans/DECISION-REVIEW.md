@@ -128,3 +128,78 @@
 - **Actions:** D-375 recorded, with row `SYNC-auto-push` and its packet section in `docs/plans/BRANCH-HYGIENE.md`. No price, legal text, login rule, money path or owner-held row changed.
 - **Owner questions:** none new.
 - **Cursor:** unchanged from the Oct 26 section.
+
+### 2026-11-28, GPT-6.1 Sol · 747d (D-206 review; read-only and provisional)
+- **Scope / basis:** main `5b1c0f5a9104fc6a524762ff70312e3fb0916f07`; exact-main [CI 46117090916](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/46117090916) is green; official board snapshot: 488 tasks, 442 done. Reviewed all 39 extant entries D-376–D-416 (D-397/D-404 absent), the next 20 oldest active entries (D-003–D-031 below), and the current top-five rows: `PICKER-common-dir-lock` (current holder 8167), `PICKER-claim-cost`, `P0-goal-shell-sign-out` (PR #1701, merge `524b94435`), `P0-support-account-menu` (PR #1719, merge `8444f3f0`), `PICKER-speed-fixes` (PR #1702, merge `fb9f767e4`). Source PRs alone do not close the latter rows' assigned acceptance.
+- **D-376–D-416 ratings** (statuses are active, superseded or historical; below-10 gaps refer to existing packet acceptance/tests, not new authority):
+
+| Decision | Rating / status | Evidence gap or bounded action |
+|---|---|---|
+| D-376 | 9, active | Scoped picker regression: red release blocks auto-land except its registered fix. |
+| D-377 | 9, historical (resolved by D-388) | Secrets were handled later; no new secret request. Use existing runner evidence for remaining QA. |
+| D-378 | 9, active | Picker test for unblocker's own lock/report clearing its evidence-backed block without repeat handout. |
+| D-379 | 9, active | Existing status-help coverage must retain the 90-day close until D-174 removal is released. |
+| D-380 | 9, historical | PRs #1193/#1314 and live record reconcile support; preserve status-reconciliation coverage. |
+| D-381 | 9, active | PR #1468 / real-MySQL intent test is evidence; grant replay/idempotency remains the money-path bar. |
+| D-382 | 8, active | Existing step-up tests must cover stale/renewed cookie and Bearer sessions with no card mutation. |
+| D-383 | 8, active | D-392 addresses the TEST bot-check; retain provider artifact and exact-SHA release proof; sales stay off. |
+| D-384 | 9, active | Existing pool-email tests must pin grant, blocked-pair, one/day cap and retry idempotency. |
+| D-385 | 9, active | Paired expiry/reconfirm and copy tests; exact release proof before either switch changes. |
+| D-386 | 9, retired | D-370 removed the stale-review gate; do not revive unless that governing rule changes. |
+| D-387 | 9, active | Exact-release signed-in QA must fail visibly on skips/errors and keep credentials/PII out of artifacts. |
+| D-388 | 8, active | Verify the existing deploy/worktree fixes on their exact targets; no status or upload alone is release proof. |
+| D-389 | 8, active | Existing demo journeys still owe wallet, isolation, transitions and job-link evidence; no real payment. |
+| D-390 | 9, active | Keep launch acceptance waiting for the recorded journey run; picker dependency test guards landing. |
+| D-391 | 8, active | D-174 MySQL journey must cover reconfirm, expiry and copy before the coupled release. |
+| D-392 | 8, active | Owner TEST payment only; retain provider/refund/cancel/replay evidence, never real-money QA. |
+| D-393 | 8, active | Sandbox/auth tests must prove cross-user isolation and exclusion from real people/counts. |
+| D-394 | 9, active | Search release needs cited real job sources and domain mapping; no invented coverage. |
+| D-395 | 9, active (block cleared) | PR #1522's own-request tests satisfy the ruling; preserve owner scope and no SKIPPY-6 dependency. |
+| D-396 | 9, active | PR #1433 supplies the repair; current parent holder owns any registry reconciliation. |
+| D-398 | 8, active | Existing BYOR/name tests must prove recipient identity, replay safety and no handle recycling. |
+| D-399 | 8, active | Picker tests must build ahead on owner/blocked rows while refusing landing before gates. |
+| D-400 | 10, active / founder-locked | Pinned founder identity and suspension-refusal tests; no gap identified in this snapshot. |
+| D-401 | 8, active | Session-reuse tests must keep the exact holder while preventing takeover of an active session. |
+| D-402 | 8, active | Existing loop tests must cover stop/backoff and avoid an unbounded failure/restart cycle. |
+| D-403 | 7, active | Protocol-safe compaction tests: keep tool-call/result pairs, stream unchanged, retry once, never log auth. |
+| D-405 | 9, active | D-178 tests must reject revoked/expired grants and enforce locked caps plus replay safety. |
+| D-406 | 10, active / founder-locked | Pinned same-account email link/code behavior and one-time spend; no gap identified here. |
+| D-407 | 9, active | Scoped picker tests distinguish owner/external holds from work that remains build-ahead. |
+| D-408 | 8, active | Release only with owner present for real phone/laptop checks and 1280/390 evidence. |
+| D-409 | 8, active | Existing QA/issue tests need exact web/API SHAs, deduped recovery and no secrets/PII. |
+| D-410 | 8, active | D-178 journey must use only demo identities in D-393 sandbox, record exact SHAs and clean up. |
+| D-411 | 9, active | Approved wording stays unchanged; existing MySQL journey proves the 31-day reconfirm path. |
+| D-412 | 8, active | Existing speed-fix tests and linked P0 live runs, not read receipts/status churn, establish closure. |
+| D-413 | 8, active | Owner-reported settings are not machine-verified; confirm read-only when access exists; preserve approved text. |
+| D-414 | 8, active | Existing mobile acceptance must show the one-screen role choice at 390 without changing auth methods. |
+| D-415 | 8, active | Verify company-domain guard cases and bounded picker/supervision tests; passkey release still needs owner present. |
+| D-416 | 9, active owner hold | Owner provisions the repository secret; then the existing runner, signed-in 1280/390 captures and 24-hour Sentry proof remain. |
+
+- **Next 20 oldest active entries (D-003–D-031):**
+
+| Decision | Rating / status | Evidence gap or bounded action |
+|---|---|---|
+| D-003 | 9, active as amended | Exact candidate CI and protected PR/merge path remain the evidence, not a direct push. |
+| D-004 | 9, active / frozen | Keep Chargebee/provider boundaries; existing recovery and replay matrix guards any change. |
+| D-006 | 9, active / frozen | Fairness remains; existing tests must keep D-040/D-196 exceptions narrowly bounded. |
+| D-007 | 10, active / frozen | No GST until owner fact changes; source tax labels from the live configuration. |
+| D-008 | 8, sequencing superseded by D-068 | Docs still move in the same change; verify affected-doc sync, not a pre-code main commit. |
+| D-010 | 10, active / frozen | North-star remains; use observed seeker/referrer outcomes rather than a proxy claim. |
+| D-011 | 9, partly active | Company binding remains; auth-method wording is superseded; test company match before spend. |
+| D-015 | 6, historical / paused | Sprint evidence is stale; no outreach without current evidence and per-item owner approval. |
+| D-016 | 6, historical / attest first | Reconfirm the owner attestation before any public claim; do not imply employer approval. |
+| D-017 | 9, active | Existing personal-link tests must preserve referrer and job across sign-in and replay. |
+| D-018 | 9, active | Use current count-only production measures with source/date; no personal data or invented baseline. |
+| D-019 | 10, active | Basics remain non-negotiable; focused suites and exact-release live proof are the evidence. |
+| D-021 | 9, active as amended | Decline/reopen and ledger replay tests must preserve D-147 spend and D-066 reopen. |
+| D-022 | 9, active as amended by D-220 | Test the 24-hour poster first look; response-time evidence is still the limit. |
+| D-023 | 8, active | Numerical certainty needs source data; label uncertainty instead of promoting an unsupported score. |
+| D-024 | 8, partly active | Pin stable handles/no recycling; no paid-handle benefit is authorized by this entry. |
+| D-026 | 10, active | Vision and session sync remain; use current decisions and the prior repo-only outcome. |
+| D-028 | 7, partly active | Discovery remains, availability framing is superseded; use sourced job data only. |
+| D-030 | 10, active / founder-locked as amended | Preserve the D-406/D-408 methods; login-rule and account-binding pins remain decisive. |
+| D-031 | 10, active | Free/wired options only; never use a card or credits without an approved hard stop. |
+
+- **Top-five task bases:** D-019 is rated above; D-409/D-412/D-415 are covered above. D-085, 9/10 active: scoped lease tests must retain 2-hour idle takeover while honoring pushes/heartbeats. D-200, 9/10 active: scoped hold/scope tests must preserve isolated work and protected CI. D-202, 9/10 active: verify authoritative origin decision sync and stale-task refusal. D-225, 9/10 active: preflight must use actual current instructions and prior repo-only outcome, not a read receipt. D-309, 9/10 active: overlap is safe only with isolated writers and conflict-preserving integration. D-321, 8/10 active: supervision needs proof it clears only evidence-backed work through existing routes. D-324, 9/10 active: concurrent CLI tests must show single-flight/no dead ends without weakening holds. D-370, 9/10 active: exact green required CI remains the landing gate; no independent review. D-375, 8/10 active (re-rated from 9): a real Mac run must prove hook/timer continuity and recovery.
+- **Actions / owner questions:** no decision, task, queue, setting, price, legal text, login rule, money path or outreach authority changed. All sub-10 items point to existing packet tests or acceptance. No new owner question; preserve D-416's existing secret hold and D-408's owner-present device ceremony.
+- **Cursor:** D-032 onward; next 20 oldest active entries not yet rated.
