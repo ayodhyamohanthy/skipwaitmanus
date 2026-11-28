@@ -183,6 +183,7 @@ Each listed component is redesigned by the row that owns its page (§2), in the 
 - `pages/ReferralRequest.tsx`: `SeekerCreditsCard.tsx`
 - `pages/Referrer.tsx`: `referrer/CapacitySettingsPanel.tsx`, `referrer/ClaimedReview.tsx`, `referrer/CoverageInviteBanner.tsx`, `referrer/ReferrerOverview.tsx`, `referrer/ReferrerSignInDialog.tsx`
 - `pages/ReferrerHome.tsx`: `referrer-home/HomeAside.tsx`, `referrer-home/ReferrerSampleRows.tsx`, `referrer-home/ShareImpactCard.tsx`, `referrer-home/WaitingAsks.tsx`
+- `pages/ReferrerHome.tsx` (child build `D-089.ui`, switch `REQUEST_INBOX_LINK_ENABLED` off; placement D-414 (2); goal-native and already moved, release `D-089-request-inbox`): `referrer-home/GoalReferralLinkPanel.tsx`
 - `pages/ReferrerSetup.tsx`: `referrer-home/SetupWizard.tsx`
 - `pages/Settings.tsx`: `settings/AccountPanels.tsx`, `settings/AppPanel.tsx`, `settings/BlockedPeople.tsx`, `settings/NewAskEmailRow.tsx`, `settings/NotificationPanels.tsx`, `settings/PrivacyPanels.tsx`, `settings/RegionPanel.tsx`, `settings/SettingsNav.tsx`, `settings/SlackReviewAlerts.tsx`, `settings/TalentConsentPanel.tsx`, `settings/settingsUi.tsx`
 - `pages/UnifiedInbox.tsx`: `inbox/InboxThreadList.tsx`
