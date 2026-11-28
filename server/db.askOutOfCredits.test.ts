@@ -1,7 +1,8 @@
 import express from "express";
 import request from "supertest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { MySqlTable } from "drizzle-orm/mysql-core";
+import type { SQL as SQLQuery } from "drizzle-orm";
+import { MySqlDialect, type MySqlTable } from "drizzle-orm/mysql-core";
 import { profiles, referralAttachments, tokenBalances } from "../drizzle/schema";
 import { currentMonthlyCycleKey } from "../shared/subscriptionPlans";
 import { createCompanyReferralRequest } from "./db";
@@ -24,14 +25,23 @@ const ROLE_URL = "https://careers.acme.com/jobs/design-1";
 type Row = Readonly<Record<string, string | number | boolean | Date | null>>;
 let rowsByTable: Map<MySqlTable, readonly Row[]>;
 
+const dialect = new MySqlDialect();
+/** PRIVACY-own-employer-guard reads the seeker's own profiles by `userId in (...)`; every other read keeps the table's rows. */
+function ownRowsOnly(table: MySqlTable | undefined, condition: SQLQuery | undefined, rows: readonly Row[]): readonly Row[] {
+  if (table !== profiles || !condition) return rows;
+  const { sql, params } = dialect.sqlToQuery(condition);
+  return sql.includes("`profiles`.`userId` in (") ? rows.filter(row => params.includes(row.userId)) : rows;
+}
+
 /** The askNoteProjection.test.ts fake: selects return the table's rows, writes succeed. */
 function fixtureDatabase() {
   const select = () => {
     let table: MySqlTable | undefined;
-    const result = () => structuredClone(table ? rowsByTable.get(table) ?? [] : []);
+    let condition: SQLQuery | undefined;
+    const result = () => structuredClone(ownRowsOnly(table, condition, table ? rowsByTable.get(table) ?? [] : []));
     const query = {
       from: (next: MySqlTable) => { table = next; return query; },
-      innerJoin: () => query, leftJoin: () => query, groupBy: () => query, orderBy: () => query, limit: () => query, where: () => query,
+      innerJoin: () => query, leftJoin: () => query, groupBy: () => query, orderBy: () => query, limit: () => query, where: (next: SQLQuery) => { condition = next; return query; },
       for: async () => result(),
       then: <T>(resolve: (rows: Row[]) => T, reject?: (error: Error) => T) => Promise.resolve(result()).then(resolve, reject),
     };

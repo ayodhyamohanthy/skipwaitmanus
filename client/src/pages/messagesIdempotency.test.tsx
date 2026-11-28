@@ -2,12 +2,19 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import Messages from "./Messages";
 import { IDEMPOTENCY_KEY_PATTERN, createIdempotencyKey } from "@/lib/idempotentSend";
 
 const { getToken } = vi.hoisted(() => ({ getToken: vi.fn().mockResolvedValue("test-token") }));
 
-vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken }) }));
+vi.mock("@/_core/auth", () => ({ useAuth: () => ({ isSignedIn: true, getToken }), useUser: () => ({ user: null }) }));
+// Signed-in Messages sits in GoalAppShell, whose account menu reads queries (P0-messages-account-menu):
+// each render gets its own client, so no cache crosses tests.
+function WithQuery({ children }: { children: React.ReactNode }) {
+  const [client] = React.useState(() => new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+  return <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+}
 vi.mock("wouter", () => ({
   useLocation: () => ["/", vi.fn()],
   Link: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
@@ -94,7 +101,7 @@ afterEach(() => {
 describe("Messages idempotent send", () => {
   it("sends Idempotency-Key and clears pending state and draft on 201, appending once", async () => {
     const { posts } = setupFetch({});
-    render(<Messages />);
+    render(<Messages />, { wrapper: WithQuery });
     await openThread(22);
     await typeAndSend("Hello there");
     await waitFor(() => expect(screen.getAllByText("Hello there")).toHaveLength(1));
@@ -112,7 +119,7 @@ describe("Messages idempotent send", () => {
         return { ok: true, status: 200, json: async () => ({ message: { id: 7, replayed: true } }) };
       },
     });
-    render(<Messages />);
+    render(<Messages />, { wrapper: WithQuery });
     await openThread(22);
     await typeAndSend("Hello there");
     await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toContain("could not reach skipwait.me"));
@@ -133,7 +140,7 @@ describe("Messages idempotent send", () => {
       threads: { 22: [{ id: 9, body: "Earlier note", createdAt: nowIso, isMine: true }] },
       post: () => ({ ok: true, status: 200, json: async () => ({ message: { id: 9, replayed: true } }) }),
     });
-    render(<Messages />);
+    render(<Messages />, { wrapper: WithQuery });
     await openThread(22);
     await typeAndSend("brand new text");
     await waitFor(() => expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe(""));
@@ -151,7 +158,7 @@ describe("Messages idempotent send", () => {
         return { ok: true, status: 201, json: async () => ({ message: { id: 8 } }) };
       },
     });
-    render(<Messages />);
+    render(<Messages />, { wrapper: WithQuery });
     await openThread(22);
     await typeAndSend("changed mind");
     await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toMatch(/fresh attempt/i));
@@ -171,7 +178,7 @@ describe("Messages idempotent send", () => {
     const { fetchMock, posts } = setupFetch({
       post: () => ({ ok: false, status: 428, json: async () => ({ error: "A valid Idempotency-Key header is required" }) }),
     });
-    render(<Messages />);
+    render(<Messages />, { wrapper: WithQuery });
     await openThread(22);
     await typeAndSend("needs a key");
     await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toContain("Idempotency-Key"));
@@ -186,7 +193,7 @@ describe("Messages idempotent send", () => {
     const { posts } = setupFetch({
       post: () => ({ ok: false, status: 429, json: async () => ({ error: "You're sending messages too quickly.", retryAt }) }),
     });
-    render(<Messages />);
+    render(<Messages />, { wrapper: WithQuery });
     await openThread(22);
     await typeAndSend("slow down");
     await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toContain("Try again after"));
@@ -201,7 +208,7 @@ describe("Messages idempotent send", () => {
       resolvePost = resolve;
     });
     const { posts } = setupFetch({ post: () => gate });
-    render(<Messages />);
+    render(<Messages />, { wrapper: WithQuery });
     await openThread(22);
     fireEvent.change(await screen.findByLabelText("Message"), { target: { value: "double tap" } });
     const sendButton = screen.getByRole("button", { name: "Send message" });
@@ -215,7 +222,7 @@ describe("Messages idempotent send", () => {
 
   it("restores the pending draft and key only for the matching recipient after reload", async () => {
     const first = setupFetch({ threadIds: [22, 33], post: () => { throw new Error("NetworkError"); } });
-    render(<Messages />);
+    render(<Messages />, { wrapper: WithQuery });
     await openThread(22);
     await typeAndSend("Unfinished business");
     await waitFor(() => expect(screen.getByRole("alert").textContent ?? "").toContain("could not reach skipwait.me"));
@@ -223,7 +230,7 @@ describe("Messages idempotent send", () => {
     cleanup();
 
     const second = setupFetch({ threadIds: [22, 33] });
-    render(<Messages />);
+    render(<Messages />, { wrapper: WithQuery });
     await openThread(33);
     expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe("");
     fireEvent.click(screen.getByText("All chats"));
@@ -252,7 +259,7 @@ describe("Messages idempotent send", () => {
     for (const { seed } of cases) {
       sessionStorage.setItem(PENDING_KEY, seed);
       const { posts } = setupFetch({});
-      render(<Messages />);
+      render(<Messages />, { wrapper: WithQuery });
       await openThread(22);
       expect((screen.getByLabelText("Message") as HTMLInputElement).value).toBe("");
       await typeAndSend("Fresh start");
@@ -270,7 +277,7 @@ describe("Messages idempotent send", () => {
     setupFetch({
       post: () => ({ ok: false, status: 403, json: async () => ({ reason: "mutual_follow_required", error: "You can message this member once you follow each other." }) }),
     });
-    render(<Messages />);
+    render(<Messages />, { wrapper: WithQuery });
     await openThread(22);
     await typeAndSend("Prose before following");
     await waitFor(() => expect(screen.getAllByText(/Follow each other to message/).length).toBeGreaterThan(0));

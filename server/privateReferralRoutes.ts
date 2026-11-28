@@ -42,6 +42,8 @@ import { companyReferralRequestBodySchema } from "../shared/companyReferralReque
 import { bandedSalesEnabled } from "./billingSettings";
 import { previewBandedAskCost as defaultBandedAskQuote } from "./db";
 import { BlockedPersonalLinkError } from "./blockedPairs";
+import { OwnEmployerError } from "./ownEmployerGuard";
+import { ownEmployerRefusalSchema } from "../shared/ownEmployer";
 import { creditLedgerQuerySchema, creditLedgerResponseSchema, type CreditLedgerEntry } from "../shared/creditLedger";
 import type { ReferrerAccessResponse } from "../shared/referrerAccess";
 import { REFERRER_SESSION_LOCAL } from "./referrerSessionGate";
@@ -902,6 +904,12 @@ export function registerPrivateReferralRoutes(app: Express, deps: PrivateReferra
       if (error instanceof CoverageOpenedUpError) {
         record({ actorUserId, action: "company_referral.coverage_changed", outcome: "denied", resourceType: "referral_request", companyDomain: error.companyDomain });
         return res.status(409).json({ error: error.message, code: error.code, companyDomain: error.companyDomain });
+      }
+      // PRIVACY-own-employer-guard (D-414 (3), D-415 (2)): refused before any read of the wallet or any write; the
+      // composer reads this typed body (shared/ownEmployer.ts). The audit row names only the company domain.
+      if (error instanceof OwnEmployerError) {
+        record({ actorUserId, action: "company_referral.own_employer_denied", outcome: "denied", resourceType: "referral_request", companyDomain: error.companyDomain });
+        return res.status(409).json(ownEmployerRefusalSchema.parse({ code: error.code, error: error.message, companyDomain: error.companyDomain, companyName: error.companyName }));
       }
       // P0-block-delivery: a personal link whose owner is blocked with the seeker answers exactly like an inactive link
       // (same 400 and words, so the block is not revealed); the denial is recorded like every other blocked request.

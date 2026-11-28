@@ -1,9 +1,9 @@
 name: Live QA (signed in)
 
 # OPS-live-qa-runner (D-373 (3), docs/plans/OPS-live-qa-runner.md section 3): signs in as the demo seeker and referrer on
-# https://skipwait.me only, captures their routes at 1280 and 390, and uploads the screenshots and summary. Navigation
-# only: no click, no form, no money, never /admin. The two passwords come from repository secrets the owner sets once
-# (section 4), reach the script only through env, and are masked first. Never runs on push or pull_request.
+# https://skipwait.me only, captures their routes at 1280 and 390, and uploads the screenshots and summary. Navigate
+# mode opens the account menu and checks Sign out without selecting it; no form, no money, never /admin. Passwords
+# come from repository secrets (section 4), reach the script only through env, and are masked first. Never runs on push or pull_request.
 on:
   workflow_dispatch:
     inputs:

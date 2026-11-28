@@ -4,6 +4,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { bugsFromSummary } from "./qa-file-bugs.mjs";
 import {
   ACCOUNTS, ORIGIN, ROUTES, VIEWPORTS, captureName, exitCodeOf, judgeRoute, markdownOf, parseRoles, redactor, runLiveQa, signInMessage,
 } from "./live-qa-signed-in.mjs";
@@ -16,7 +17,7 @@ const REFERRER_PW = "referrer-fixture-password-02";
 const API_SHA = "a".repeat(40);
 const WEB_SHA = "b".repeat(40);
 
-type PageScript = { status?: number; pageError?: string; consoleError?: string; failed5xx?: boolean; failed4xx?: string; sideways?: boolean; finalPath?: string; throws?: string };
+type PageScript = { status?: number; pageError?: string; consoleError?: string; failed5xx?: boolean; failed4xx?: string; sideways?: boolean; finalPath?: string; accountMenuButtonVisible?: boolean; signOutVisible?: boolean; throws?: string };
 
 /** A fake Playwright: records every call so the tests can prove what was (and was not) requested. */
 function harness({ signIn = { seeker: 200, referrer: 200 } as Record<string, number>, pages = {} as Record<string, PageScript>, echoPasswordInError = false } = {}) {
@@ -38,7 +39,8 @@ function harness({ signIn = { seeker: 200, referrer: 200 } as Record<string, num
         },
         newPage: async () => {
           const handlers: Record<string, (arg: unknown) => void> = {};
-          let width = 0, current = "";
+          let width = 0, current = "", menuOpen = false;
+          const pageScript = () => pages[`${role}${current}@${width}`] ?? pages[`${role}${current}`] ?? {};
           return {
             setViewportSize: async (v: { width: number }) => { width = v.width; },
             on: (event: string, fn: (arg: unknown) => void) => { handlers[event] = fn; },
@@ -58,7 +60,30 @@ function harness({ signIn = { seeker: 200, referrer: 200 } as Record<string, num
             title: async () => `Title ${current}`,
             url: () => `${ORIGIN}${current}`,
             evaluate: async () => Boolean((pages[`${role}${current}@${width}`] ?? pages[`${role}${current}`] ?? {}).sideways),
-            screenshot: async (o: { path: string }) => { files.set(o.path, "png"); },
+            getByRole: (roleName: string, options: { name: string; exact?: boolean }) => {
+              const key = `${role}${current}@${width}`;
+              calls.push(`LOCATOR ${roleName} ${options.name} ${key}`);
+              if (roleName === "button" && options.name === "Account menu" && options.exact === true) {
+                return {
+                  isVisible: async () => {
+                    calls.push(`VISIBLE Account menu ${key}`);
+                    return pageScript().accountMenuButtonVisible !== false;
+                  },
+                  click: async () => { calls.push(`CLICK Account menu ${key}`); menuOpen = true; },
+                };
+              }
+              if (roleName === "menuitem" && options.name === "Sign out" && options.exact === true) {
+                return {
+                  waitFor: async (opts: { state: string; timeout: number }) => {
+                    calls.push(`WAIT Sign out ${key} ${opts.state} ${opts.timeout}`);
+                    if (!menuOpen || pageScript().signOutVisible === false) throw new Error("menu item not visible");
+                  },
+                };
+              }
+              throw new Error("unexpected role locator");
+            },
+            keyboard: { press: async (key: string) => { calls.push(`KEY ${key} ${role}${current}@${width}`); menuOpen = false; } },
+            screenshot: async (o: { path: string }) => { calls.push(`SCREENSHOT ${o.path}`); files.set(o.path, "png"); },
             close: async () => {},
           };
         },
@@ -169,13 +194,78 @@ describe("runLiveQa", () => {
       `POST ${ORIGIN}/api/auth/reviewer/sign-in referrer@reviewer.skipwait.me`,
     ]);
     expect(h.calls.filter(c => c.startsWith("GOTO"))).toHaveLength((ROUTES.seeker.length + ROUTES.referrer.length) * 2);
-    expect(h.calls.every(c => !c.includes(" ") || c.split(" ")[1].startsWith(ORIGIN))).toBe(true);
+    expect(h.calls.filter(c => /^(FETCH|POST|GOTO) /.test(c)).every(c => c.split(" ")[1].startsWith(ORIGIN))).toBe(true);
     expect(summary.release).toEqual({ api: API_SHA, web: WEB_SHA });
     expect(h.files.has(path.join("live-qa", "referrer", "referrer-impact-390.png"))).toBe(true);
     const written = JSON.parse(h.files.get(path.join("live-qa", "summary.json")) ?? "{}");
     expect(written.roles.map((r: { role: string }) => r.role)).toEqual(["seeker", "referrer"]);
     expect(h.outputs).toEqual([`web_sha=${WEB_SHA}`]);
     expect(h.summaries.join("")).toContain("| seeker | /plans | 1280 | 200 |");
+  });
+
+  it("opens the account menu on every signed-in route and viewport, captures it, then only presses Escape", async () => {
+    const h = harness();
+    const { code, summary } = await run(h);
+    const checked = (ROUTES.seeker.length + ROUTES.referrer.length) * VIEWPORTS.length;
+    expect(code).toBe(0);
+    expect(h.calls.filter(c => c.startsWith("CLICK Account menu "))).toHaveLength(checked);
+    expect(h.calls.filter(c => c.startsWith("WAIT Sign out "))).toHaveLength(checked);
+    expect(h.calls.filter(c => c.startsWith("KEY Escape "))).toHaveLength(checked);
+    expect(h.calls.some(c => c.startsWith("CLICK Sign out"))).toBe(false);
+    for (const role of ["seeker", "referrer"] as const) {
+      for (const route of ROUTES[role]) {
+        for (const viewport of VIEWPORTS) expect(h.calls).toContain(`CLICK Account menu ${role}${route}@${viewport.width}`);
+      }
+    }
+    const first = h.calls.filter(c => /^(LOCATOR|VISIBLE|CLICK|WAIT|KEY) /.test(c)).slice(0, 4);
+    expect(first).toEqual([
+      "LOCATOR button Account menu seeker/plans@1280",
+      "VISIBLE Account menu seeker/plans@1280",
+      "CLICK Account menu seeker/plans@1280",
+      "LOCATOR menuitem Sign out seeker/plans@1280",
+    ]);
+    expect(h.files.has(path.join("live-qa", "seeker", "plans-1280-account-menu.png"))).toBe(true);
+    const saved = JSON.parse(h.files.get(path.join("live-qa", "summary.json")) ?? "{}");
+    expect(saved.roles[0].routes[0].accountMenuCapture).toBe("seeker/plans-1280-account-menu.png");
+  });
+
+  it("records a missing account button as stable route-and-width failures for one deduplicated automated issue", async () => {
+    const h = harness({ pages: { "seeker/plans": { accountMenuButtonVisible: false } } });
+    const { code, summary } = await run(h);
+    const routes = summary.roles[0].routes.filter((r: { route: string }) => r.route === "/plans");
+    expect(code).toBe(1);
+    expect(routes.map((r: { width: number }) => r.width)).toEqual([1280, 390]);
+    expect(routes.map((r: { fails: string[] }) => r.fails)).toEqual([
+      ["account menu: button Account menu is not visible"],
+      ["account menu: button Account menu is not visible"],
+    ]);
+    expect(h.calls.some(c => c.startsWith("KEY Escape seeker/plans@"))).toBe(false);
+    expect(h.calls.some(c => c === "CLICK Account menu seeker/plans@1280")).toBe(false);
+    const saved = JSON.parse(h.files.get(path.join("live-qa", "summary.json")) ?? "{}");
+    expect(saved.roles[0].routes[0].fails).toEqual(routes[0].fails);
+    const issues = bugsFromSummary(saved).filter(bug => bug.key === "seeker:/plans");
+    expect(issues).toHaveLength(1);
+    expect(issues[0]?.body).toContain("**1280px**");
+    expect(issues[0]?.body).toContain("**390px**");
+    expect(issues[0]?.body?.match(/account menu: button Account menu is not visible/g)).toHaveLength(2);
+  });
+
+  it("records a missing Sign out item, closes the menu with Escape, and never selects it", async () => {
+    const h = harness({ pages: { "seeker/requests@390": { signOutVisible: false } } });
+    const { code, summary } = await run(h);
+    const route = summary.roles[0].routes.find((r: { route: string; width: number }) => r.route === "/requests" && r.width === 390);
+    expect(code).toBe(1);
+    expect(route.fails).toEqual(["account menu: Sign out menu item did not become visible within 5000 ms"]);
+    const menuClick = h.calls.indexOf("CLICK Account menu seeker/requests@390");
+    const menuWait = h.calls.indexOf("WAIT Sign out seeker/requests@390 visible 5000");
+    const menuCapture = h.calls.indexOf("SCREENSHOT live-qa/seeker/requests-390-account-menu.png");
+    const escape = h.calls.indexOf("KEY Escape seeker/requests@390");
+    expect(menuClick).toBeGreaterThanOrEqual(0);
+    expect(menuWait).toBeGreaterThan(menuClick);
+    expect(menuCapture).toBeGreaterThan(menuWait);
+    expect(escape).toBeGreaterThan(menuCapture);
+    expect(h.calls.some(c => c === "CLICK Sign out seeker/requests@390")).toBe(false);
+    expect(route.accountMenuCapture).toBe("seeker/requests-390-account-menu.png");
   });
 
   it("stops a role at a failed sign-in, never retries, and still runs the other role", async () => {

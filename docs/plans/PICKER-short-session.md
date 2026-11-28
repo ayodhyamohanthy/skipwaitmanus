@@ -42,6 +42,19 @@ the 2-hour takeover rule for other sessions. Never read or write anything outsid
 - A tagged claim ignores the record.
 - The record file sits under the git common dir, and the working tree stays clean.
 
+## Agent loops: one name per loop (PICKER-durable-session, D-415 (4)(a))
+
+The one record per model per clone above cannot serve many loops of one model on one clone: they share the slot, so a
+fresh conversation found another live loop's name (refused by the 20-minute rule) or minted a new tag, and the old
+claim waited out the 2-hour lease. Now `node scripts/agent-loop.mjs --session "<model>" -- <agent command>` picks one
+name, `<model> · <tag>`, for the loop's whole life, saves it in `<git common dir>/skipwait-agent-loop-sessions.json`
+(per working directory and command, so a restarted loop keeps it; a name another running loop holds is never reused)
+and passes it to every run in `SKIPWAIT_SESSION_NAME`. A bare `--claim "<model>"` with that variable takes the name
+when its model part is the claimed model, continues that name's own claims at once and records it as above. A name for
+another model, a malformed one or `--new-session` is ignored with one line, and the rules above apply unchanged;
+without the variable (manual, Claude and cloud sessions) nothing changes. Tests: `scripts/agentLoop.test.ts` and
+`scripts/nextTaskShortSession.test.ts`.
+
 ## Status
 
 - PICKER-short-session: done — Claude Code · 43c8 — 2026-11-25 — 8e626a975

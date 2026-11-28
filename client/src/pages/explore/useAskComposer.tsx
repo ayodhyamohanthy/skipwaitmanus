@@ -12,6 +12,7 @@ import { z } from "zod";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { askErrorMessage, confirmedDomainFor, parsePlanLimit, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
+import { OWN_EMPLOYER_ACTION, ownEmployerMessage, parseOwnEmployerRefusal } from "@shared/ownEmployer";
 import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { useOnlineStatus } from "@/components/goal";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
@@ -610,6 +611,16 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
           ? <><strong className="font-semibold">{copy.title}.</strong> {copy.body}{copy.cta ? <> <Link href="/plans" className="underline decoration-g-control-edge underline-offset-[3px]">{copy.cta}</Link></> : null}</>
           : <>{copy.title}. {copy.body}</>);
         announceSendProblem(`${copy.title}. ${copy.body}`);
+        return;
+      }
+      // PRIVACY-own-employer-guard (D-414 (3)): the server refused before any spend. Say so plainly, offer another
+      // company, and retire the submission key: nothing was created, so a new request must not replay this one.
+      const ownEmployer = parseOwnEmployerRefusal(response.status, payload);
+      if (ownEmployer) {
+        const words = ownEmployerMessage(company?.name ?? ownEmployer.companyName);
+        session()?.removeItem(ASK_IDEMPOTENCY_KEY);
+        setSendError(<>{words} <Link href="/explore" className="underline decoration-g-control-edge underline-offset-[3px]">{OWN_EMPLOYER_ACTION}</Link></>);
+        announceSendProblem(words);
         return;
       }
       if (response.status === 409 && payload.code === COMPANY_CAP_REACHED && typeof payload.companyDomain === "string") {
