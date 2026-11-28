@@ -80,7 +80,7 @@
       "tier": 2,
       "lane": "picker-durable-session",
       "branch": "agent/queue/picker-durable-session",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-415",
       "dependsOn": [],
       "epic": "D-212",
@@ -91,7 +91,8 @@
         "scripts/nextTaskCore.mjs",
         "scripts/nextTaskShortSession.test.ts",
         "docs/plans/PICKER-durable-session.md",
-        "docs/plans/PICKER-short-session.md"
+        "docs/plans/PICKER-short-session.md",
+        "docs/BUILD_CONTINUITY.md (agent-loop usage only)"
       ],
       "note": "Owner, Nov 28 (D-415 (4)(a)): the biggest cause of claim churn (176 markers, 149 names, 48 merges since Nov 26). No eligibility, lease, hold or landing change."
     },
