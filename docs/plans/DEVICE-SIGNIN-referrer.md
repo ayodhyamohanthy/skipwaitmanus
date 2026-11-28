@@ -5,9 +5,11 @@ Owner, Nov 26 2026 (D-408): "passkeys seekers and referrers can have but referre
 ## DEVICE-SIGNIN-seeker-release (Tier 1)
 
 The seeker passkey build is on main (PR #697, `server/_core/passkeyLogin.ts`, `PASSKEY_SIGNIN_ENABLED = false`).
-1. Verify on a real phone (iOS Safari or Android Chrome) and a laptop (Chrome or Safari) against a non-production or
-   the production origin with the switch forced on in a preview: register a passkey after a normal seeker sign-in,
-   sign out, sign in with the passkey (browser sheet and autofill), remove it from the management list.
+1. **Parked at `owner` until the owner's real-device session (D-415 (4)(d), (5)).** No preview environment exists, so the
+   check runs on production with the owner present: confirm migration `0115_passkey_credentials` is applied in production,
+   flip the switch (step 2), and the owner at once registers a passkey on a real phone (iOS Safari or Android Chrome) and a
+   laptop (Chrome or Safari) after a normal seeker sign-in, signs out, signs in with the passkey (browser sheet and
+   autofill) and removes it from the management list. Any failure: revert with `rollback.yml`; seekers keep every other method.
 2. Set `PASSKEY_SIGNIN_ENABLED = true`; land on green required CI; prove on skipwait.me with captures at 1280 and 390.
 3. Referrer openIds stay refused by the seeker routes until `DEVICE-SIGNIN-referrer-passkeys` releases.
 

@@ -66,6 +66,12 @@ function companyMatches(condition: SQLQuery, row: Row): boolean {
   return String(row.company).toLowerCase() === String(params[params.length - 1]).toLowerCase();
 }
 
+/** PRIVACY-own-employer-guard reads the seeker's own profiles by `userId in (...)`; the coverage query (no userId filter) still sees every referrer. */
+function profilesFor(condition: SQLQuery, rows: Row[]): Row[] {
+  const { sql, params } = dialect.sqlToQuery(condition);
+  return sql.includes("`profiles`.`userId` in (") ? rows.filter(row => params.includes(row.userId)) : rows;
+}
+
 function rowsOf(table: unknown): Row[] {
   if (table === tokenBalances) return tables.wallets;
   if (table === referralRequests) return tables.requests;
@@ -94,7 +100,7 @@ function fixtureDatabase() {
       const label = table === tokenBalances ? "wallet" : table === referralRequests ? "requests" : table === profiles ? "referrers" : table === referralAttachments ? "attachments" : "other";
       const where = (condition: SQLQuery) => {
         if (projection && "open" in projection) return chain(() => [{ open: rowsOf(table).filter(row => isOpenAsk(condition, row) && companyMatches(condition, row)).length }], `${label}-count`);
-        return chain(() => project(rowsOf(table).filter(row => label === "attachments" || label === "other" || label === "referrers" || matchesEq(condition, row)), projection), label);
+        return chain(() => project((label === "referrers" ? profilesFor(condition, rowsOf(table)) : rowsOf(table)).filter(row => label === "attachments" || label === "other" || label === "referrers" || matchesEq(condition, row)), projection), label);
       };
       const joined: { where: typeof where; innerJoin: () => typeof joined; leftJoin: () => typeof joined } = { where, innerJoin: () => joined, leftJoin: () => joined };
       return joined;
