@@ -17,6 +17,8 @@ MOVED_SURFACES.add("components/requests/ReconfirmRequest.tsx");
 // P0 (Nov 24): the job-link line draws a mismatch with the crimson GoalFieldError; it is rendered only by the moved
 // AskDrawer and Ask pages.
 MOVED_SURFACES.add("pages/explore/JobLinkFromPosting.tsx");
+// D-099 slice A (D-374): the report form is new and goal-native, rendered only by the moved ExploreCompany fact line.
+MOVED_SURFACES.add("components/bonus/ReportBonusFigure.tsx");
 // D-394 (SEARCH-universal): the one-box results (a resolved posting and careers-site jobs), new and goal-native,
 // rendered only by the already-moved Explore page.
 MOVED_SURFACES.add("pages/explore/UniversalSearchResults.tsx");

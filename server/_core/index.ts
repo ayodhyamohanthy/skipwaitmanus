@@ -51,6 +51,7 @@ import { askInviteFeatureGateMiddleware, registerAskInviteRoutes } from "../askI
 import { registerJobCatalogRoutesWithDrizzle } from "../jobCatalogRoutes";
 import { registerImpactCardRoutes } from "../impactCardRoutes";
 import { registerCompanyDirectoryRoutes } from "../companyDirectoryRoutes";
+import { registerReferralBonusRoutes } from "../referralBonusRoutes";
 import { registerSearchRoutes } from "../searchRoutes";
 import { createUniversalSearch } from "../search";
 import { registerSitemapRoutes } from "../sitemapRoutes";
@@ -241,6 +242,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   // Server-owned company directory: public /api/companies reads and the
   // admin-gated /api/admin/companies writes (server/companyDirectoryRoutes.ts).
   registerCompanyDirectoryRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
+  // D-099 slice A (D-374): referral-bonus data, admin entry and reports; 404 while BONUS_PAGES_ENABLED is off.
+  registerReferralBonusRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
   // SEARCH-universal (D-394): one public box for a job title, a job link, a
   // company name or a company website (server/searchRoutes.ts).
   registerSearchRoutes(app, { search: createUniversalSearch(db.resolveEmployerDomainFromTargetUrl) });

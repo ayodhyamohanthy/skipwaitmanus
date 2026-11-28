@@ -1,4 +1,4 @@
-import { bigint, boolean, check, customType, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, uniqueIndex, varchar, foreignKey, ForeignKeyBuilder } from "drizzle-orm/mysql-core";
+import { bigint, boolean, char, check, customType, index, int, json, mysqlEnum, mysqlTable, primaryKey, text, timestamp, uniqueIndex, varchar, foreignKey, ForeignKeyBuilder } from "drizzle-orm/mysql-core";
 import { sql } from "drizzle-orm";
 import type { AnyMySqlColumn } from "drizzle-orm/mysql-core";
 
@@ -216,6 +216,41 @@ export const companyDomains = mysqlTable("companyDomains", {
   isPrimary: boolean("isPrimary").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("company_domains_domain_unique").on(table.domain), index("company_domains_company_idx").on(table.companyId)]);
+
+// D-099 slice A (D-374, 0127): one current, sourced referral-bonus figure per
+// company, entered by an admin who read it on the employer's own site. The
+// employer sets and pays its own programme; skipwait.me never pays referrers
+// (D-055, D-063). Contract: shared/referralBonus.ts.
+export const companyReferralBonuses = mysqlTable("companyReferralBonuses", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  amountMinor: bigint("amountMinor", { mode: "number" }).notNull(),
+  currency: char("currency", { length: 3 }).notNull(),
+  upTo: boolean("upTo").default(false).notNull(),
+  scopeNote: varchar("scopeNote", { length: 120 }),
+  sourceUrl: varchar("sourceUrl", { length: 2048 }).notNull(),
+  checkedAt: timestamp("checkedAt").notNull(),
+  status: mysqlEnum("status", ["published", "withdrawn"]).default("published").notNull(),
+  updatedByUserId: int("updatedByUserId").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("company_referral_bonuses_company_unique").on(table.companyId)]);
+
+// D-099 slice A (D-374, 0127): a signed-in person's report about a figure.
+// `new_source` is stored but never offered (ruling 7). The reporter's note never
+// reaches the activity log.
+export const companyBonusReports = mysqlTable("companyBonusReports", {
+  id: int("id").autoincrement().primaryKey(),
+  companyId: int("companyId").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  reporterUserId: int("reporterUserId").notNull(),
+  reason: mysqlEnum("reason", ["figure_changed", "source_gone", "not_this_company", "new_source", "other"]).notNull(),
+  note: varchar("note", { length: 280 }),
+  suggestedSourceUrl: varchar("suggestedSourceUrl", { length: 2048 }),
+  status: mysqlEnum("status", ["open", "fixed", "dismissed"]).default("open").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  reviewedAt: timestamp("reviewedAt"),
+  reviewedByUserId: int("reviewedByUserId"),
+}, table => [index("company_bonus_reports_status_idx").on(table.status, table.createdAt), index("company_bonus_reports_reporter_idx").on(table.reporterUserId, table.createdAt)]);
 
 // Job catalog (0120, D-174-job-catalog packet section 5.5). Sources are
 // registered by an admin with evidence and verified by a human; the sync job

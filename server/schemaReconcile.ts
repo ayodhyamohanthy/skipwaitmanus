@@ -8,6 +8,10 @@ import { validateBandedSchema } from "./bandedSchemaValidation";
 // New tables are created idempotently (IF NOT EXISTS) so a drifted live DB
 // self-heals without manual migration runs. Keep in sync with drizzle/schema.ts.
 export const DESIRED_TABLES: Array<{ table: string; createSql: string }> = [
+  // D-099 slice A (D-374, 0127): one sourced referral-bonus figure per company and
+  // the reports filed about it. Mirrors drizzle/deploy/0127_company_referral_bonuses.sql.
+  { table: "companyReferralBonuses", createSql: `CREATE TABLE IF NOT EXISTS \`companyReferralBonuses\` (\`id\` int AUTO_INCREMENT NOT NULL, \`companyId\` int NOT NULL, \`amountMinor\` bigint NOT NULL, \`currency\` char(3) NOT NULL, \`upTo\` boolean NOT NULL DEFAULT FALSE, \`scopeNote\` varchar(120) NULL, \`sourceUrl\` varchar(2048) NOT NULL, \`checkedAt\` datetime NOT NULL, \`status\` enum('published','withdrawn') NOT NULL DEFAULT 'published', \`updatedByUserId\` int NOT NULL, \`createdAt\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, \`updatedAt\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, CONSTRAINT \`companyReferralBonuses_id\` PRIMARY KEY (\`id\`), UNIQUE INDEX \`company_referral_bonuses_company_unique\` (\`companyId\`), CONSTRAINT \`company_referral_bonuses_company_fk\` FOREIGN KEY (\`companyId\`) REFERENCES \`companies\` (\`id\`) ON DELETE CASCADE) ENGINE=InnoDB` },
+  { table: "companyBonusReports", createSql: `CREATE TABLE IF NOT EXISTS \`companyBonusReports\` (\`id\` int AUTO_INCREMENT NOT NULL, \`companyId\` int NOT NULL, \`reporterUserId\` int NOT NULL, \`reason\` enum('figure_changed','source_gone','not_this_company','new_source','other') NOT NULL, \`note\` varchar(280) NULL, \`suggestedSourceUrl\` varchar(2048) NULL, \`status\` enum('open','fixed','dismissed') NOT NULL DEFAULT 'open', \`createdAt\` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP, \`reviewedAt\` datetime NULL, \`reviewedByUserId\` int NULL, CONSTRAINT \`companyBonusReports_id\` PRIMARY KEY (\`id\`), INDEX \`company_bonus_reports_status_idx\` (\`status\`,\`createdAt\`), INDEX \`company_bonus_reports_reporter_idx\` (\`reporterUserId\`,\`createdAt\`), CONSTRAINT \`company_bonus_reports_company_fk\` FOREIGN KEY (\`companyId\`) REFERENCES \`companies\` (\`id\`) ON DELETE CASCADE) ENGINE=InnoDB` },
   // BANDED-schema: validation metadata only; deploy 0123 before readiness lands.
   { table: "bandedReferralBalances", createSql: `CREATE TABLE IF NOT EXISTS \`bandedReferralBalances\` (\`id\` int AUTO_INCREMENT NOT NULL PRIMARY KEY, \`userId\` int NOT NULL, \`level\` enum('early','mid','senior','executive') NOT NULL, \`includedRemaining\` int unsigned NOT NULL DEFAULT 0, \`includedCycleKey\` varchar(128) NULL, \`includedExpiresAt\` timestamp NULL, \`purchasedRemaining\` int unsigned NOT NULL DEFAULT 0, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, FOREIGN KEY (\`userId\`) REFERENCES \`users\` (\`id\`) ON DELETE CASCADE, UNIQUE INDEX \`banded_balances_user_level_unique\` (\`userId\`,\`level\`), CONSTRAINT \`banded_balances_included_cycle\` CHECK (\`includedRemaining\` = 0 OR (\`includedCycleKey\` IS NOT NULL AND \`includedExpiresAt\` IS NOT NULL))) ENGINE=InnoDB` },
   { table: "bandedFoundingCounters", createSql: `CREATE TABLE IF NOT EXISTS \`bandedFoundingCounters\` (\`site\` enum('test','live') NOT NULL, \`planId\` enum('early_to_mid','mid_to_senior','senior_to_executive') NOT NULL, \`issuedCount\` int unsigned NOT NULL DEFAULT 0, \`reservedCount\` int unsigned NOT NULL DEFAULT 0, \`updatedAt\` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP, PRIMARY KEY (\`site\`,\`planId\`), CONSTRAINT \`banded_founding_counter_cap\` CHECK (\`issuedCount\` + \`reservedCount\` <= CASE \`planId\` WHEN 'early_to_mid' THEN 500 WHEN 'mid_to_senior' THEN 250 WHEN 'senior_to_executive' THEN 100 ELSE 0 END)) ENGINE=InnoDB` },
@@ -263,6 +267,10 @@ export const DESIRED_COLUMNS: Array<{ table: string; column: string; definition:
 // skipped, and mismatched uniqueness is dropped and recreated.
 // Keep in sync with drizzle/schema.ts.
 export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: string; nonUnique?: boolean }> = [
+  // D-099 slice A (D-374, 0127).
+  { table: "companyReferralBonuses", name: "company_referral_bonuses_company_unique", columns: "`companyId`" },
+  { table: "companyBonusReports", name: "company_bonus_reports_status_idx", columns: "`status`, `createdAt`", nonUnique: true },
+  { table: "companyBonusReports", name: "company_bonus_reports_reporter_idx", columns: "`reporterUserId`, `createdAt`", nonUnique: true },
   { table: "referralReviewDeliveries", name: "referral_review_owner_alert_idx", columns: "`ownerAlertStatus`, `ownerAlertLeaseExpiresAt`, `id`", nonUnique: true },
   { table: "seekerAgentGrants", name: "seeker_agent_grants_key_hash_unique", columns: "`keyHash`" },
   { table: "seekerAgentGrants", name: "seeker_agent_grants_user_idx", columns: "`userId`", nonUnique: true },
@@ -379,6 +387,9 @@ export const DESIRED_INDEXES: Array<{ table: string; name: string; columns: stri
 // pass and would sit at /api/health/ready 503 forever. Nothing reads the column.
 // The live table it implies is undocumented source/prod drift, not a requirement.
 export const DESIRED_FOREIGN_KEYS: Array<{ table: string; column: string; referencedTable: string; referencedColumn: string }> = [
+  // D-099 slice A (D-374, 0127).
+  { table: "companyReferralBonuses", column: "companyId", referencedTable: "companies", referencedColumn: "id" },
+  { table: "companyBonusReports", column: "companyId", referencedTable: "companies", referencedColumn: "id" },
   { table: "seekerAgentGrants", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "seekerAgentControls", column: "userId", referencedTable: "users", referencedColumn: "id" },
   { table: "seekerAgentDrafts", column: "userId", referencedTable: "users", referencedColumn: "id" },
