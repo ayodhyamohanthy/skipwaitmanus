@@ -54,7 +54,7 @@ opens the same company for the demo seeker.
 
 ## Status
 
-- ADMIN-support-view: in progress — DeepSeek V4.1 Flash · 7d4d — 2026-11-24 — branch agent/queue/admin-support-view
+- ADMIN-support-view: built and landed — DeepSeek V4.1 Flash · 7d4d — 2026-11-24 — PR #1579, merge `2caf1fab`. Its acceptance is still owed and is registered as `ADMIN-support-view-acceptance` (D-373 (6)).
 
 ### Build notes (DeepSeek V4.1 Flash · 7d4d, 2026-11-24)
 
