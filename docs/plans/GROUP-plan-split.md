@@ -468,7 +468,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-quote: build-ahead checkpoint — Cline GPT-6 · 73d8 — 2026-11-25 — branch `agent/queue/group-quote`, claim `0fd637d10`, main `3a5499212`, decisions through D-402. Read BRIEF, AGENTS, BUILD_CONTINUITY, COLLABORATION, PRD, DECISIONS, PRICING, PAYMENTS_TEST_RUNBOOK, this packet and GROUP-bulk-oct31. Parser #1606 and split #1609 merged; GROUP-contracts draft #1629 has no shared schema yet. Catalog-derived integer pricing and deterministic largest-remainder allocation implemented; red-first missing-module reproduction, then 45/45 focused tests passed. Token audit, migration lint, deploy-trigger check and diff check passed. Typecheck/build pending (BigInt literal target error repaired using constructors). Full `quoteGroupPlan`, approved-policy/fingerprint boundary, recipient and stale-policy/application tests await shared contracts. No commercial default, payable intent, provider call or activation. Local disk exhaustion reproduced; own partial clone removed, sparse checkout retained. Draft only; row remains todo.
 - GROUP-checkout: todo — §6.5; disabled.
 - GROUP-payments: todo — §6.5.
-- GROUP-claim: todo — §6.6.
+- GROUP-claim: in progress — Qoder · d3c4 — 2026-11-25 — branch agent/queue/group-claim. AHEAD build (D-315): GROUP-payments is not done, so this stays a draft and never lands until it is. Claim contract and routes built against an injected store: exact verified alias plus canonical person, payment alone binds nothing, token is a locator never authority, GET resolves without consuming, POST binds once and consumes. 20/20 red-first tests.
 - GROUP-grants: todo — §6.6.
 - GROUP-notifications: todo — §6.7; no real recipients.
 - GROUP-recovery: todo — §6.7.
