@@ -29,7 +29,7 @@ import { randomBytes } from "node:crypto";
 import { mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
-  chooseSessionName, modelOfSession, parseSessionRecords, recordSession,
+  chooseSessionName, modelOfSession, parseSessionRecords, recordSession, LOOP_SESSION_ENV, loopSessionName,
   BRANCH_LOG_FORMAT, LAND_SLOT, REPORT_STATUSES, architectLockOf, collectLandedEvidence, collectOpenPulls, markerOnlyOf, verifyMergedPull, ciStateFromRuns, classifyPushError, fixMainIdOf, gateOnlyRedFromJobs, legacyScopeRedFromJobs, heartbeatOf, heldAllBy, heldBy, landingSlot, leaseFor, localSyncIssues, markerSubject,
   landedUnblocksOf, mayReport, outOfSyncOf, packetFixHead, parseBranchLog, parseDecisionRegister, parseMarker, pickNextTask, releaseLandingSlotError, reviewLockOf, reviewStateOf, sanitizeName, sanitizeNote, sessionName, slugOf, stageHolderOf, statusBoard, validateAssignments, blockEvidenceFor, blockedReportBody, blockedReportError, parseReportBody,
 } from "./nextTaskCore.mjs";
@@ -634,6 +634,20 @@ function saveSession(entry) {
   } catch (e) { console.error(`next-task: could not record this session for a later resume: ${e.message}`); }
 }
 
+/**
+ * PICKER-durable-session (D-415 (4)(a)): inside `scripts/agent-loop.mjs --session`, a bare claim of the loop's model
+ * takes the loop's own name, so runCommand skips the D-401 choice and the picker hands that name its unfinished claims.
+ * Without the variable nothing changes; a name for another model or a malformed one is ignored with one line.
+ */
+function useLoopSession(args) {
+  const loop = loopSessionName({ requested: args.requested, newSession: Boolean(args.newSession), env: process.env[LOOP_SESSION_ENV] });
+  if (loop?.ignored) console.error(`next-task: ${loop.ignored}`);
+  if (!loop?.name) return;
+  args.claim = loop.name;
+  args.named = true;
+  console.log(loop.line);
+}
+
 /** D-085: every local branch with commits no origin branch has, and every worktree with uncommitted changes. */
 function localState() {
   const top = tryGit("rev-parse", "--show-toplevel") ?? ".";
@@ -1045,6 +1059,7 @@ async function main() {
     args.requested = args.claim;
     args.tag = randomBytes(3).toString("hex").slice(0, 4);
     args.claim = sessionName(args.claim, args.tag);
+    useLoopSession(args);
   }
   for (let attempt = 1; attempt <= 3; attempt++) {
     try { return await runCommand(args); }
@@ -1179,6 +1194,7 @@ async function runCommand(args) {
     const { doc, register, mainCi, openPrs, mergedHeads, landedEvidence, landedUnblocks, prCi, prFacts, prBehind, branches, reports, release } = await state({ withRelease: true });
     const now = Date.now();
     // PICKER-short-session (D-401): chosen once per run, on the first loaded state; every retry keeps that name.
+    // An agent loop's own name (PICKER-durable-session) was already taken in main, so it is never replaced here.
     if (args.claim && !args.named) {
       const mainSha = mainCi.state === "red" || mainCi.state === "running-after-red" ? mainCi.sha : null;
       const choice = chooseSessionName({
