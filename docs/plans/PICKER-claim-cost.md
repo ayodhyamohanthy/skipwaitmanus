@@ -2,8 +2,9 @@
 
 Tier 2; lane `picker-claim-cost`; branch `agent/queue/picker-claim-cost`.
 Technical follow-through on D-321/D-324/D-412, not a new assignment or landing
-policy. Append after existing queued work. Status belongs here, not in the
-shared D-212 plan row.
+policy. D-415 (4)(b) promotes this row with PICKER-common-dir-lock ahead of other
+open work, after PICKER-dep-about-to-land and PICKER-durable-session (the owner's
+explicit FIFO exception). Status belongs here, not in the shared D-212 plan row.
 
 ## Evidence and uncertainty
 
@@ -110,4 +111,4 @@ until then no root cause, speedup or productive pickup is claimed.
 
 ## Status
 
-PICKER-claim-cost: todo — registered by GPT-6.1 Sol · 9186, 2026-11-28; official retry took 847 seconds before CEO REVIEW; phase attribution, repair and before/after proof remain unverified.
+PICKER-claim-cost: GPT-6.1 Sol · 2269, 2026-11-28 — took over two empty prior markers; integrated main 510547f2a at branch [a424801b7](https://github.com/ayodhyamohanthy/skipwaitmanus/commit/a424801b793ccf5ff96878e578ac229cf3367b27); phase attribution, repair and before/after proof remain unverified.

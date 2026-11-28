@@ -126,7 +126,7 @@
       "lane": "picker-claim-cost",
       "branch": "agent/queue/picker-claim-cost",
       "status": "todo",
-      "syncedTo": "D-414",
+      "syncedTo": "D-416",
       "dependsOn": [],
       "owns": [
         "scripts/next-task.mjs",
