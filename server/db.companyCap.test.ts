@@ -1,4 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// D-174-no-expiry-release: this suite pins the legacy ask clocks, so it forces the switch off; the
+// no-expiry path is pinned in the *.noExpiry tests and e2e/reconfirm-money.e2e.ts (D-411).
+vi.mock("../shared/askNoExpiry", async importOriginal => ({
+  ...await importOriginal<typeof import("../shared/askNoExpiry")>(),
+  ASK_NO_EXPIRY_ENABLED: false,
+}));
 import type { SQL as SQLQuery } from "drizzle-orm";
 import { MySqlDialect } from "drizzle-orm/mysql-core";
 import { profiles, referralAttachments, referralRequests, tokenBalances } from "../drizzle/schema";
@@ -60,6 +66,12 @@ function companyMatches(condition: SQLQuery, row: Row): boolean {
   return String(row.company).toLowerCase() === String(params[params.length - 1]).toLowerCase();
 }
 
+/** PRIVACY-own-employer-guard reads the seeker's own profiles by `userId in (...)`; the coverage query (no userId filter) still sees every referrer. */
+function profilesFor(condition: SQLQuery, rows: Row[]): Row[] {
+  const { sql, params } = dialect.sqlToQuery(condition);
+  return sql.includes("`profiles`.`userId` in (") ? rows.filter(row => params.includes(row.userId)) : rows;
+}
+
 function rowsOf(table: unknown): Row[] {
   if (table === tokenBalances) return tables.wallets;
   if (table === referralRequests) return tables.requests;
@@ -88,7 +100,7 @@ function fixtureDatabase() {
       const label = table === tokenBalances ? "wallet" : table === referralRequests ? "requests" : table === profiles ? "referrers" : table === referralAttachments ? "attachments" : "other";
       const where = (condition: SQLQuery) => {
         if (projection && "open" in projection) return chain(() => [{ open: rowsOf(table).filter(row => isOpenAsk(condition, row) && companyMatches(condition, row)).length }], `${label}-count`);
-        return chain(() => project(rowsOf(table).filter(row => label === "attachments" || label === "other" || label === "referrers" || matchesEq(condition, row)), projection), label);
+        return chain(() => project((label === "referrers" ? profilesFor(condition, rowsOf(table)) : rowsOf(table)).filter(row => label === "attachments" || label === "other" || label === "referrers" || matchesEq(condition, row)), projection), label);
       };
       const joined: { where: typeof where; innerJoin: () => typeof joined; leftJoin: () => typeof joined } = { where, innerJoin: () => joined, leftJoin: () => joined };
       return joined;

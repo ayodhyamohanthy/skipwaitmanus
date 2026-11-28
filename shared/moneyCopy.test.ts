@@ -1,4 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+// D-174-no-expiry-release: this suite pins the legacy ask clocks, so it forces the switch off; the
+// no-expiry path is pinned in the *.noExpiry tests and e2e/reconfirm-money.e2e.ts (D-411).
+vi.mock("./askNoExpiry", async importOriginal => ({
+  ...await importOriginal<typeof import("./askNoExpiry")>(),
+  ASK_NO_EXPIRY_ENABLED: false,
+}));
 import { ASK_TTL_DAYS, COVERAGE_WAIT_DAYS } from "./referral";
 import { askCostLanding, askCostLine, CREDIT_RULE, CREDIT_RULE_V2, topUpHref } from "./moneyCopy";
 

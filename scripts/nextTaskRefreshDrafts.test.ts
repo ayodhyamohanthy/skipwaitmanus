@@ -37,8 +37,9 @@ const busyA = claimed("A", "Qwen · q1", 0.5);
 const tasks = () => [task("A"), task("B", { dependsOn: ["A"] })];
 
 describe("D-407 (4): keep built-ahead drafts current instead of WAIT", () => {
+  // D-412 (1): a draft is refreshed only when its unmet dependency (A) already has an open pull request with green CI.
   it("hands a quiet draft that is far behind main as a refresh takeover, and says it must never land", () => {
-    const got = pick(tasks(), { branches: [busyA, claimed("B", "Gemini · g1", 5)], prs: ["B"], prCi: [["B", "green"]], behind: [["B", 40]] });
+    const got = pick(tasks(), { branches: [busyA, claimed("B", "Gemini · g1", 5)], prs: ["A", "B"], prCi: [["A", "green"], ["B", "green"]], behind: [["B", 40]] });
     expect(got).toMatchObject({ kind: "takeover", task: { id: "B" }, work: branchOf("B"), refresh: "its draft is 40 commits behind main" });
     const text = renderPick(got, ctx);
     expect(text).toContain("KEEP A BUILT-AHEAD DRAFT CURRENT (D-407 (4))");
@@ -47,7 +48,7 @@ describe("D-407 (4): keep built-ahead drafts current instead of WAIT", () => {
   });
 
   it("hands a quiet draft whose required CI is red even when it is current", () => {
-    const got = pick(tasks(), { branches: [busyA, claimed("B", "Gemini · g1", 5)], prs: ["B"], prCi: [["B", "red"]], behind: [["B", 0]] });
+    const got = pick(tasks(), { branches: [busyA, claimed("B", "Gemini · g1", 5)], prs: ["A", "B"], prCi: [["A", "green"], ["B", "red"]], behind: [["B", 0]] });
     expect(got).toMatchObject({ kind: "takeover", task: { id: "B" }, refresh: "its draft's required CI is red" });
   });
 
@@ -74,6 +75,21 @@ describe("D-407 (4): keep built-ahead drafts current instead of WAIT", () => {
     const list = [...tasks(), task("C", { dependsOn: ["A"] })];
     expect(pick(list, { branches: [busyA, claimed("B", "Gemini · g1", 5)], prs: ["B"], prCi: [["B", "red"]], behind: [["B", 40]] }))
       .toMatchObject({ kind: "build", task: { id: "C" }, ahead: ["A"] });
+  });
+
+  // PICKER-dep-about-to-land (D-415 (4)(c)): the D-048-dark-mode / D-048-K-kit shape. A dependency parked at `owner`
+  // or waiting on its own unmet dependencies never counts as about to land, even with an open green pull request.
+  it("never refreshes a draft whose dependency is parked at owner, even with that dependency's green pull request", () => {
+    const list = [task("A", { status: "owner" }), task("B", { dependsOn: ["A"] })];
+    const got = pick(list, { branches: [claimed("A", "Qwen · q1", 5), claimed("B", "Gemini · g1", 5)], prs: ["A", "B"], prCi: [["A", "green"], ["B", "red"]], behind: [["B", 300]] });
+    expect(got).not.toMatchObject({ kind: "takeover", task: { id: "B" } });
+  });
+
+  it("never refreshes a draft whose dependency still waits on its own unmet dependency", () => {
+    const list = [task("Z"), task("A", { dependsOn: ["Z"] }), task("B", { dependsOn: ["A"] })];
+    const busyZ = claimed("Z", "Qwen · q2", 0.5);
+    const got = pick(list, { branches: [busyZ, claimed("A", "Qwen · q1", 5), claimed("B", "Gemini · g1", 5)], prs: ["A", "B"], prCi: [["A", "green"], ["B", "red"]], behind: [["B", 300]] });
+    expect(got).not.toMatchObject({ kind: "takeover", task: { id: "B" } });
   });
 
   it("a draft whose dependencies are done keeps its normal stage, never a refresh", () => {

@@ -415,6 +415,37 @@ export function chooseSessionName({ requested, newSession = false, records = {},
     : [];
   return resumeDecision({ requested, newSession, records, claims, tag, now });
 }
+
+/**
+ * PICKER-durable-session (D-415 (4)(a)): `scripts/agent-loop.mjs --session "<model>"` keeps one name for the loop's
+ * whole life and passes it to every run in this variable. Only that loop runs under the name, so a bare claim of the
+ * same model takes it as its own at once (no D-401 quiet wait) and is handed that name's unfinished claims.
+ */
+export const LOOP_SESSION_ENV = "SKIPWAIT_SESSION_NAME";
+const LOOP_TAG = /^[0-9A-Za-z_-]{1,16}$/;
+const D401 = "so this claim picks its name as usual (D-401)";
+
+/**
+ * The loop's name for a bare `--claim "<model>"`, from the variable's value `env`. It is used only when it is exactly
+ * what sessionName mints for that model and its tag; anything else is ignored with one line, never partly used.
+ * -> null (unset, or the claim names its session) | { name, line } | { ignored }
+ */
+export function loopSessionName({ requested, newSession = false, env }) {
+  if (env === undefined || env === null || env === "") return null;
+  const model = sanitizeName(requested);
+  if (model.includes(" · ")) return null;
+  const raw = String(env), shown = sanitizeName(raw);
+  if (newSession) return { ignored: `${LOOP_SESSION_ENV} "${shown}" ignored: --new-session asks for a separate session.` };
+  const at = raw.lastIndexOf(" · "), tag = at < 0 ? "" : raw.slice(at + 3);
+  if (shown !== raw || !LOOP_TAG.test(tag) || raw.indexOf(" · ") !== at) {
+    return { ignored: `${LOOP_SESSION_ENV} "${shown}" is not a session name of the form "<model> · <tag>"; ignored, ${D401}.` };
+  }
+  if (sessionName(model, tag) !== raw) return { ignored: `${LOOP_SESSION_ENV} "${raw}" is not a session of "${model}"; ignored, ${D401}.` };
+  return {
+    name: raw,
+    line: `Session name "${raw}" from this agent loop (${LOOP_SESSION_ENV}): its unfinished claims stay yours. Use exactly this name for --heartbeat, --report, --verdict and --fixed.\n`,
+  };
+}
 /** A refused marker push: lost to another agent ("race"), or anything else ("error", which must stop the run). */
 export function classifyPushError(stderr) {
   const text = stderr ?? "";
@@ -683,8 +714,28 @@ const stageMarkers = (info, id) => (info?.markers ?? []).filter(m => m.verb !== 
 const lastBy = (markers, verbs) => [...markers].reverse().find(m => verbs.includes(m.verb)) ?? null;
 const everyone = (markers, verbs) => [...new Set(markers.filter(m => verbs.includes(m.verb)).map(m => m.who))];
 const holderOf = (info, id) => (info ? lastBy(stageMarkers(info, id), ["Claim", "Takeover"])?.who ?? null : null);
-/** D-378: every session that took this task's unblock lock; their report clears an evidence-backed block. */
-const unblockersOf = (arch, id) => everyone(stageMarkers(arch, id), ["Unblock"]);
+/**
+ * D-378: every session that took this task's unblock lock; their report clears an evidence-backed block.
+ * D-412 (2): a lock's markers are read only beyond main (`origin/main..<lock>`), so once the ruling's pull request from
+ * the lock merges, its `Unblock` marker is in main and vanished from the lock (or the merged lock was deleted), and the
+ * unblocker's later report no longer cleared the block. `landed` (task id -> sessions) carries the `Unblock` markers
+ * the loader found in main's own history, so an unblocker still counts after its ruling lands.
+ */
+const unblockersOf = (arch, id, landed) => [...new Set([...(landed?.get?.(id) ?? []), ...everyone(stageMarkers(arch, id), ["Unblock"])])];
+
+/**
+ * D-412 (2): the loader's read of `Unblock` marker commits that reached main (parsed markers, any order) as task id ->
+ * the sessions that took each task's unblock lock. Only empty marker commits count, as on a lock branch (D-190).
+ */
+export function landedUnblocksOf(markers) {
+  const out = new Map();
+  for (const m of markers ?? []) {
+    if (m?.verb !== "Unblock" || typeof m.id !== "string" || typeof m.who !== "string" || !m.who) continue;
+    if (!out.has(m.id)) out.set(m.id, []);
+    if (!out.get(m.id).includes(m.who)) out.get(m.id).push(m.who);
+  }
+  return out;
+}
 
 function latestFindings(lock, id) {
   const marker = stageMarkers(lock, id).at(-1);
@@ -719,6 +770,22 @@ export function reviewNeeded({ tier, paths }) {
 
 /** A view's review need: its pull request's changed paths when the loader read them for this tip, else its declared tier. */
 export const needsReview = v => INDEPENDENT_REVIEW_REQUIRED && reviewNeeded({ tier: v.task.tier, paths: v.reviewPaths });
+
+/** D-412 (3): a documentation path for one row: its packet, the task list, anything under docs/, or any Markdown file. */
+const isDocPath = (path, task) => typeof path === "string" && path !== ""
+  && (path === task.packet || path === "docs/plans/assignments.json" || path.startsWith("docs/") || /\.md$/i.test(path));
+
+/**
+ * D-412 (3) (owner, Nov 27): a pull request whose every changed path is documentation, on a row whose `owns` names at
+ * least one non-documentation path, holds only status notes: the implementation is not built. Landing it would let the
+ * row read as done with no code (PR #1665). Unknown or empty paths never count (the picker keeps today's behaviour).
+ */
+export function statusOnlyPull({ task, paths }) {
+  if (!task || !Array.isArray(paths) || !paths.length) return false;
+  const owns = Array.isArray(task.owns) ? task.owns.map(entry => ownsEntry(entry).pattern).filter(Boolean) : [];
+  if (!owns.some(pattern => !isDocPath(pattern, task))) return false;
+  return paths.every(change => isDocPath(changePath(change), task));
+}
 
 /** Where a Tier 1 pull request stands, read from its review lock's markers (heartbeats never count). */
 export function reviewStateOf(lock, id) {
@@ -855,13 +922,13 @@ function blockHasNewEvidence(report, evidence, now) {
 export function blockedReportError(input) {
   const { task, reports = [], branches, now } = input;
   const owner = holderOf(branches.get(workBranchOf(task, branches) ?? task.branch), task.id);
-  const report = standingReport(reports.filter(row => row.id === task.id), owner, unblockersOf(branches.get(architectLockOf(task)), task.id));
+  const report = standingReport(reports.filter(row => row.id === task.id), owner, unblockersOf(branches.get(architectLockOf(task)), task.id, input.landedUnblocks));
   if (report?.status !== "blocked" || blockHasNewEvidence(report, blockEvidenceFor(input), now)) return null;
   return `already reported; nothing changed since ${new Date(report.at).toISOString()}`;
 }
 
 /** One row per task with everything every decision reads. */
-function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence = new Map(), prFacts = new Map(), register = [], now = 0 }) {
+function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence = new Map(), prFacts = new Map(), register = [], now = 0, landedUnblocks = new Map() }) {
   const byTask = reportsByTask(reports);
   return tasks.map((task, at) => {
     const id = task.id;
@@ -887,7 +954,7 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
       && (!info || (work === task.branch && info.markerOnly === true && info.markers.every(m => m.id === id)));
     const landed = landedBefore || continuity;
     const owner = holderOf(info, id);
-    const unblockers = unblockersOf(arch, id);
+    const unblockers = unblockersOf(arch, id, landedUnblocks);
     let said = standingReport(byTask.get(id) ?? [], owner, unblockers);
     // A red report older than a green CI run on the pull request no longer holds anything.
     if (said?.status === "red" && pr && ci.state === "green" && ci.at && ci.at > said.at) said = null;
@@ -914,6 +981,8 @@ function buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, lande
       legacyScopeRed: ci.state === "red" && ci.legacyScope === true && typeof ci.sha === "string" && Boolean(info?.tipSha) && ci.sha === info.tipSha,
       done: task.status === "done" || ((task.status === "todo" || packet) && landed),
       open: task.status === "todo" && Boolean(info) && !landed,
+      // D-412 (3): the open pull request's tip changes only documentation while the row owns code: it is unbuilt.
+      statusOnly: task.status === "todo" && Boolean(info) && !landed && factsOnTip && statusOnlyPull({ task, paths: facts.paths }),
       packet, writers: packet ? everyone(archMarkers, ["Claim", "Takeover"]) : [],
       packetLander: packet ? (archMarkers.at(-1)?.verb === "Land claim" ? archMarkers.at(-1).who : null) : null,
       // The pull request's changed paths (null when unknown) and whether the CI review gate already clears its tip.
@@ -968,7 +1037,7 @@ export function decisionsSince(register, syncedTo) {
 }
 
 /** D-085: the one thing the next agent should do (D-083). */
-function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), prFacts = new Map(), prBehind = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null, only = null }) {
+function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map(), prFacts = new Map(), prBehind = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), landedUnblocks = new Map(), reports = [], now, claimant, avoid = new Set(), register = null, provenance = null, only = null }) {
   // PICKER-claim-task (D-353 (2)): `--task <id>` restricts the pick to that one task; anything it cannot be handed is refused.
   const target = only ? tasks.find(t => t.id === only) ?? null : null;
   if (only && !target) return { kind: "ineligible", task: null, id: only, reason: `no task ${only} in docs/plans/assignments.json` };
@@ -996,7 +1065,7 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
   if (openPrs === null) return { kind: "stop", reason: "cannot read the open pull requests from GitHub; a task under review would look abandoned, so nothing may be picked until they are known (D-085)" };
   if (mergedHeads === null) return { kind: "stop", reason: "cannot read the merged pull requests from GitHub; a landed task would look half-built, so nothing may be picked until they are known (D-085)" };
 
-  const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence, prFacts, register, now });
+  const view = buildView({ tasks, branches, openPrs, prCi, mergedHeads, reports, landedEvidence, prFacts, register, now, landedUnblocks });
   const byId = new Map(view.map(v => [v.task.id, v]));
   // D-134: dependsOn holds every kind of work on a task, not only a new build.
   const unmetOf = v => v.task.dependsOn.filter(d => !byId.get(d)?.done);
@@ -1129,9 +1198,15 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
       const stale = staleOf(v);
       if (stale) return resync(v);
       // D-109: one pull request whose CI cannot be read is skipped, never a stop for everyone (GitHub refuses a red landing anyway, D-082).
+      const idle = quiet(workAt(v));
+      // D-412 (3): a pull request holding only status notes is not built: no review, landing or make-green for it.
+      // Its holder keeps building (ownStage); once quiet for 2 hours anyone takes the build over on the same branch.
+      if (v.pr && v.statusOnly) {
+        if (!idle) return skip(v, `${v.owner ?? "another agent"} is building it on ${v.work}; its pull request ${v.pr} holds only status notes`);
+        return { kind: "takeover", task: v.task, work: v.work, from: v.owner, since: workAt(v), statusOnly: true, why: `Its pull request ${v.pr} holds only status notes (every changed path is documentation) while the row owns code: build the implementation the packet describes; nothing is reviewed or landed until it is there (D-412)` };
+      }
       if (v.pr && v.ci === "error") return skip(v, `cannot read CI for ${v.pr}; skipped until it can be read`);
       if (v.pr && needsReview(v)) return tier1(v);
-      const idle = quiet(workAt(v));
       if (v.pr && v.ci === "red") {
         if (!idle) return gate(`${v.task.id} is red (CI on ${v.pr}) and ${v.owner ?? "its builder"} is making it green`);
         return green(v, `Pull request ${v.pr} has red CI`);
@@ -1278,8 +1353,19 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     // already built ahead as drafts, so keep a quiet one current, in queue order: merge main and make its required CI
     // green on its own branch. Only rows the stages above withhold qualify (a dependency not done, an owner row or a
     // standing block); nothing lands from here and no block, owner call or out-of-sync row (D-202) is touched.
+    // D-412 (owner, Nov 27), amending D-407 (4): refreshing every withheld draft churned ~40 drafts that could not land
+    // (parked at `owner`, blocked, or waiting on dependencies nobody had built). A draft is refreshed only when it is
+    // about to become landable: withheld solely by unmet dependencies, each of which already has an open pull request
+    // with green required CI (and more than status notes, D-412 (3)). Anything else is passed over, so WAIT returns.
     const behindOf = v => { const n = prBehind.get(v.work); return Number.isSafeInteger(n) && n >= 0 ? n : null; };
-    const withheld = v => unmetOf(v).length > 0 || v.task.status === "owner" || v.blockWaitingForEvidence;
+    // PICKER-dep-about-to-land (D-415 (4)(c)): a dependency parked at `owner`, blocked, or itself waiting on unmet
+    // dependencies cannot land soon, whatever its pull request shows, so it never makes a draft worth refreshing.
+    const depAboutToLand = d => {
+      const dep = byId.get(d);
+      if (!dep?.pr || dep.ci !== "green" || dep.statusOnly) return false;
+      return dep.task.status !== "owner" && !dep.blockWaitingForEvidence && unmetOf(dep).length === 0;
+    };
+    const withheld = v => v.task.status !== "owner" && !v.blockWaitingForEvidence && unmetOf(v).length > 0 && unmetOf(v).every(depAboutToLand);
     for (const v of view) {
       if ((only && v.task.id !== only) || v.done || !v.pr || !v.info || !withheld(v) || avoid.has(v.task.id) || staleOf(v) || !quiet(workAt(v))) continue;
       const behind = behindOf(v);
@@ -1397,7 +1483,8 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
 /** D-085: one task's stage that this agent holds, if any: a continue, a blocked wait, or null. */
 function ownStage(v, claimant) {
   if (v.blockWaitingForEvidence) return null;
-  if (v.open && v.pr && needsReview(v) && v.lock) {
+  // D-412 (3): a status-only pull request has no review, fix or landing to continue; only its builder's build below.
+  if (v.open && v.pr && !v.statusOnly && needsReview(v) && v.lock) {
     const last = stageMarkers(v.lock, v.task.id).at(-1);
     if (last?.who === claimant) {
       const base = { kind: "continue", task: v.task, work: v.work, pr: v.pr, lock: v.lockName, at: v.at };
@@ -1418,6 +1505,7 @@ function ownStage(v, claimant) {
     if (v.said?.status === "blocked") return { kind: "wait", gate: v.task.id, blocked: true, own: true, at: v.at, task: v.task, work: v.work, reason: `your task ${v.task.id} is blocked (${v.said.who} reported it blocked${v.said.note ? `: ${v.said.note}` : ""}); a session that neither raised the block nor holds the task, or the owner, clears it (D-200)` };
     // The builder side holds a Tier 1 pull request only while its CI is red before any review passed or any fix stage owns it.
     // D-286: a red that is only the review gate is not the builder's to make green; only a review clears it.
+    if (v.statusOnly) return { kind: "continue", of: "build", task: v.task, work: v.work, pr: v.pr, tier1: false, statusOnly: true, at: v.at };
     if (v.pr && needsReview(v) && !(v.ci === "red" && !v.gateOnlyRed && ["needs-review", "in-review"].includes(v.review))) return null;
     return { kind: "continue", of: v.pr ? (v.ci === "green" ? "land" : v.ci === "red" ? "green" : "build") : "build", task: v.task, work: v.work, pr: v.pr, tier1: Boolean(v.pr) && needsReview(v), at: v.at };
   }
@@ -1470,13 +1558,13 @@ function fixMainLocks(branches, now) {
 }
 
 /** D-085: what `--heartbeat` keeps alive, whatever main's CI says. mainSha: main's red commit, if any. */
-export function heldBy({ tasks, branches, openPrs, prCi = new Map(), prFacts = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
+export function heldBy({ tasks, branches, openPrs, prCi = new Map(), prFacts = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), landedUnblocks = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
   if (mainSha) {
     const current = fixMainLockOf(mainSha);
     const mine = fixMainLocks(branches, now).find(l => l.holder === claimant && (!l.quiet || l.lock === current));
     if (mine) return { kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock };
   }
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence, now });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence, landedUnblocks, now });
   const own = ownWork(view, claimant);
   if (!own || own.kind !== "continue") return null;
   const { at, ...pick } = own;
@@ -1487,14 +1575,14 @@ export function heldBy({ tasks, branches, openPrs, prCi = new Map(), prFacts = n
  * D-134: every claim this agent holds (the fix-main lock first), so a heartbeat keeps all of them alive, not only
  * the first; that includes a claim on a task that waits for a dependency, which is nobody's work yet but stays its holder's.
  */
-export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), prFacts = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
+export function heldAllBy({ tasks, branches, openPrs, prCi = new Map(), prFacts = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), landedUnblocks = new Map(), reports = [], claimant, mainSha = null, now = 0 }) {
   const out = [];
   if (mainSha) {
     const current = fixMainLockOf(mainSha);
     const mine = fixMainLocks(branches, now).find(l => l.holder === claimant && (!l.quiet || l.lock === current));
     if (mine) out.push({ kind: "continue", of: "fix-main", sha: mine.sha8, lock: mine.lock });
   }
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence, now });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence, landedUnblocks, now });
   for (const { at, ...pick } of ownWorkList(view, claimant, { includeWaiting: true }).found) out.push(pick);
   const slot = landingSlot(branches, now);
   if (slot.holder === claimant && !slot.quiet) {
@@ -1587,9 +1675,11 @@ export function localSyncIssues({ local, branches, claimant, mainBehind = 0, tas
 }
 
 /** D-085: who may report on a task: anyone who holds it or one of its stages, and a Claude Code session. */
-export function mayReport({ task, branches, claimant }) {
+export function mayReport({ task, branches, claimant, landedUnblocks = new Map() }) {
   if (!claimant) return false;
   if (isArchitect(claimant)) return true;
+  // D-412 (2): an unblocker whose ruling merged (its Unblock marker is now in main) still reports on the task.
+  if ((landedUnblocks?.get?.(task.id) ?? []).includes(claimant)) return true;
   const work = workBranchOf(task, branches);
   const names = [
     holderOf(work ? branches.get(work) : null, task.id),
@@ -1606,9 +1696,9 @@ export function mayReport({ task, branches, claimant }) {
  * state, holder, quiet time and the latest report its team sent.
  * reports: [{ id, status, who, at, note }] from agent/reports/log, newest first.
  */
-export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prFacts = new Map(), prBehind = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), reports = [], now, register = null }) {
+export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prFacts = new Map(), prBehind = new Map(), mergedHeads = new Map(), landedEvidence = new Map(), landedUnblocks = new Map(), reports = [], now, register = null }) {
   const HOUR = 60 * 60 * 1000;
-  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence, register, now });
+  const view = buildView({ tasks, branches, openPrs: openPrs ?? new Map(), prCi, prFacts, mergedHeads: mergedHeads ?? new Map(), reports, landedEvidence, landedUnblocks, register, now });
   const byTask = reportsByTask(reports);
   const { workAt, archAt } = clock(branches, now);
   const doneIds = new Set(view.filter(v => v.done).map(v => v.task.id));
@@ -1630,6 +1720,8 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prFact
     else if (v.packet && pr) state = { red: "pr-red", green: "pr-green", running: "pr-running", "running-after-red": "pr-running" }[v.ci] ?? "pr-open";
     else if (task.status === "architect") state = archHeld ? (quiet ? "quiet" : "packet") : "architect";
     else if (!v.open) state = task.dependsOn.some(d => !doneIds.has(d)) ? "waiting" : "todo";
+    // D-412 (3): a pull request holding only status notes is unbuilt, so it never reads pr-green (nor auto-lands).
+    else if (pr && v.statusOnly) state = quiet ? "quiet" : "building";
     else if (pr) state = { red: "pr-red", green: "pr-green", running: "pr-running", "running-after-red": "pr-running" }[v.ci] ?? "pr-open";
     else state = quiet ? "quiet" : "building";
     // Reports gate only open tasks, so only they colour the board; a Tier 1 pull request is green only once its review passed.
@@ -1644,12 +1736,15 @@ export function statusBoard({ tasks, branches, openPrs, prCi = new Map(), prFact
       : state === "pr-green" ? (!review || review === "passed" || review === "landing" ? "green" : "progress")
       : ["todo", "waiting", "architect"].includes(state) ? "open" : "progress";
     const behind = prBehind.get(v.work);
+    const holder = archHeld ? holderOf(v.arch, task.id) : v.open ? v.owner : null;
     return {
       id: task.id, title: task.title, tier: task.tier, lane: task.lane, role: roleOf(task), state, health,
       ...(v.said?.status === "blocked" ? { blockAgeHours: Math.max(0, Math.floor((now - v.said.at) / HOUR)), blockWaitingForEvidence: v.blockWaitingForEvidence } : {}),
       ...(task.epic ? { epic: task.epic } : {}),
       ...(pr && state !== "done" ? { behindMain: Number.isSafeInteger(behind) && behind >= 0 ? behind : null } : {}),
-      holder: archHeld ? holderOf(v.arch, task.id) : v.open ? v.owner : null,
+      holder,
+      // D-412 (4): a claim quiet past the lease (the picker's own `quiet`, D-085: 2 hours) is free; the board says so.
+      ...(holder && quiet && state !== "done" ? { free: true } : {}),
       quietHours: activeAt === null || state === "done" ? null : Math.floor((now - activeAt) / HOUR),
       pr, review, report: state === "done" ? null : standingReport(byTask.get(task.id) ?? [], v.owner, v.unblockers),
       // Who holds the current review stage (reviewer, fixer or lander) or the unblock: a restarted session reads its name here.

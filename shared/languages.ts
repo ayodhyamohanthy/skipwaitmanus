@@ -21,9 +21,9 @@ export const LANGUAGES: readonly LanguageEntry[] = [
   { code: "kn", endonym: "ಕನ್ನಡ", script: "Knda", dir: "ltr", reviewed: false },
 ];
 
-// Capture starts off. Nothing is collected and no new language appears until
-// the release row turns it on with the owner's approved wording (§7, §8 Q1).
-export const LANGUAGE_CAPTURE_ENABLED = false;
+// Capture is enabled for the D-093 measure-first release.
+// Language visibility remains limited to reviewed entries.
+export const LANGUAGE_CAPTURE_ENABLED = true;
 
 export const visibleLanguages = (): readonly LanguageEntry[] => LANGUAGES.filter(entry => entry.reviewed);
 

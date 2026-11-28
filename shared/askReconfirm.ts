@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-// D-193: activation belongs to QA/expiry-clock removal, never this build.
-export const ASK_RECONFIRM_ENABLED = false;
+// D-193: activated by D-174-no-expiry-release together with ASK_NO_EXPIRY_ENABLED (D-411; QA journey e2e/reconfirm-money.e2e.ts).
+export const ASK_RECONFIRM_ENABLED = true;
 export const RECONFIRM_AFTER_DAYS = 30;
 
 export const askReconfirmParamsSchema = z.strictObject({
