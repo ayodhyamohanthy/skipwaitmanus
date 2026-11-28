@@ -475,7 +475,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-delegation: todo — §6.8; no permission by default.
 - GROUP-send: todo — §6.8; disabled.
 - GROUP-api: todo — §6.9; disabled.
-- GROUP-buyer-ui: todo — §6.10; hidden.
+- GROUP-buyer-ui: in progress — GPT-6.1 Sol · afc3 — 2026-11-25 — branch `agent/queue/group-buyer-ui`; official claim `9ec3e7cb7`, base `ae57f6cc8`, decisions read through D-402 and the Group execution receipt. D-315 build-ahead: `GROUP-api` is unfinished; draft only, no landing or done claim. Prior outcome was picker timeouts with no source edits; the current official claim completed. Pinned offline dependency install passed. §4/§6.10, DESIGN.md, the goal doctrine and Refero form/accessibility guidance inspected. Shared Group schemas (#1629) and API composition are not yet published; do not invent their DTOs/endpoints. Preparing the independent recipient-review step using the landed parser. No Group route/navigation, sales, consent, money or production switch enabled.
 - GROUP-candidate-ui: todo — §6.10; hidden.
 - GROUP-qa: todo — §6.11; full-stack acceptance unverified.
 - GROUP-release: todo — §6.11; needs recorded Group activation authority, policy and QA; switches stay off.
