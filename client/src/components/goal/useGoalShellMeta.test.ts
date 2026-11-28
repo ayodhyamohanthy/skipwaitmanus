@@ -17,7 +17,7 @@ describe("shellPageTitle", () => {
 
   it.each([
     ["/explore", "Find a referral"],
-    ["/requests", "My asks"],
+    ["/requests", "My referrals"],
     ["/ask", "Ask for a referral"],
     ["/queue", "Referral queue"],
     ["/inbox", "Inbox"],

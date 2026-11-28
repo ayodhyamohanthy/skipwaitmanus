@@ -76,7 +76,7 @@ export class CoverageOpenedUpError extends Error {
   readonly code = COMPANY_COVERAGE_CHANGED;
   readonly companyDomain: string;
   constructor(companyDomain: string) {
-    super("This company just opened up to referrals, so sending now uses its cost in credits. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
+    super("This company just opened up to referrals, so sending now uses its referral cost. Nothing was sent and nothing was charged - check the live price and send again if it works for you.");
     this.name = "CoverageOpenedUpError";
     this.companyDomain = companyDomain;
   }

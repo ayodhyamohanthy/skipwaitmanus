@@ -18,6 +18,13 @@ describe("goal nav", () => {
     for (const item of Object.values(GOAL_NAV)) expect(item.href).not.toBe("/referrer/impact");
   });
 
+  // D-180: the user-facing unit is a referral, never the noun "ask".
+  it("labels the requests destination in referral words", () => {
+    expect(GOAL_NAV.asks.label).toBe("My referrals");
+    expect(GOAL_NAV.asks.railLabel).toBe("My referrals");
+    for (const item of Object.values(GOAL_NAV)) expect(`${item.label} ${item.railLabel}`).not.toMatch(/\basks?\b/i);
+  });
+
   it("adds the referral queue only for a verified referrer", () => {
     expect(goalNavFor(false).map(item => item.id)).toEqual(["find", "asks", "inbox"]);
     expect(goalNavFor(true).map(item => item.id)).toEqual(["find", "asks", "queue", "inbox"]);
