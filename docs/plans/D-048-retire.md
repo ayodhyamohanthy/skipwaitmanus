@@ -196,6 +196,17 @@ unblocker's `review` report releases only this standing worktree block, not
 the source work or acceptance. No product code, money operation or live
 release is performed by this documentation.
 
+## 3f. Employer surfaces need a demo employer sign-in (November 28, D-416)
+
+UNBLOCK `Claude Code · 77ec` rules on the standing block of D-048-K-employer-talent: it is a real external
+prerequisite. The release rows D-048-R-employer-talent and D-048-R-employer-billing need signed-in 1280/390
+captures of `/employer/talent` and `/employer/billing` on the live release plus the 24 h Sentry check, and no
+employer can sign in on skipwait.me: `employer@reviewer.skipwait.me` exists in `server/_core/reviewerLogin.ts`,
+but the reviewer reset and the Live QA runner carry only the seeker and referrer passwords. Both release rows
+park at `owner` until the owner adds the repository secret `REVIEWER_EMPLOYER_PASSWORD`; then one agent row
+extends the reset and the runner to the employer role, and the release rows resume. The K rows keep waiting
+on them (D-134). The independent-review report on PR #1210 is void under D-370.
+
 ## 4. Rows
 
 ### D-048-K-policy: landing acceptance (November 20)
