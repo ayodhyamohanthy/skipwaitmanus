@@ -415,6 +415,37 @@ export function chooseSessionName({ requested, newSession = false, records = {},
     : [];
   return resumeDecision({ requested, newSession, records, claims, tag, now });
 }
+
+/**
+ * PICKER-durable-session (D-415 (4)(a)): `scripts/agent-loop.mjs --session "<model>"` keeps one name for the loop's
+ * whole life and passes it to every run in this variable. Only that loop runs under the name, so a bare claim of the
+ * same model takes it as its own at once (no D-401 quiet wait) and is handed that name's unfinished claims.
+ */
+export const LOOP_SESSION_ENV = "SKIPWAIT_SESSION_NAME";
+const LOOP_TAG = /^[0-9A-Za-z_-]{1,16}$/;
+const D401 = "so this claim picks its name as usual (D-401)";
+
+/**
+ * The loop's name for a bare `--claim "<model>"`, from the variable's value `env`. It is used only when it is exactly
+ * what sessionName mints for that model and its tag; anything else is ignored with one line, never partly used.
+ * -> null (unset, or the claim names its session) | { name, line } | { ignored }
+ */
+export function loopSessionName({ requested, newSession = false, env }) {
+  if (env === undefined || env === null || env === "") return null;
+  const model = sanitizeName(requested);
+  if (model.includes(" · ")) return null;
+  const raw = String(env), shown = sanitizeName(raw);
+  if (newSession) return { ignored: `${LOOP_SESSION_ENV} "${shown}" ignored: --new-session asks for a separate session.` };
+  const at = raw.lastIndexOf(" · "), tag = at < 0 ? "" : raw.slice(at + 3);
+  if (shown !== raw || !LOOP_TAG.test(tag) || raw.indexOf(" · ") !== at) {
+    return { ignored: `${LOOP_SESSION_ENV} "${shown}" is not a session name of the form "<model> · <tag>"; ignored, ${D401}.` };
+  }
+  if (sessionName(model, tag) !== raw) return { ignored: `${LOOP_SESSION_ENV} "${raw}" is not a session of "${model}"; ignored, ${D401}.` };
+  return {
+    name: raw,
+    line: `Session name "${raw}" from this agent loop (${LOOP_SESSION_ENV}): its unfinished claims stay yours. Use exactly this name for --heartbeat, --report, --verdict and --fixed.\n`,
+  };
+}
 /** A refused marker push: lost to another agent ("race"), or anything else ("error", which must stop the run). */
 export function classifyPushError(stderr) {
   const text = stderr ?? "";
