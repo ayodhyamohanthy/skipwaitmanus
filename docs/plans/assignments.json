@@ -352,7 +352,7 @@
       "tier": 1,
       "lane": "mobile-both-prompt",
       "branch": "agent/queue/mobile-both-prompt",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-414",
       "dependsOn": [
         "PRIVACY-own-employer-guard"
@@ -362,9 +362,20 @@
         "client/src/components/requests/bothRolesSheet.test.tsx",
         "client/src/pages/explore/useAskComposer.tsx",
         "shared/bothRolesPrompt.ts",
-        "docs/plans/MOBILE-app-flow.md"
+        "docs/plans/MOBILE-app-flow.md",
+        "server/bothRolesPrompt.ts",
+        "server/bothRolesPrompt.test.ts",
+        "server/_core/index.ts (route registration only)",
+        "client/src/pages/explore/AskDrawer.tsx (sheet slot only)",
+        "client/src/pages/Explore.tsx (sheet slot only)",
+        "client/src/pages/ExploreCompany.tsx (sheet slot only)",
+        "client/src/pages/Ask.tsx (sheet slot only)",
+        "client/src/components/goal/goalBoundary.test.ts (moved-surface entry only)",
+        "docs/plans/GOAL_UI_COVERAGE.md (one row)",
+        "AGENTS.md (living map row only)",
+        "design/goal-ui/captures/mobile-both-prompt/**"
       ],
-      "note": "Switch BOTH_ROLES_PROMPT starts off. Uses the existing D-057 in-portal work-email verification.",
+      "note": "Switch BOTH_ROLES_PROMPT starts off. Uses the existing D-057 in-portal work-email verification. Built behind the switch on Nov 28 (Claude Code · 77ec); four pre-flip questions are in the packet Status line.",
       "epic": "D-212"
     },
     {

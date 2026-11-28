@@ -141,6 +141,7 @@ A component is redesigned once, by its owner row; the other rows that use it wai
 | `SeekerSignIn.tsx`, `ReferrerOtpSignIn.tsx`, `PasswordForm.tsx`, `CheckEmailStep.tsx` | sign-in, the goal sign-in, `/referrer`, company claim | `D-048-p3-signin` | Login rule pins stay green (D-030, `loginRule.test.tsx`) |
 | `WorkEmailSignIn.tsx` | `/email-review`, `/referrer` | `D-048-p3-verify` | Work-email code only (D-030) |
 | `ask/PinnedWorkPicker.tsx` | `/ask`, the drawer, the composer | `D-048-p3-live-review-find` | |
+| `requests/BothRolesSheet.tsx` | `/ask`, the drawer on `/explore` and `/explore/:slug` (the composer's sent state) | `MOBILE-both-prompt` (D-414) | New and goal-native, behind `BOTH_ROLES_PROMPT` (off); the work-email code only through the in-portal routes (D-057), never the referrer code login |
 | `admin/UnlistedDemandView.tsx` | `/admin`, the companies view | `D-086.admit` (D-086) | Read-only admission queue of unlisted domains; no create, list or prefill control, and nothing is listed automatically (D-101) |
 | `OneTapShareActions.tsx` | `/wall`, `/referrer` | `D-048-p3-referrer` | `D-048-p3-discovery` adopts it after |
 | `profile/ProfileLinkSheet.tsx`, `profile/VisibilityOptions.tsx` | `/profile`, `/work`, `/p/:handle` | `D-048-p3-profile` | `D-048-p3-public-profile` adopts after |

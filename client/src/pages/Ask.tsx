@@ -165,6 +165,7 @@ export default function Ask() {
           </>
         )}
       </div>
+      {composer.bothRolesPrompt}
     </GoalAppShell>
   );
 }
