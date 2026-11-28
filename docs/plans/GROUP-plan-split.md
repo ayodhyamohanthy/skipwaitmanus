@@ -470,7 +470,7 @@ payment, claimed allocation, activated benefits, provider-accepted email and com
 - GROUP-payments: todo — §6.5.
 - GROUP-claim: todo — §6.6.
 - GROUP-grants: todo — §6.6.
-- GROUP-notifications: todo — §6.7; no real recipients.
+- GROUP-notifications: in progress — GPT-6.1 Sol · 61fe — 2026-11-25 — branch agent/queue/group-notifications; claim HEAD 3d2e8a7a9; current main ae57f6cc8. Read docs/BRIEF.md, docs/PRD.md, docs/BUILD_CONTINUITY.md, COLLABORATION.md, AGENTS.md, .zcode/agents/worker.md, docs/plans/GROUP-plan-split.md §6.7, docs/plans/GROUP-bulk-oct31.md and docs/PAYMENTS_TEST_RUNBOOK.md; decisions through D-402, including D-370/D-399/D-400. Ahead of unfinished GROUP-payments; draft only, no landing/done/recipient send. Source inspection still in progress; no actual implementation, migration or production claim.
 - GROUP-recovery: todo — §6.7.
 - GROUP-delegation: todo — §6.8; no permission by default.
 - GROUP-send: todo — §6.8; disabled.
