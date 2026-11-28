@@ -63,6 +63,7 @@ const RefundPolicy = lazy(() => import("./pages/RefundPolicy"));
 const ShippingPolicy = lazy(() => import("./pages/ShippingPolicy"));
 const CancellationPolicy = lazy(() => import("./pages/CancellationPolicy"));
 const About = lazy(() => import("./pages/About"));
+const HowItWorks = lazy(() => import("./pages/goal/how-it-works/HowItWorks"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Pricing = lazy(() => import("./pages/Pricing"));
 const SupportRoute = lazy(() => import("./pages/Support").then(module => ({ default: module.SupportRoute })));
@@ -240,6 +241,7 @@ function Router() {
           <Route path="/shipping" component={ShippingPolicy} />
           <Route path="/cancellations" component={CancellationPolicy} />
           <Route path="/about" component={About} />
+          <Route path="/how-it-works" component={HowItWorks} />
           <Route path="/contact" component={Contact} />
           <Route path="/pricing" component={Pricing} />
           <Route path="/support" component={SupportRoute} />

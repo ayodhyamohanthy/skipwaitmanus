@@ -14,6 +14,7 @@ import { GoalBrandMark } from "@/components/goal/GoalBrandMark";
 import { GoalLanguageConsent } from "@/components/goal/GoalLanguageConsent";
 import { GoalVerifiedMark } from "@/components/goal/GoalVerifiedMark";
 import { BetaBadge, BetaNoticeLine } from "@/components/BetaNotice";
+import { trackClarityEvent } from "@/lib/clarity";
 import { COST_COPY, FAIR_RULES, FOOTER_COLS, Kicker, Reveal, AskCardArt } from "./GoalLanding";
 import { GOAL_LANDING_BAND_H2, GOAL_LANDING_BAND_LEAD, GOAL_LANDING_COMPARE_COLUMN, GOAL_LANDING_COMPARE_H2, GOAL_LANDING_COMPARE_ROWS, GOAL_LANDING_EMPLOYEE_H2, GOAL_LANDING_EMPLOYEE_LEAD, GOAL_LANDING_FAIR_H2, GOAL_LANDING_FIGURES_HREF, GOAL_LANDING_FOOTER_BLURB, GOAL_LANDING_H1, GOAL_LANDING_HERO_LEAD, GOAL_LANDING_KICKER, GOAL_LANDING_QUOTE, GOAL_LANDING_QUOTE_LEAD, GOAL_LANDING_QUOTE_REST, GOAL_LANDING_STEPS_H2, GOAL_LANDING_TRUST_H2_PARTS, goalLandingSteps, goalLandingTrust } from "@shared/landingContent";
 
@@ -32,6 +33,12 @@ const BAND_ALT: Record<string, string> = {
   e: "Two colleagues walking into a bright office together",
 };
 
+/**
+ * The baseline for MOBILE-landing-choice's comparison (MOBILE-app-flow rule 6):
+ * the same two moments the one-screen phone landing records, on this page.
+ */
+export const LANDING_EVENTS = { search: "landing_search", referrer: "landing_referrer" } as const;
+
 function SearchCTA() {
   const [, setLocation] = useLocation();
   // A visitor can type into the prerendered snapshot's identical form while
@@ -48,6 +55,7 @@ function SearchCTA() {
   }, []);
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    trackClarityEvent(LANDING_EVENTS.search);
     const term = q.trim();
     setLocation(term ? `/explore?q=${encodeURIComponent(term)}` : "/explore");
   };
@@ -86,7 +94,7 @@ export default function GoalLandingV9() {
           <nav className="hidden items-center gap-7 gdesk:flex" aria-label="Landing">
             <a href="#how" className="text-g-small font-medium text-g-ink-2 hover:text-g-ink">How it goes</a>
             <a href="#rules" className="text-g-small font-medium text-g-ink-2 hover:text-g-ink">Fair rules</a>
-            <Link href="/sign-in?intent=referrer" className="text-g-small font-medium text-g-ink-2 hover:text-g-ink">Join as a referrer</Link>
+            <Link href="/sign-in?intent=referrer" onClick={() => trackClarityEvent(LANDING_EVENTS.referrer)} className="text-g-small font-medium text-g-ink-2 hover:text-g-ink">Join as a referrer</Link>
             <Link href="/sign-in" className="text-g-small font-medium text-g-ink hover:underline underline-offset-4">Sign in</Link>
           </nav>
           <Link href="/sign-in" className="text-g-small font-medium gdesk:hidden">Sign in</Link>
@@ -105,6 +113,24 @@ export default function GoalLandingV9() {
         </div>
       </section>
 
+      <V9ProofSections />
+      <V9Footer />
+      <CookieConsent />
+
+    </div>
+  );
+}
+
+/**
+ * The landing's proof sections (band, mass applying vs a referral with its
+ * Jobvite figures, the steps, the quote, trust, employees, fair rules). The
+ * desktop landing renders them under its hero; /how-it-works renders the same
+ * component so the figures and their source cannot drift (MOBILE-app-flow
+ * rule 5).
+ */
+export function V9ProofSections() {
+  return (
+    <>
       {/* M3: BLACK idea band carrying the warm walking-in photo (only photo
           on the page; no warm gradient anywhere). */}
       <section className="bg-g-ink text-g-ink-inverse">
@@ -221,7 +247,7 @@ export default function GoalLandingV9() {
             <Kicker>For employees</Kicker>
             <h2 className="mt-4 text-[32px] font-semibold leading-[1.05] tracking-[-0.03em] gdesk:text-[44px]">{GOAL_LANDING_EMPLOYEE_H2}</h2>
             <p className="mt-4 max-w-[440px] text-g-body leading-[1.6] text-g-ink-2">{GOAL_LANDING_EMPLOYEE_LEAD}</p>
-            <Link href="/referrer" className="mt-6 inline-flex h-11 items-center gap-2 rounded-full border border-g-ink px-5 text-g-small font-semibold hover:bg-g-surface-hover">Join as a referrer <span aria-hidden="true">&rarr;</span></Link>
+            <Link href="/referrer" onClick={() => trackClarityEvent(LANDING_EVENTS.referrer)} className="mt-6 inline-flex h-11 items-center gap-2 rounded-full border border-g-ink px-5 text-g-small font-semibold hover:bg-g-surface-hover">Join as a referrer <span aria-hidden="true">&rarr;</span></Link>
           </Reveal>
           <Reveal className="justify-self-center"><AskCardArt /></Reveal>
         </div>
@@ -243,34 +269,36 @@ export default function GoalLandingV9() {
           </div>
         </div>
       </section>
+    </>
+  );
+}
 
-      {/* Black footer (Uber style); light lockup asset. */}
-      <footer className="bg-g-ink text-g-ink-inverse">
-        <div className="mx-auto grid max-w-[1120px] gap-10 px-5 py-12 gdesk:grid-cols-[1.4fr_1fr_1fr_1fr] gdesk:px-8 gdesk:py-16">
-          <div>
-            <img src="/brand/lockup-dark.svg" alt="SkipWait.me" className="h-[22px] w-auto" />
-            <p className="mt-4 max-w-[260px] text-g-small leading-[1.6] opacity-70">{GOAL_LANDING_FOOTER_BLURB}</p>
-          </div>
-          {FOOTER_COLS.map((col) => (
-            <nav key={col.title} aria-label={col.title}>
-              <h3 className="font-g-mono text-[11px] uppercase tracking-[0.14em] opacity-60">{col.title}</h3>
-              <ul className="mt-4 space-y-2.5">
-                {col.links.map(([href, label]) => (
-                  <li key={label}><Link href={href} className="text-g-small opacity-70 hover:opacity-100">{label}</Link></li>
-                ))}
-              </ul>
-            </nav>
-          ))}
+/** The landing's black footer (Uber style; light lockup asset), shared with /how-it-works. */
+export function V9Footer() {
+  return (
+    <footer className="bg-g-ink text-g-ink-inverse">
+      <div className="mx-auto grid max-w-[1120px] gap-10 px-5 py-12 gdesk:grid-cols-[1.4fr_1fr_1fr_1fr] gdesk:px-8 gdesk:py-16">
+        <div>
+          <img src="/brand/lockup-dark.svg" alt="SkipWait.me" className="h-[22px] w-auto" />
+          <p className="mt-4 max-w-[260px] text-g-small leading-[1.6] opacity-70">{GOAL_LANDING_FOOTER_BLURB}</p>
         </div>
-        <div className="border-t border-g-ink-3/30">
-          <div className="mx-auto flex max-w-[1120px] items-center justify-between px-5 py-5 text-[13px] opacity-60 gdesk:px-8">
-            <span>skipwait.me</span>
-            <span>Made with care, in beta.</span>
-          </div>
+        {FOOTER_COLS.map((col) => (
+          <nav key={col.title} aria-label={col.title}>
+            <h3 className="font-g-mono text-[11px] uppercase tracking-[0.14em] opacity-60">{col.title}</h3>
+            <ul className="mt-4 space-y-2.5">
+              {col.links.map(([href, label]) => (
+                <li key={label}><Link href={href} className="text-g-small opacity-70 hover:opacity-100">{label}</Link></li>
+              ))}
+            </ul>
+          </nav>
+        ))}
+      </div>
+      <div className="border-t border-g-ink-3/30">
+        <div className="mx-auto flex max-w-[1120px] items-center justify-between px-5 py-5 text-[13px] opacity-60 gdesk:px-8">
+          <span>skipwait.me</span>
+          <span>Made with care, in beta.</span>
         </div>
-      </footer>
-      <CookieConsent />
-
-    </div>
+      </div>
+    </footer>
   );
 }

@@ -31,6 +31,7 @@ Rows marked "to be added by its lane packet" exist in `docs/plans/D-048-phase-3-
 | Route | Page | Owning row(s) | Row state |
 |---|---|---|---|
 | `/` | `pages/Home` | `D-048-p3-home`, `D-048-p3-home-signed-in` | D-048-p3-home: done; D-048-p3-home-signed-in: to be added by its lane packet |
+| `/how-it-works` | `pages/goal/how-it-works/HowItWorks` | `MOBILE-landing-choice` | MOBILE-landing-choice: built goal-first behind `MOBILE_LANDING_V2` (off); nothing links to it and the sitemap leaves it out until the switch is on (D-414, `docs/plans/MOBILE-app-flow.md`) |
 | `/fast/:linkCode` | `pages/FastTrackLink` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
 | `/refer/:companySlug/:vanityAlias` | `pages/VanityFastTrackLink` | `D-048-p3-links` | D-048-p3-links: to be added by its lane packet |
 | `/r/:token` | `pages/AskInviteLink` | `D-090-BYOR` | D-090-BYOR: fix round in progress on #632 |
