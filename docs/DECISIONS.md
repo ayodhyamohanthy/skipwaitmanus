@@ -1401,3 +1401,36 @@ runtime repair, production acceptance, product/price/plan change, login method,
 legal wording, settings, secret, paid tool or sales-switch authorization.
 Protected PR and green required CI remain mandatory. The menu repairs and
 claim-cost improvement remain unfinished after this documentation lands.
+
+### November 28 admin-money retirement worktree unblock (D-200, D-388, D-407)
+
+Official UNBLOCK `GPT-6.1 Sol · 8417`, lock `9e7791fb4`, checked main
+`0168cf795b8d4ab1148afe75cf002dba71c11db6`, decisions through D-415,
+`D-048-retire.md` §§3b/3d, blocked reports `9f3bd6e9a` and `5d07f3d3f`,
+and published carrier `agent/queue/d048-k-admin-money-fresh` at `a7d3a5813`.
+This applies existing decisions; it adds no numbered owner decision.
+
+The reports require an explicit handoff of another worktree's unpublished
+retirement edits. D-407 (1)(a)/(b) already excludes unpublished work and a
+session's local environment from task-wide blocks. Continue from the published
+carrier in an isolated checkout, preserving its history and every other
+writer's dirty files. No handoff, coordinator acknowledgement or owner answer
+is required to recover work that is already on origin. Do not copy or discard
+the unpublished version or override the current holder; the normal picker
+assigns implementation or takeover.
+
+The reported BANDED owner hold is also obsolete: PR #1664 merged as
+`b54c03eb57893365043741ec40fc98ebacdf9cdc`, and §3d already applied D-388's
+release condition. Release repair PR #1365 merged as `3d1656f13`;
+neither merge alone certifies the retirement's outstanding parity, ported
+assertions, current-head CI or canonical 1280/390 acceptance.
+
+The unblocker's `review` report clears only this worktree/handoff block.
+Keep `D-048-K-admin-money` at `todo`, with its fresh branch, holder, ownership,
+FIFO position and `D-048-R-admin-money` dependency unchanged; check its packet
+through D-415. The builder completes the four-route retirement under the
+existing acceptance contract and links a replacement PR before closing #1315.
+No source deletion, test run of the product, production action, payment,
+price, legal wording, login method, money rule or completed retirement is
+claimed by this ruling. Required CI and protected auto-merge remain mandatory.
+
