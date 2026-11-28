@@ -244,6 +244,55 @@ describe("sandbox journeys", () => {
     expect(h.remaining()).toEqual([]);
   });
 
+  // Run 46084378112: the accepted page rendered correctly, but loadThread (client/src/lib/threadApi.ts) asks
+  // /preview before the claimed detail, and once the referrer has claimed the request that probe answers 404 by
+  // design (server/privateReferralRoutes.ts). Only that one request, on this run's own accepted conversation, and
+  // its one browser console line are expected; every other error still fails the capture.
+  const PROBE_CONSOLE = "Failed to load resource: the server responded with a status of 404 ()";
+  const withProbe = (id: number, extra: { client?: string[]; console?: string[] } = {}) => harness({ capture: (call, capture) =>
+    call.path === `/conversation/${id}` ? { ...capture, clientErrors: [`404 GET /api/company-referrals/${id}/preview`, ...(extra.client ?? [])], consoleErrors: [PROBE_CONSOLE, ...(extra.console ?? [])] } : capture });
+
+  it("accepts only the by-design /preview probe on the run's own accepted conversation, and says so", async () => {
+    const h = withProbe(9001);
+    const { code, summary } = await run(h);
+    expect(code).toBe(0);
+    for (const width of [1280, 390]) {
+      const step = summary.steps.find((entry: { name: string }) => entry.name === `accepted-${width}`);
+      expect(step.ok).toBe(true);
+      expect(step.detail).toContain("expected /preview probe");
+    }
+    expect(h.remaining()).toEqual([]);
+  });
+
+  it.each([
+    ["another 4xx", { client: ["403 GET /api/company-referrals/9001/conversation"] }],
+    ["a second console error", { console: ["Uncaught render failure"] }],
+  ])("still fails the accepted capture with the probe plus %s, and names it", async (_label, extra) => {
+    const h = withProbe(9001, extra);
+    const { code, summary } = await run(h);
+    expect(code).toBe(1);
+    const step = summary.steps.find((entry: { name: string }) => entry.name === "accepted-1280");
+    expect(step.ok).toBe(false);
+    if (extra.client) expect(step.detail).toContain("403 GET /api/company-referrals/9001/conversation");
+    else expect(step.detail).toContain("1 console error");
+    expect(h.remaining()).toEqual([]);
+  });
+
+  it("does not accept the probe for a different request or on the queue page", async () => {
+    for (const h of [
+      harness({ capture: (call, capture) => call.path === "/conversation/9001" ? { ...capture, clientErrors: ["404 GET /api/company-referrals/9002/preview"], consoleErrors: [PROBE_CONSOLE] } : capture }),
+      harness({ capture: (call, capture) => call.path === "/queue" ? { ...capture, clientErrors: ["404 GET /api/company-referrals/9001/preview"], consoleErrors: [PROBE_CONSOLE] } : capture }),
+    ]) {
+      expect((await run(h)).code).toBe(1);
+      expect(h.remaining()).toEqual([]);
+    }
+  });
+
+  it("never accepts a console 404 line without the probe request itself", async () => {
+    const h = harness({ capture: (call, capture) => call.path === "/conversation/9001" ? { ...capture, consoleErrors: [PROBE_CONSOLE] } : capture });
+    expect((await run(h)).code).toBe(1);
+  });
+
   it.each(["duplicate-debit", "wrong-key", "missing-refund", "decline-refund"])("rejects a defective keyed ledger: %s", async fault => {
     const h = harness({ ledger: rows => {
       if (fault === "duplicate-debit") return [...rows, { ...rows[0], id: 99999 }];

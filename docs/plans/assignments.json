@@ -84,7 +84,7 @@
       "tier": 1,
       "lane": "p0-messages-account-menu",
       "branch": "agent/queue/p0-messages-account-menu",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-414",
       "dependsOn": [],
       "owns": [
@@ -602,7 +602,7 @@
       "tier": 2,
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa-acceptance",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-390",
       "dependsOn": [
         "OPS-deploy-secrets-file",
@@ -646,7 +646,7 @@
       "tier": 1,
       "lane": "live-qa-journeys",
       "branch": "agent/queue/ops-live-qa-journeys-proof-6155",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-414",
       "dependsOn": [
         "OPS-live-qa-hardening",

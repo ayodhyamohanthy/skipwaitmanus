@@ -1,0 +1,34 @@
+[
+  {
+    "tag": "signed-in-1280",
+    "accountMenuButtons": 1,
+    "signOutOffered": true,
+    "mains": 1,
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "tag": "signed-out-1280",
+    "accountMenuButtons": 0,
+    "signOutOffered": false,
+    "mains": 1,
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "tag": "signed-in-390",
+    "accountMenuButtons": 1,
+    "signOutOffered": true,
+    "mains": 1,
+    "errors": [],
+    "overflow": false
+  },
+  {
+    "tag": "signed-out-390",
+    "accountMenuButtons": 0,
+    "signOutOffered": false,
+    "mains": 1,
+    "errors": [],
+    "overflow": false
+  }
+]
