@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render } from "@testing-library/react";
 import GoalLandingV9 from "./GoalLandingV9";
 import { landingSnapshot } from "../../../scripts/prerender-public-pages";
-import { askCostLanding } from "@shared/moneyCopy";
+import { askCostLanding, REFERRING_FREE_LINE } from "@shared/moneyCopy";
 import {
   GOAL_LANDING_BAND_H2,
   GOAL_LANDING_BAND_LEAD,
@@ -110,5 +110,31 @@ describe("landing first paint matches the goal page (D-048-fix-landing-load-flas
     expect(doc.querySelector("dl")).toBeNull();
     expect(doc.querySelectorAll("h1").length).toBe(1);
     expect(flat(doc.querySelector("main")?.textContent ?? null)).not.toContain("INTRODUCINGSKIPWAIT.ME");
+  });
+
+  it("keeps the mounted landing and crawler snapshot honest without fetching public activity", () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    try {
+      const { container } = render(<GoalLandingV9 />);
+      const doc = new DOMParser().parseFromString(landingSnapshot([]), "text/html");
+      const availability = /open to referral requests?|available referrers?|availability|people at these companies|open doors? at launch/i;
+      for (const { source, copy } of [
+        { source: "mounted goal landing", copy: container.textContent ?? "" },
+        { source: "crawler landing snapshot", copy: doc.querySelector("main")?.textContent ?? "" },
+      ]) {
+        expect(copy, source).toContain(GOAL_LANDING_H1);
+        expect(copy, source).not.toMatch(availability);
+        expect(copy, source).not.toMatch(/referral requests accepted/i);
+        // D-055 keeps referring free; only the two explicit referrer-qualified
+        // phrases are exempt from the ban on unconditional seeker claims.
+        expect(copy, source).toContain(REFERRING_FREE_LINE);
+        expect(copy, source).not.toMatch(/Referrals are free|free\.\s*Always|(?<!Referring is )always free(?! for referrers)|Free job referrals/i);
+        expect(copy, source).not.toMatch(/candidates placed|hires|success stories|testimonials/i);
+      }
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
