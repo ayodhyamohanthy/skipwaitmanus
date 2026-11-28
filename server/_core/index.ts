@@ -101,6 +101,7 @@ import { createWorkosAuthRoutesRegistrar, currentWorkosSessionId, configuredWork
 import { WorkOS } from "@workos-inc/node";
 import { registerAccountSessionRoutes } from "../accountSessions";
 import { registerAccountPreferenceRoutes } from "../accountPreferences";
+import { registerBothRolesPromptRoutes } from "../bothRolesPrompt";
 import { registerReferrerOtpLoginRoutes } from "./otpLogin";
 import { registerPasskeyLoginRoutes } from "./passkeyLogin";
 import { registerReferrerStepUpRoutes } from "../referrerStepUpRoutes";
@@ -214,6 +215,8 @@ registerHealthRoutes(app,{commitSha:async()=>{try{return(await readFile("commit-
   });
 
   registerAccountPreferenceRoutes(app, { resolveIdentity, getPreferences: db.getAccountPreferences, savePreferences: db.saveAccountPreferences });
+  // MOBILE-both-prompt (D-414): a read only; 404 while BOTH_ROLES_PROMPT is off.
+  registerBothRolesPromptRoutes(app, { resolveIdentity });
   registerImpactCardRoutes(app, { resolveIdentity, recordActivity: db.recordOperationalActivity });
 
   // Dev session routes read JSON bodies, so they register after the parsers.
