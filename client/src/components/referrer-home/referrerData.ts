@@ -10,6 +10,7 @@ import { REFERRER_ACCESS_PATH, isVerifiedReferrer, referrerAccessResponseSchema 
 import { impactCardPayloadSchema, type ImpactCardPayload } from "@shared/shareImpactCard";
 import { JOB_LEVELS, REFERRER_AREAS, jobFunctionFieldSchema, type JobFunction } from "@shared/jobFunctions";
 import { referrerThankYouWallSchema, type ReferrerThankYouWall } from "@shared/landedJourney";
+import { REQUEST_INBOX_LINK_ENABLED, inboxDirectFlagSchema } from "@shared/requestInboxLink";
 import { readApiJson } from "@/lib/apiResponse";
 import { isWorkEmailCodeRequired, notifyWorkEmailCodeRequired } from "@/lib/referrerStepUpApi";
 
@@ -40,6 +41,8 @@ const inboxRowSchema = z.object({
   coverageVisibleAt: timestamp.nullish(),
   jobTitle: z.string().nullish(),
   askStrength: z.enum(["strong", "good", "basic"]).nullish().catch(null),
+  // D-089 §4.7: sent to this referrer alone and not yet acted on; absent while REQUEST_INBOX_LINK_ENABLED is off.
+  askedYouDirectly: inboxDirectFlagSchema.shape.askedYouDirectly.optional().catch(undefined),
 });
 const inboxSchema = z.object({ requests: z.array(inboxRowSchema), hasEverReviewed: z.boolean().optional() });
 
@@ -79,13 +82,30 @@ function authHeaders(token: string | null | undefined): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
-async function getJson<T>(path: string, getToken: TokenSource, schema: z.ZodType<T>, fallback: string): Promise<T> {
+/** A refused referrer call: the server's plain message plus its HTTP status and machine `code`, so a caller branches on the code, never on prose. */
+export class ReferrerApiError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+  constructor(message: string, status: number, code: string | null) {
+    super(message);
+    this.name = "ReferrerApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
+
+function refusal(status: number, payload: Record<string, unknown>, fallback: string): ReferrerApiError {
+  return new ReferrerApiError(typeof payload.error === "string" && payload.error ? payload.error : fallback, status, typeof payload.code === "string" && payload.code ? payload.code : null);
+}
+
+/** The shared referrer read: auth header, the D-057 step-up signal, a plain-words refusal and a Zod parse at the edge. */
+export async function getJson<T>(path: string, getToken: TokenSource, schema: z.ZodType<T>, fallback: string): Promise<T> {
   const token = await getToken();
   const response = await fetch(path, { credentials: "include", headers: authHeaders(token) });
   const payload = await readApiJson<Record<string, unknown>>(response, fallback);
   // D-057: a referrer read refused for this session re-checks the verdict, so the page shows the step-up.
   if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired();
-  if (!response.ok) throw new Error(typeof payload.error === "string" && payload.error ? payload.error : fallback);
+  if (!response.ok) throw refusal(response.status, payload, fallback);
   const parsed = schema.safeParse(payload);
   if (!parsed.success) throw new Error(fallback);
   return parsed.data;
@@ -96,12 +116,13 @@ async function getOptional<T>(path: string, getToken: TokenSource, schema: z.Zod
   try { return await getJson(path, getToken, schema, "unavailable"); } catch { return null; }
 }
 
-async function sendJson<T>(path: string, method: "PUT" | "POST", body: unknown, getToken: TokenSource, schema: z.ZodType<T>, fallback: string): Promise<T> {
+/** The shared referrer write: the same step-up signal, refusal and edge parse as getJson. */
+export async function sendJson<T>(path: string, method: "PUT" | "POST", body: unknown, getToken: TokenSource, schema: z.ZodType<T>, fallback: string): Promise<T> {
   const token = await getToken();
   const response = await fetch(path, { method, credentials: "include", headers: { "Content-Type": "application/json", ...authHeaders(token) }, body: JSON.stringify(body) });
   const payload = await readApiJson<Record<string, unknown>>(response, fallback);
   if (isWorkEmailCodeRequired(response.status, payload)) notifyWorkEmailCodeRequired();
-  if (!response.ok) throw new Error(typeof payload.error === "string" && payload.error ? payload.error : fallback);
+  if (!response.ok) throw refusal(response.status, payload, fallback);
   const parsed = schema.safeParse(payload);
   if (!parsed.success) throw new Error(fallback);
   return parsed.data;
@@ -218,6 +239,14 @@ const handleSchema = z.object({ profile: z.object({ handle: z.string().nullish()
 export async function fetchProfileHandle(getToken: TokenSource): Promise<string | null> {
   const handle = (await getOptional("/api/profile/me", getToken, handleSchema))?.profile?.handle?.trim();
   return handle ? handle : null;
+}
+
+/**
+ * D-089 §4.7: true only while REQUEST_INBOX_LINK_ENABLED is on and the server flagged the row as sent
+ * to this referrer alone. A missing or malformed flag reads as not direct, never a guess (D-398 (2)).
+ */
+export function isAskedYouDirectly(row: { askedYouDirectly?: unknown }): boolean {
+  return REQUEST_INBOX_LINK_ENABLED && inboxDirectFlagSchema.shape.askedYouDirectly.safeParse(row.askedYouDirectly).data === true;
 }
 
 /** The verified company's directory name and initials ("Wipro", "W"); the raw domain otherwise. */

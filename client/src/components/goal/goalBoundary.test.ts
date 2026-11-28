@@ -23,6 +23,9 @@ MOVED_SURFACES.add("pages/explore/UniversalSearchResults.tsx");
 // MOBILE-both-prompt (D-414): the "Where do you work now?" sheet, new and goal-native, mounted only by the moved
 // composer (useAskComposer) in its sent state on the moved AskDrawer and Ask pages; switch BOTH_ROLES_PROMPT off.
 MOVED_SURFACES.add("components/requests/BothRolesSheet.tsx");
+// D-089.ui (D-414 (2)): the referral-link panel, new and goal-native, mounted only by the goal /referrer-home aside
+// while REQUEST_INBOX_LINK_ENABLED is on.
+MOVED_SURFACES.add("components/referrer-home/GoalReferralLinkPanel.tsx");
 
 function* walk(dir: string): Generator<string> {
   for (const entry of readdirSync(dir)) {
