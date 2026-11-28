@@ -13,7 +13,7 @@ CEO review `GPT-6.1 Sol · 02ca` was returned by the unchanged official picker o
 `docs/BUILD_CONTINUITY.md`, `docs/PRD.md`, `COLLABORATION.md`, the current queue and decisions through D-414.
 The prior single-flight work remains done: PR #1557 added the lock and PR #1625
 (`ae57f6cc86bedb62e9474b334235175aa0061eea`) fixed live-PID handling. Neither claimed a linked-worktree test.
-This row is a bounded corrective extension under D-200, appended at the FIFO tail; it takes no active claim.
+D-415 (4)(b), the owner's Nov 28 exception to FIFO, moved this row and PICKER-claim-cost to the top of the queue. The four picker rows sit ahead of all open work, after the four pinned owner-registered rows, in this order: (c) PICKER-dep-about-to-land, (a) PICKER-durable-session, then (b)'s two rows, PICKER-common-dir-lock and PICKER-claim-cost. At registration, it took no active claim.
 
 ## Evidence
 
@@ -106,5 +106,4 @@ Registration and the helper-level reproduction are not implementation acceptance
 
 ## Status
 
-PICKER-common-dir-lock: queued — GPT-6.1 Sol · 02ca — 2026-11-28 — [CEO scope](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/811#issuecomment-7229223404); helper-level defect reproduced, runtime repair and real-CLI regression unimplemented.
-
+PICKER-common-dir-lock: in progress — GPT-6.1 Sol · 291d — 2026-11-28 — [CEO scope](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/811#issuecomment-7229223404); linked-worktree regressions and runtime repair remain unverified.

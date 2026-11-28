@@ -52,8 +52,11 @@ real arbiter) and already tested by the ownership suites.
 
 The completed fixture evidence above covers runs from the same working folder, not every linked worktree.
 On main `3508530aa`, `lockPathOf` uses `git rev-parse --git-dir`, so a root checkout and linked worktree
-can both acquire their own locks while sharing one canonical Git common directory. The bounded correction
-is [PICKER-common-dir-lock](PICKER-common-dir-lock.md), appended at the FIFO tail under D-200. It preserves
+can both acquire their own locks while sharing one canonical Git common directory. The not-yet-implemented
+bounded correction is [PICKER-common-dir-lock](PICKER-common-dir-lock.md). Under D-415 (4)(b), the owner
+moved it and PICKER-claim-cost to the top of the queue as an exception to FIFO. D-415 places the four picker
+rows ahead of all open work, after the four pinned owner-registered rows, ordered (c) PICKER-dep-about-to-land,
+(a) PICKER-durable-session, then (b)'s two rows: PICKER-common-dir-lock and PICKER-claim-cost. This correction preserves
 this row's completed live-PID work and does not claim the cross-worktree guarantee is implemented.
 
 

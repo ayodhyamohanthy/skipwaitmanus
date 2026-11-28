@@ -105,7 +105,7 @@
       "lane": "picker-single-flight",
       "branch": "agent/queue/picker-common-dir-lock",
       "status": "todo",
-      "syncedTo": "D-414",
+      "syncedTo": "D-416",
       "dependsOn": [],
       "epic": "D-212",
       "owns": [
@@ -115,7 +115,7 @@
         "docs/plans/PICKER-single-flight.md",
         "docs/BUILD_CONTINUITY.md"
       ],
-      "note": "CEO review GPT-6.1 Sol · 02ca, main 3508530aa, D-200/D-324: production lock helper acquired separate locks for root and linked worktree sharing one canonical Git common directory. Append-only FIFO corrective row; original PICKER-single-flight remains done. Resolve a canonical common-directory lock, refuse live legacy worktree-local owners during cutover, preserve liveness/takeover and heartbeat/report exemptions, and prove root/sibling/symlink exclusion plus independent-clone concurrency with real-CLI fixtures. No claim, eligibility, product, settings or money change. Registration is not implementation acceptance. D-415 (4)(b), owner Nov 28: moved to the top of the queue (owner exception to FIFO)."
+      "note": "CEO review GPT-6.1 Sol · 02ca, main 3508530aa, D-200/D-324: production lock helper acquired separate locks for root and linked worktree sharing one canonical Git common directory. Original PICKER-single-flight remains done. Resolve a canonical common-directory lock, refuse live legacy worktree-local owners during cutover, preserve liveness/takeover and heartbeat/report exemptions, and prove root/sibling/symlink exclusion plus independent-clone concurrency with real-CLI fixtures. No claim, eligibility, product, settings or money change. Registration is not implementation acceptance. D-415 (4)(b), owner Nov 28: moves PICKER-common-dir-lock and PICKER-claim-cost to the top of the queue as an owner exception to FIFO; the four picker rows are ahead of all open work, after the four pinned owner-registered rows, ordered (c), (a), then (b)'s two rows."
     },
     {
       "id": "PICKER-claim-cost",
