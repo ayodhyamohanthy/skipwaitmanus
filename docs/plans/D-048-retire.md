@@ -175,6 +175,27 @@ mobile work when integrating `Home.tsx`; overlapping work uses isolated branches
 Other owner-parked rows and the kit-layer retirement are unchanged. No source, sales switch,
 production setting, legal wording or product-completion claim is part of this routing correction.
 
+## 3e. Admin-money unpublished-work block cleared (November 28, D-407)
+
+UNBLOCK `GPT-6.1 Sol · 8417` applies D-407 (1)(a)/(b) to reports
+`9f3bd6e9a` and `5d07f3d3f`: another worktree's uncommitted retirement edits
+are not an external prerequisite. Preserve them untouched; continue from
+published `agent/queue/d048-k-admin-money-fresh` (`a7d3a5813` when checked)
+in an isolated checkout, through the normal picker and without taking an
+active holder's claim. No unpublished-WIP handoff or owner answer is needed.
+Preserve all published history; this ruling does not claim the private edits
+were recovered or inspected.
+
+Section 3d already satisfied the BANDED launch hold; it is not an owner wait.
+Release repair #1365 merged as `3d1656f13`, but retirement completion still
+requires the four-route parity/drift check, ported assertions, unconditional
+wrappers, exact-head required CI and canonical 1280/390 acceptance. Sections
+3/3b and the existing release dependency remain binding. Keep the row `todo`
+on its fresh branch with its current holder, scope and FIFO position. The
+unblocker's `review` report releases only this standing worktree block, not
+the source work or acceptance. No product code, money operation or live
+release is performed by this documentation.
+
 ## 4. Rows
 
 ### D-048-K-policy: landing acceptance (November 20)
@@ -282,6 +303,8 @@ Release rows are not slowed by it: adding an id to `RELEASED` passes rule 1 unch
 - **Prices, legal text, the login rule, what is on sale.** Untouched.
 
 ## Status
+
+- D-048-K-admin-money: unblock ruling — GPT-6.1 Sol · 8417 — 2026-11-28 — [coordination](https://github.com/ayodhyamohanthy/skipwaitmanus/pull/811#issuecomment-7234812344); unpublished-WIP handoff is not a task block (D-407); retirement implementation and current-release acceptance remain unverified.
 
 - D-048-K-post-opportunity: done — e622f4a3d — Claude Code · 3770, 2026-11-27. Kit wizard and `goalSurfaceOn` switch deleted; `PostOpportunity.tsx` lazy-loads the goal page alone; ratchet baseline entry removed. Drift check: kit edits `a1dfd53f3` and `dfc555b97` (after the goal landed) both exist in the goal page. All 13 wrapper cases kept and run on the goal page (55→58 assertion lines), goal test 44→44. Synthetic 1280/390 captures, main vs candidate: 8/10 byte-identical, 2 differ only in the native validation-bubble frame ([receipt](../../design/goal-ui/captures/post-opportunity/retire-3770/receipt.json)). Unverified: canonical web deploy of the merge commit.
 
