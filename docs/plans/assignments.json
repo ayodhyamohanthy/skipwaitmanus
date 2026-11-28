@@ -646,7 +646,7 @@
       "tier": 1,
       "lane": "live-qa-journeys",
       "branch": "agent/queue/ops-live-qa-journeys-proof-6155",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-414",
       "dependsOn": [
         "OPS-live-qa-hardening",
