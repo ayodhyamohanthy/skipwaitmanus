@@ -12,6 +12,9 @@ import { z } from "zod";
 import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/auth";
 import { askErrorMessage, confirmedDomainFor, parsePlanLimit, parseSentAsk, parseSlotCapReached } from "@/components/ask/askApi";
+import { OWN_EMPLOYER_ACTION, ownEmployerMessage, parseOwnEmployerRefusal } from "@shared/ownEmployer";
+import { BOTH_ROLES_PROMPT } from "@shared/bothRolesPrompt";
+import { BothRolesPrompt } from "@/components/requests/BothRolesSheet";
 import type { PinnedWorkState } from "@/components/ask/PinnedWorkPicker";
 import { useOnlineStatus } from "@/components/goal";
 import { useCreditBalance } from "@/hooks/useCreditBalance";
@@ -287,6 +290,10 @@ export type AskComposer = {
   draftState: "idle" | "saving" | "saved";
   sendError: ReactNode;
   sent: AskSentView | null;
+  /** MOBILE-both-prompt (D-414, switch off): the "Where do you work now?" sheet, mounted only in the sent state; null
+   * unless the switch is on and a request was just sent. It portals: /ask renders it on the page, the Find pages pass
+   * it into AskDrawer so it sits inside the drawer's React tree. */
+  bothRolesPrompt: ReactNode;
   /** Task 13: the showcase pieces this ask carries, and the picker's state. */
   work: PinnedWorkState;
   /** D-022: the posted role this ask opened from, while it still applies. */
@@ -326,6 +333,9 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
   const [sendStage, setSendStage] = useState<"idle" | "resume" | "ask">("idle");
   const [sendError, setSendError] = useState<ReactNode>(null);
   const [sent, setSent] = useState<AskSentView | null>(null);
+  // MOBILE-both-prompt: the request the sent state is about, and whether this session already had its one answer.
+  const [sentRequestId, setSentRequestId] = useState<number | null>(null);
+  const [bothRolesSettled, setBothRolesSettled] = useState(false);
   const [draftState, setDraftState] = useState<"idle" | "saving" | "saved">("idle");
   // Task 13: the seeker's own showcase, the pieces they pick, and the plan cap
   // the server quotes back if they pick more than it puts in front of a
@@ -519,6 +529,7 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
     setResumeError("");
     setSendError(null);
     setSent(null);
+    setSentRequestId(null);
     setDraftState("idle");
     setPostSelection(null);
     setJobSelection(null);
@@ -530,6 +541,7 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
 
   const clearAfterClose = () => {
     setSent(null);
+    setSentRequestId(null);
     setSendError(null);
     setPostSelection(null);
     setJobSelection(null);
@@ -612,6 +624,16 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
         announceSendProblem(`${copy.title}. ${copy.body}`);
         return;
       }
+      // PRIVACY-own-employer-guard (D-414 (3)): the server refused before any spend. Say so plainly, offer another
+      // company, and retire the submission key: nothing was created, so a new request must not replay this one.
+      const ownEmployer = parseOwnEmployerRefusal(response.status, payload);
+      if (ownEmployer) {
+        const words = ownEmployerMessage(company?.name ?? ownEmployer.companyName);
+        session()?.removeItem(ASK_IDEMPOTENCY_KEY);
+        setSendError(<>{words} <Link href="/explore" className="underline decoration-g-control-edge underline-offset-[3px]">{OWN_EMPLOYER_ACTION}</Link></>);
+        announceSendProblem(words);
+        return;
+      }
       if (response.status === 409 && payload.code === COMPANY_CAP_REACHED && typeof payload.companyDomain === "string") {
         setSendError(companyCapCopy(payload.companyDomain));
         announceSendProblem(companyCapCopy(payload.companyDomain));
@@ -664,6 +686,7 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
         slots: created.slots ? (created.slots.cap === null ? `Open referral requests ${created.slots.open}` : `Open referral requests ${created.slots.open} of ${created.slots.cap}`) : null,
         trackHref: `/conversation/${created.requestId}`,
       });
+      setSentRequestId(created.requestId);
       trackClarityEvent(created.waitingForCoverage ? "journey_request_sent_pool" : "journey_request_sent_delivered");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["credit-balance"] }),
@@ -757,6 +780,9 @@ export function useAskComposer(company: PublicCompany | null, options?: { compan
     draftState,
     sendError,
     sent,
+    bothRolesPrompt: BOTH_ROLES_PROMPT && isSignedIn && sent && sentRequestId !== null && !bothRolesSettled
+      ? <BothRolesPrompt key={sentRequestId} requestId={sentRequestId} fetchToken={fetchToken} onSettled={() => setBothRolesSettled(true)} />
+      : null,
     work: {
       pieces: workPieces.pieces,
       state: workPieces.state,

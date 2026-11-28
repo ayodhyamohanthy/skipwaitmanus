@@ -256,21 +256,9 @@
       "decision": "D-332"
     },
     {
-      "file": "client/src/pages/Home.tsx",
-      "kitImport": true,
-      "surfaceSwitch": true,
-      "decision": "D-332"
-    },
-    {
       "file": "client/src/pages/Plans.tsx",
       "kitImport": true,
       "surfaceSwitch": false,
-      "decision": "D-332"
-    },
-    {
-      "file": "client/src/pages/PostOpportunity.tsx",
-      "kitImport": false,
-      "surfaceSwitch": true,
       "decision": "D-332"
     },
     {

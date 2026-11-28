@@ -185,6 +185,7 @@ function CompanyPage({ company }: { company: PublicCompany }) {
           draftState={composer.draftState}
           error={composer.sendError}
           sent={composer.sent}
+          bothRolesPrompt={composer.bothRolesPrompt}
           onAnother={() => handleOpenChange(false)}
         />
       }

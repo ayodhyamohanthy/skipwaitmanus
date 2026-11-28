@@ -65,7 +65,7 @@ const CancellationPolicy = lazy(() => import("./pages/CancellationPolicy"));
 const About = lazy(() => import("./pages/About"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Pricing = lazy(() => import("./pages/Pricing"));
-const Support = lazy(() => import("./pages/Support"));
+const SupportRoute = lazy(() => import("./pages/Support").then(module => ({ default: module.SupportRoute })));
 const Guidelines = lazy(() => import("./pages/Guidelines"));
 // One component for all three guides: it reads its own path, so adding a guide
 // is a new Route here and a new entry in @shared/publicRoutes.ts.
@@ -242,7 +242,7 @@ function Router() {
           <Route path="/about" component={About} />
           <Route path="/contact" component={Contact} />
           <Route path="/pricing" component={Pricing} />
-          <Route path="/support" component={Support} />
+          <Route path="/support" component={SupportRoute} />
           <Route path="/guidelines" component={Guidelines} />
           <Route path="/job-referral-platforms" component={GuidePage} />
           <Route path="/choosing-a-job-referral-platform" component={GuidePage} />

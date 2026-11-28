@@ -4,12 +4,19 @@
 // pages (the link's intent survives sign-in through /start, D-153); the
 // answer is runtime-validated, so a malformed one fails closed to the honest
 // unavailable state instead of loading forever.
+//
+// D-089.ui (packet docs/plans/D-089-request-inbox.md §4.9; placement approved by D-414 (2)): while
+// REQUEST_INBOX_LINK_ENABLED is on, the goal line names the referrer's chosen screen name and the line
+// under it says only what the code guarantees (no seeker name or file before an accept). The name is
+// read only from a payload that passes the strict public contract, and a generated `ref-` alias is
+// never shown. With the switch off this page renders exactly as D-048-p3-links left it.
 import { useEffect, useState } from "react";
 import { useLocation, useRoute } from "wouter";
 import { z } from "zod";
 import { GoalButton } from "@/components/goal";
 import { GoalNextStep } from "@/components/goal/GoalNextStep";
 import { readApiJson } from "@/lib/apiResponse";
+import { LINK_LANDING_PRIVACY_LINE, REQUEST_INBOX_LINK_ENABLED, isChosenScreenName, linkLandingGoalLine, publicReferralLinkSchema } from "@shared/requestInboxLink";
 import { LinkEyebrow, LinkFrame, LinkLoading, LinkUnavailable, loadFailureMessage } from "./LinkFrame";
 
 const UNAVAILABLE = "This private referral link is unavailable";
@@ -19,13 +26,23 @@ const PrivateLinkSchema = z.object({
 });
 
 export const goalLineFor = (companyDomain: string) => `Get referred at ${companyDomain}.`;
+/** §4.9's goal line, as a sentence like every goal line. */
+export const requestInboxGoalLineFor = (companyDomain: string, screenName: string | null) => `${linkLandingGoalLine(companyDomain, screenName)}.`;
+
+/** The chosen screen name, only from a payload that passes the strict public contract (§4.6); otherwise nobody is named. */
+function chosenScreenName(link: unknown): string | null {
+  const parsed = publicReferralLinkSchema.safeParse(link);
+  return parsed.success && isChosenScreenName(parsed.data.screenName) ? parsed.data.screenName : null;
+}
 
 export function GoalPrivateLinkLanding({ screen, apiPath, startHref }: { screen: string; apiPath: string; startHref: string }) {
   const [, go] = useLocation();
   const [companyDomain, setCompanyDomain] = useState<string | null>(null);
+  const [screenName, setScreenName] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
-  const retry = () => { setError(""); setCompanyDomain(null); setReloadKey(key => key + 1); };
+  const retry = () => { setError(""); setCompanyDomain(null); setScreenName(null); setReloadKey(key => key + 1); };
+  const inboxLink = REQUEST_INBOX_LINK_ENABLED;
 
   useEffect(() => {
     let active = true;
@@ -36,13 +53,13 @@ export function GoalPrivateLinkLanding({ screen, apiPath, startHref }: { screen:
         if (!response.ok) throw new Error(typeof payload.error === "string" && payload.error ? payload.error : UNAVAILABLE);
         const parsed = PrivateLinkSchema.safeParse(payload);
         if (!parsed.success) throw new Error(UNAVAILABLE);
-        if (active) setCompanyDomain(parsed.data.link.companyDomain);
+        if (active) { setCompanyDomain(parsed.data.link.companyDomain); setScreenName(inboxLink ? chosenScreenName(payload.link) : null); }
       } catch (reason) {
         if (active) setError(loadFailureMessage(reason, UNAVAILABLE));
       }
     })();
     return () => { active = false; };
-  }, [apiPath, reloadKey]);
+  }, [apiPath, reloadKey, inboxLink]);
 
   if (error) {
     return (
@@ -61,9 +78,9 @@ export function GoalPrivateLinkLanding({ screen, apiPath, startHref }: { screen:
   return (
     <LinkFrame screen={screen}>
       <LinkEyebrow>Private referral link</LinkEyebrow>
-      <h1 className="mt-3 text-g-display">{goalLineFor(companyDomain)}</h1>
+      <h1 className="mt-3 text-g-display">{inboxLink ? requestInboxGoalLineFor(companyDomain, screenName) : goalLineFor(companyDomain)}</h1>
       <p className="mt-2 text-g-body text-g-ink-2">
-        A verified employee at {companyDomain} shared this link. They choose whether to review your request, and their identity stays private.
+        {inboxLink ? LINK_LANDING_PRIVACY_LINE : <>A verified employee at {companyDomain} shared this link. They choose whether to review your request, and their identity stays private.</>}
       </p>
       <ol className="mt-5 grid gap-2 border-t border-g-hairline pt-4 text-g-meta text-g-ink-2">
         <li className="flex gap-3"><span className="font-g-mono text-g-ink">1</span>Add the job link you want a referral for.</li>

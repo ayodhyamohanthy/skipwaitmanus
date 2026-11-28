@@ -48,6 +48,8 @@ const AUDITED: AuditEntry[] = [
   { file: "components/profile/workItems.ts", kind: "behavior-only", reason: "work-showcase contract (types, WORK_KINDS, workKindLabel, WORK_VISIBILITY_LABELS), no JSX and no className; the goal /profile and /work pages read it read-only (D-048-p3-profile)" },
   { file: "components/profile/profileVisibility.ts", kind: "behavior-only", reason: "the visibility value and its parser extracted from the kit card so the goal pages read the same rules without reaching kit styling; no JSX and no className (D-048-p3-profile, D-319 (4))" },
   { file: "components/referrer-home/referrerData.ts", kind: "behavior-only", reason: "referrer-home data loading, no UI" },
+  { file: "components/referrer-home/GoalReferralLinkPanel.tsx", kind: "goal-styled", reason: "D-089.ui referral-link panel, new and goal-native (components/goal primitives, goal tokens only), mounted by the goal /referrer-home aside only while REQUEST_INBOX_LINK_ENABLED is on (D-414 (2))" },
+  { file: "components/referrer-home/referralLinkApi.ts", kind: "behavior-only", reason: "D-089.ui referral-link REST calls through referrerData's shared fetch helpers and the shared/requestInboxLink contract, no JSX and no className" },
   { file: "components/employer/employerData.ts", kind: "behavior-only", reason: "employer REST contracts (zod schemas), fetchers and stats helpers, no UI; imported read-only by the goal employer pages (D-048-p3-employer, D-276)" },
   { file: "components/employer/employerPlans.ts", kind: "behavior-only", reason: "employer plan catalogue types and price-formatting helper, no UI; imported read-only by the goal /for-companies page (D-048-p3-for-companies, D-296)" },
   { file: "components/verify/verifyApi.ts", kind: "behavior-only", reason: "work-email verify API calls, no UI" },
@@ -63,6 +65,7 @@ const AUDITED: AuditEntry[] = [
   { file: "components/admin/paymentReviewCopy.ts", kind: "behavior-only", reason: "payment-review copy and formatting helpers (dates, amounts, decision labels), no UI; imported read-only by the goal money pages (D-048-p3-admin-money, packet §3)" },
   { file: "components/thread/threadModel.ts", kind: "behavior-only", reason: "pure thread stage/copy helpers (STAGES, stageOf, credit and pending copy strings), 87 lines, no JSX and no className; imported read-only by the goal conversation page (D-048-p3-conversation)" },
   { file: "components/inbox/inboxThreads.ts", kind: "behavior-only", reason: "inbox data loading and threading model (zod contracts, fetchers, split logic), no UI; the goal inbox imports it read-only for the packet-mandated shared data contract carrying the pre-acceptance privacy invariants (D-048-p3-inbox)" },
+  { file: "pages/explore/UniversalSearchResults.tsx", kind: "goal-styled", reason: "SEARCH-universal results (careers-site jobs, presence label, Apply on the careers site and Ask for a referral), goal tokens and GoalButton only; /explore renders it and goal /jobs reuses it when no posted role matches a search (FIX-jobs-catalog-search, issue 1706)" },
 ];
 
 type Read = (file: string) => string | null;
