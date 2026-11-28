@@ -1,5 +1,7 @@
 # LAUNCH-live-qa evidence, November 24 2026
 
+**Superseded for the current release by [launch-live-qa-2026-11-28.md](launch-live-qa-2026-11-28.md)**, which records the qualifying journeys run this file was waiting for. This file is history.
+
 ## November 26 refresh (documentation only)
 
 The runs and web/API SHAs below remain historical; they are not a current-release verification. No fresh live QA or production test was performed. The qualifying D-389/D-393 sandbox journey through `OPS-live-qa-journeys` remains pending, and no successful dispatched proof is attached here. Credential handling remains limited to the existing protected workflow secrets under D-373/D-374; none were accessed in this refresh.

@@ -602,7 +602,7 @@
       "tier": 2,
       "lane": "launch-qa",
       "branch": "agent/queue/launch-live-qa-acceptance",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-390",
       "dependsOn": [
         "OPS-deploy-secrets-file",
