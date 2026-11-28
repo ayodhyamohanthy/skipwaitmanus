@@ -53,6 +53,7 @@ export const KNOWN_ROUTE_PATTERNS: readonly string[] = [
   "/guidelines",
   "/help",
   "/how-employees-refer-candidates",
+  "/how-it-works",
   "/inbox",
   "/invite",
   "/job-referral-platforms",

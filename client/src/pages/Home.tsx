@@ -7,9 +7,10 @@ import { applySeo, faqJsonLd } from "@/lib/seo";
 import { publicRoute } from "@shared/publicRoutes";
 import { LAUNCH_COMPANY_SEED } from "@shared/companyDirectorySeed";
 import { VisualJourney } from "@/components/VisualJourney";
-import { LANDING_H1_LINES, LANDING_HERO_LEAD_PARTS } from "@shared/landingContent";
+import { LANDING_H1_LINES, LANDING_HERO_LEAD_PARTS, MOBILE_LANDING_V2 } from "@shared/landingContent";
 import { FREE_ASKS_CHIP, MONEY_SENTENCE, REFERRERS_NEVER_PAID } from "@shared/moneyCopy";
 import GoalLandingV9 from "./GoalLandingV9";
+import MobileLanding, { usePhoneViewport } from "./goal/landing/MobileLanding";
 import HomeSignedIn from "./goal/home/HomeSignedIn";
 import { goalSurfaceOn } from "@/lib/goalSurfaces";
 import CookieConsent from "@/components/CookieConsent";
@@ -25,6 +26,9 @@ export default function Home() {
   const { isLoaded, isSignedIn } = useAuth();
   const [menu, setMenu] = useState(false);
   const [faq, setFaq] = useState<number | null>(0);
+  // MOBILE-landing-choice (D-414): behind MOBILE_LANDING_V2, a signed-out
+  // phone gets the one-screen role choice; desktop keeps GoalLandingV9.
+  const phone = usePhoneViewport();
   // D-120 migration: signed-out visitors get the goal-first landing behind the
   // flag (off in production until QA verifies). Signed-in visitors keep the
   // existing page until the Home surface migrates.
@@ -37,7 +41,7 @@ export default function Home() {
     if (goalLanding || goalSignedIn) return;
     applySeo({ title: `${LANDING_H1_LINES[0]} ${LANDING_H1_LINES[1]}`, description: publicRoute("/")!.description, path: "/", jsonLd: faqJsonLd(QUESTIONS.map(([question, answer]) => ({ question, answer }))) });
   }, [goalLanding, goalSignedIn]);
-  if (goalLanding) return <GoalLandingV9 />;
+  if (goalLanding) return MOBILE_LANDING_V2 && phone ? <MobileLanding /> : <GoalLandingV9 />;
   if (goalSignedIn) return <HomeSignedIn />;
 
   return (

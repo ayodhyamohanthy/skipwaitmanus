@@ -12,7 +12,7 @@
  * written to be read on their own. They must stay true to what the page
  * renders: no count, price, or outcome the product does not itself produce.
  */
-import { LANDING_SUMMARY, LANDING_TITLE } from "./landingContent";
+import { HOW_IT_WORKS_H1, LANDING_SUMMARY, LANDING_TITLE, MOBILE_LANDING_V2 } from "./landingContent";
 import { PAID_PLANS_SENTENCE } from "./moneyCopy";
 
 export type ChangeFreq = "hourly" | "daily" | "weekly" | "monthly";
@@ -43,6 +43,9 @@ export const PUBLIC_ROUTES: readonly PublicRoute[] = [
   { route: "/job-referral-platforms", title: "Job referral platforms", description: "What a job referral platform is: the three models behind it, who each one suits, how they charge, and what a referral does and does not change.", changefreq: "monthly", priority: "0.6" },
   { route: "/choosing-a-job-referral-platform", title: "Choosing a job referral platform", description: "Four checks that separate a real referral service from a job board with extra steps, plus five red flags and a shortlist template.", changefreq: "monthly", priority: "0.6" },
   { route: "/how-employees-refer-candidates", title: "How employees refer candidates", description: "What happens between an employee deciding to help and the candidate hearing back: what the reviewer reads, how they choose, and what you get.", changefreq: "monthly", priority: "0.6" },
+  // MOBILE-landing-choice (D-414): listed, prerendered and routed only while
+  // MOBILE_LANDING_V2 is on, so the sitemap never advertises a missing page.
+  ...(MOBILE_LANDING_V2 ? [{ route: "/how-it-works", title: HOW_IT_WORKS_H1, description: "Why a referral beats the application pile, the three steps to a private referral request, and the fair rules that never change on skipwait.me.", changefreq: "monthly" as const, priority: "0.6" }] : []),
   { route: "/about", title: "About skipwait.me", description: "skipwait.me connects job seekers with verified employees who can refer them for a specific role at their company. What we do, what we sell, and who runs it.", changefreq: "monthly", priority: "0.4" },
   { route: "/contact", title: "Contact skipwait.me", description: "Questions about a payment, a referral request, or your account? Email us and a person will reply.", changefreq: "monthly", priority: "0.4" },
   { route: "/support", title: "Support", description: "Most questions are answered by a screen you already have access to. Money, verification, or data questions reach an administrator.", changefreq: "monthly", priority: "0.3" },

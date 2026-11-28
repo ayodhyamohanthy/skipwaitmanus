@@ -22,7 +22,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Router } from "wouter";
 import { askCostLanding, ASK_COST_SENTENCE, CREDIT_RULE, FREE_ASKS_CHIP, REFERRER_MONEY_SENTENCE } from "../shared/moneyCopy";
 import { CREDIT_PACKS_ON_SALE, FREE_PLAN } from "../shared/planCatalog";
-import { GOAL_FOOTER_COLS, GOAL_LANDING_BAND_H2, GOAL_LANDING_BAND_LEAD, GOAL_LANDING_COMPARE_COLUMN, GOAL_LANDING_COMPARE_H2, GOAL_LANDING_COMPARE_ROWS, GOAL_LANDING_EMPLOYEE_H2, GOAL_LANDING_EMPLOYEE_LEAD, GOAL_LANDING_EXPLORE_NOTE, GOAL_LANDING_FAIR_H2, GOAL_LANDING_FIGURES_HREF, GOAL_LANDING_FIGURES_TEXT, GOAL_LANDING_FOOTER_BLURB, GOAL_LANDING_H1, GOAL_LANDING_HERO_LEAD, GOAL_LANDING_KICKER, GOAL_LANDING_QUOTE, GOAL_LANDING_QUOTE_LEAD, GOAL_LANDING_QUOTE_REST, GOAL_LANDING_STEPS_H2, GOAL_LANDING_TRUST_H2_PARTS, goalLandingFairRules, goalLandingSteps, goalLandingTrust, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_GUIDES } from "../shared/landingContent";
+import { GOAL_FOOTER_COLS, GOAL_LANDING_BAND_H2, GOAL_LANDING_BAND_LEAD, GOAL_LANDING_COMPARE_COLUMN, GOAL_LANDING_COMPARE_H2, GOAL_LANDING_COMPARE_ROWS, GOAL_LANDING_EMPLOYEE_H2, GOAL_LANDING_EMPLOYEE_LEAD, GOAL_LANDING_EXPLORE_NOTE, GOAL_LANDING_FAIR_H2, GOAL_LANDING_FIGURES_HREF, GOAL_LANDING_FIGURES_TEXT, GOAL_LANDING_FOOTER_BLURB, GOAL_LANDING_H1, GOAL_LANDING_HERO_LEAD, GOAL_LANDING_KICKER, GOAL_LANDING_QUOTE, GOAL_LANDING_QUOTE_LEAD, GOAL_LANDING_QUOTE_REST, GOAL_LANDING_STEPS_H2, GOAL_LANDING_TRUST_H2_PARTS, goalLandingFairRules, goalLandingSteps, goalLandingTrust, LANDING_EMPLOYER_LINK, LANDING_EXPLORE, LANDING_GUIDES, MOBILE_LANDING, MOBILE_LANDING_V2 } from "../shared/landingContent";
 import { publicRoute } from "../shared/publicRoutes";
 import { GUIDES } from "../client/src/content/guides";
 import { LAUNCH_COMPANY_SEED } from "../shared/companyDirectorySeed";
@@ -50,6 +50,8 @@ export const PUBLIC_PAGES: PublicPage[] = [
   { route: "/cancellations", load: () => import("../client/src/pages/CancellationPolicy") },
   { route: "/shipping", load: () => import("../client/src/pages/ShippingPolicy") },
   { route: "/about", load: () => import("../client/src/pages/About") },
+  // MOBILE-landing-choice (D-414): the landing's proof sections, only while the switch is on.
+  ...(MOBILE_LANDING_V2 ? [{ route: "/how-it-works", load: () => import("../client/src/pages/goal/how-it-works/HowItWorks") }] : []),
   { route: "/contact", load: () => import("../client/src/pages/Contact") },
   { route: "/pricing", load: () => import("../client/src/pages/Pricing") },
   { route: "/support", load: () => import("../client/src/pages/Support") },
@@ -128,7 +130,31 @@ export function landingSnapshot(policyLinks: ReadonlyArray<{ route: string; titl
   const exploreLinks = LANDING_EXPLORE.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a></li>`).join("");
   const guides = LANDING_GUIDES.map(item => `<li><a href="${item.href}">${escapeHtml(item.label)}</a> — ${escapeHtml(item.summary)}</li>`).join("");
   const crawlerLinks = `<nav aria-label="More of skipwait.me" class="sr-only"><h2>Explore skipwait.me</h2><ul>${exploreLinks}</ul><h2>Guides</h2><ul>${guides}</ul><p><a href="${LANDING_EMPLOYER_LINK.href}">${escapeHtml(LANDING_EMPLOYER_LINK.label)}</a> — ${escapeHtml(LANDING_EMPLOYER_LINK.summary)}</p></nav><div class="sr-only">${homeLinks(policyLinks)}</div>`;
-  return `<main data-skipwait-snapshot="landing" class="min-h-screen bg-white font-g-sans text-g-ink">${header}${hero}${band}${compare}${stepsSection}${quote}${trustSection}${employee}${fair}${footer}${crawlerLinks}</main>`;
+  const desktop = `${header}${hero}${band}${compare}${stepsSection}${quote}${trustSection}${employee}${fair}${footer}`;
+  // MOBILE-landing-choice (D-414): with the switch on, a phone paints the
+  // one-screen role choice (MobileLanding's DOM shape) and the long page stays
+  // desktop-only, so the bundle mounting over it never swaps layouts.
+  const body = MOBILE_LANDING_V2 ? `${mobileLandingSnapshot()}<div class="hidden gdesk:block">${desktop}</div>` : desktop;
+  return `<main data-skipwait-snapshot="landing" class="min-h-screen bg-white font-g-sans text-g-ink">${body}${crawlerLinks}</main>`;
+}
+
+/**
+ * The one-screen phone landing as plain HTML (MOBILE-landing-choice): the same
+ * words from @shared/landingContent and the same classes as MobileLanding.tsx.
+ * The seeker card is a real GET form, so the search works without JavaScript.
+ */
+export function mobileLandingSnapshot(): string {
+  const c = MOBILE_LANDING;
+  const referrerHref = `/sign-in?${new URLSearchParams({ intent: "referrer", returnTo: "/referrer-setup" })}`;
+  const short = "[@media(max-height:640px)]:";
+  const searchIcon = `<svg viewBox="0 0 20 20" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="9" r="6" /><path d="m14 14 3.5 3.5" stroke-linecap="round" /></svg>`;
+  return `<div class="flex min-h-[100dvh] flex-col gdesk:hidden" data-testid="mobile-landing">` +
+    `<div class="flex h-14 shrink-0 items-center justify-between border-b border-g-hairline px-4 ${short}h-12"><a href="/" aria-label="skipwait.me home" class="inline-flex items-center"><img src="/brand/lockup.svg" alt="SkipWait.me" class="h-[26px] w-auto" /></a><a href="/sign-in" class="inline-flex h-11 items-center px-1 text-g-small font-medium">Sign in</a></div>` +
+    `<div class="flex flex-1 flex-col px-4 pb-3 pt-5 ${short}pt-3"><h1 class="text-[28px] font-semibold leading-[1.06] tracking-[-0.03em] ${short}text-[24px]">${escapeHtml(c.h1)}</h1><p class="mt-1.5 text-[14px] leading-[1.45] text-g-ink-2 ${short}text-[13px]">${escapeHtml(c.lead)}</p>` +
+    `<div class="mt-5 flex flex-col gap-2.5 ${short}mt-3 ${short}gap-2"><h2 class="font-g-mono text-[11px] font-medium uppercase tracking-[0.14em] text-g-ink-3">${escapeHtml(c.question)}</h2>` +
+    `<form action="/explore" method="get" class="rounded-[16px] bg-g-ink p-4 text-g-ink-inverse ${short}p-3"><div class="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5"><p class="text-[18px] font-semibold leading-tight">${escapeHtml(c.seekerTitle)}</p><p class="shrink-0 text-[12px] opacity-70">${escapeHtml(c.seekerNote)}</p></div><div class="mt-2.5 flex gap-2"><label class="flex h-12 min-w-0 flex-1 items-center rounded-[10px] bg-white px-3 text-g-ink"><span class="sr-only">${escapeHtml(c.seekerPlaceholder)}</span><input type="search" name="q" placeholder="${escapeHtml(c.seekerPlaceholder)}" class="w-full min-w-0 bg-transparent text-[16px] text-g-ink outline-none placeholder:text-[15px] placeholder:text-g-ink-3 max-[359px]:placeholder:text-[13.5px]" /></label><button type="submit" aria-label="${escapeHtml(c.seekerSubmit)}" class="inline-flex size-12 shrink-0 items-center justify-center rounded-[10px] border border-white/40 text-g-ink-inverse">${searchIcon}</button></div></form>` +
+    `<a href="${escapeHtml(referrerHref)}" class="flex items-center justify-between gap-3 rounded-[16px] border border-g-ink p-4 ${short}p-3"><span><span class="block text-[18px] font-semibold leading-tight">${escapeHtml(c.referrerTitle)}</span><span class="mt-1 block text-[13px] leading-[1.4] text-g-ink-2">${escapeHtml(c.referrerBody)}</span></span><span aria-hidden="true" class="text-[20px]">&rarr;</span></a></div>` +
+    `<div class="mt-auto flex items-center justify-between gap-4 pt-3"><p class="text-[12px] leading-[1.4] text-g-ink-3">${escapeHtml(c.smallPrint)}</p><a href="/how-it-works" class="inline-flex h-11 shrink-0 items-center text-[13px] font-medium underline underline-offset-4">${escapeHtml(c.howItWorks)}</a></div></div></div>`;
 }
 
 export type PublicSnapshot = { route: string; title: string; description: string; markup: string };

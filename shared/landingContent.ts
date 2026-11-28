@@ -10,7 +10,7 @@
  * Nothing here may state an outcome, count, or identity that the product does
  * not produce itself.
  */
-import { CREDIT_RULE, MONEY_SENTENCE, MONEY_SENTENCE_SHORT, PAID_PLANS_SENTENCE, REFERRING_FREE_LINE } from "./moneyCopy";
+import { CREDIT_RULE, FREE_ASKS_PER_MONTH, MONEY_SENTENCE, MONEY_SENTENCE_SHORT, PAID_PLANS_SENTENCE, REFERRING_FREE_LINE } from "./moneyCopy";
 import { CREDIT_PACKS_ON_SALE, firstPackClaim } from "./planCatalog";
 
 /** The first-pack claim, from the catalog the server sells (POSTMERGE-oct22 #534). */
@@ -175,3 +175,31 @@ export const GOAL_FOOTER_COLS: Array<{ title: string; links: Array<[string, stri
   { title: "People", links: [["/referrer", "Join as a referrer"], ["/help", "Help"], ["/contact", "Contact"]] },
   { title: "Legal", links: [["/terms", "Terms"], ["/privacy", "Privacy"], ["/refunds", "Refunds"], ["/cancellations", "Cancellation"]] },
 ];
+
+/**
+ * MOBILE-landing-choice (D-414, packet docs/plans/MOBILE-app-flow.md): on a
+ * phone the signed-out landing is one screen with the two roles side by side,
+ * and the long proof sections move to /how-it-works. Off until landing ->
+ * search-start and referrer sign-in starts are compared with the old page
+ * (packet rule 6); desktop keeps GoalLandingV9 either way.
+ */
+export const MOBILE_LANDING_V2 = false;
+
+/** The one-screen phone landing's words, exactly as the owner approved them (D-414 (2)). */
+export const MOBILE_LANDING = {
+  h1: "Referrals, straight from people inside.",
+  lead: "Verified employees, private requests, no application pile.",
+  question: "What brings you here?",
+  seekerTitle: "I want a referral",
+  seekerPlaceholder: "Company, job title or job link",
+  seekerSubmit: "Find",
+  seekerNote: `${FREE_ASKS_PER_MONTH} free requests a month`,
+  referrerTitle: "I can refer someone",
+  referrerBody: "Help good people in through your company's own process. Always free.",
+  smallPrint: "A referral is an introduction, never a promise of a job.",
+  howItWorks: "How it works",
+} as const;
+
+/** /how-it-works: the landing's proof sections on their own indexable page (packet rule 5). */
+export const HOW_IT_WORKS_H1 = "How skipwait.me works";
+export const HOW_IT_WORKS_LEAD = "Why a referral beats the application pile, the three steps, and the rules that never change.";

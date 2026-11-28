@@ -56,8 +56,13 @@ export function applyAnalyticsConsent(choice: CookieConsentChoice | null): void 
  * Cookie consent banner for the public launch page (first visit). Essential
  * cookies keep sign-in working; optional analytics stay off unless the visitor
  * accepts all. The choice is stored on-device only.
+ *
+ * `layout="bar"` (MOBILE-app-flow rule 4, the one-screen phone landing): the
+ * same words and the same two equal choices as a slim bar that sits in the
+ * page's flow at the bottom of the screen, so it shortens the screen instead
+ * of covering it. The floating card stays the default everywhere else.
  */
-export default function CookieConsent() {
+export default function CookieConsent({ layout = "card" }: { layout?: "card" | "bar" } = {}) {
   const [visible, setVisible] = useState(() => readCookieConsent() === null);
   const bannerRef = useRef<HTMLDivElement | null>(null);
   const [bannerHeight, setBannerHeight] = useState(0);
@@ -67,7 +72,7 @@ export default function CookieConsent() {
   // The banner is fixed, so reserve the same height in flow: footer content and
   // links stay reachable and nothing renders underneath the dialog.
   useLayoutEffect(() => {
-    if (!visible) return;
+    if (!visible || layout === "bar") return;
     const node = bannerRef.current;
     if (!node) return;
     const measure = () => setBannerHeight(node.getBoundingClientRect().height + 24);
@@ -80,7 +85,7 @@ export default function CookieConsent() {
     observer.observe(node);
     window.addEventListener("resize", measure);
     return () => { observer.disconnect(); window.removeEventListener("resize", measure); };
-  }, [visible]);
+  }, [visible, layout]);
 
   if (!visible) return null;
 
@@ -88,6 +93,18 @@ export default function CookieConsent() {
     saveCookieConsent(choice);
     setVisible(false);
   };
+
+  if (layout === "bar") {
+    return (
+      <div role="dialog" aria-label="Cookie choices" className="g-scope sticky bottom-0 z-[60] shrink-0 border-t border-g-hairline bg-g-surface px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-2" data-testid="cookie-consent-bar">
+        <p className="text-[12px] leading-[1.45] text-g-ink"><strong>Cookies, honestly.</strong> Essential ones keep you signed in. Optional analytics help us improve - never sold, never ads. <Link href="/privacy" className="underline">Privacy</Link></p>
+        <div className="mt-1.5 grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => save("essential")} className={CHOICE_CLASS}>Essential only</button>
+          <button type="button" onClick={() => save("all")} className={CHOICE_CLASS}>Accept all</button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
