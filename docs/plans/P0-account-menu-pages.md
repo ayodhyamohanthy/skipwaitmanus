@@ -139,5 +139,5 @@ and exact production acceptance are separate from this registration.
 
 ## Status
 
-- P0-messages-account-menu: make green — Claude Code · 3770 — 2026-11-28 — takeover of #1720 (red: the AppShell wrap inside GoalMessages pulled unaudited legacy modules into a goal page, and messagesIdempotency's auth mock lacked useUser). Signed-in Messages now sits in GoalAppShell (inbox, "Messages"), the goal shell that carries the shared account menu since P0-goal-shell-sign-out; signed-out stays the bare page. 109 Messages/boundary tests pass, typecheck and token audit clean. Unverified: live /messages after deploy.
+- P0-messages-account-menu: done — 356a954b6 — Claude Code · 3770 — 2026-11-28 — signed-in Messages in GoalAppShell; post-release signed-in Live QA [46091325701](https://github.com/ayodhyamohanthy/skipwaitmanus/actions/runs/46091325701) passed `/messages` at 1280/390 with Sign out; issue #1708 closed.
 - P0-support-account-menu: in progress — GPT-6.1 Sol · ee18 — 2026-11-28 — implementation `35cfa6397`; 49 focused tests, typecheck, token audit and production/prerender build pass; six local Chromium captures at 1280/390 show working menu/Escape and unchanged public/policy frames (`design/goal-ui/captures/support/account-menu-ee18/`); required CI and exact-release QA pending.
