@@ -3,13 +3,15 @@
 // signed-in home is a router, not a dashboard. Behind goalSurfaceOn(
 // "home-signed-in"), a signed-in seeker goes to /explore and a verified
 // referrer (the server's verdict, D-055) to /referrer-home; auth loading shows
-// the fetch-free goal frame, never a flash of the landing. With the flag off,
-// the existing page is byte-for-byte the page it was (its own tests,
-// home.discovery / home.mobileNav and the rest, keep pinning it).
+// the fetch-free goal frame, never a flash of the landing.
+// D-048-K-home (D-332): the Kit page and its switch are deleted; the signed-out
+// cases here now pin the goal landing, and the Kit-only suites are removed with
+// their assertions accounted for in the retirement pull request.
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import Home from "./Home";
+import { GOAL_LANDING_H1 } from "@shared/landingContent";
 
 type AccessState =
   | { status: "signed-out" }
@@ -54,11 +56,13 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("signed-in home (D-048-p3-home-signed-in)", () => {
-  it("keeps the existing home page while the flag is off", () => {
+  // D-048-K-home (D-332): the Kit page and its switch are deleted, so a signed-out visitor
+  // gets the goal landing unconditionally. This replaces the old "keeps the existing home page
+  // while the flag is off" case, which asserted the deleted page's "Website navigation" landmark.
+  it("renders the goal landing for a signed-out visitor with no surface flag", () => {
     render(<Home />);
-    expect(screen.getByRole("navigation", { name: "Website navigation" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(GOAL_LANDING_H1);
     expect(navigate).not.toHaveBeenCalled();
-    expect(flag.asked).toContain("home-signed-in");
   });
 
   it("shows the fetch-free frame while auth loads, never the landing", () => {
@@ -115,10 +119,12 @@ describe("signed-in home (D-048-p3-home-signed-in)", () => {
     expect(retry).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves the signed-out visitor page alone even with the signed-in flag on", () => {
+  // Ported from "leaves the signed-out visitor page alone even with the signed-in flag on":
+  // the switch is gone, so a stale flag cannot change what a signed-out visitor sees.
+  it("keeps a signed-out visitor on the goal landing even with the old signed-in flag set", () => {
     flag.ids.add("home-signed-in");
     render(<Home />);
-    expect(screen.getByRole("navigation", { name: "Website navigation" })).toBeTruthy();
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(GOAL_LANDING_H1);
     expect(navigate).not.toHaveBeenCalled();
   });
 });

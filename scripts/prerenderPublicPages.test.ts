@@ -159,18 +159,16 @@ describe("crawlable landing and public snapshots", () => {
     expect(landingSnapshot(policyLinks)).toContain('href="/explore"');
   });
 
-  it("advertises no employee availability on Home's launch-company block or in any public route description (D-176)", () => {
+  it("advertises no employee availability in the landing snapshot or any public route description (D-176)", () => {
     // D-176: availability is backend routing, never a visible status. A public
     // route description is read without the page, so it must not promise that
     // anyone at a company is open to referrals.
     const availability = /open to referral requests?|available referrers?|availability|people at these companies|open doors? at launch/i;
     for (const publicRoute of PUBLIC_ROUTES) expect(publicRoute.description, publicRoute.route).not.toMatch(availability);
+    const snapshot = landingSnapshot(policyLinks);
+    expect(snapshot).toContain(`>${GOAL_LANDING_H1}</h1>`);
+    expect(snapshot).not.toMatch(availability);
     const home = readFileSync(join(__dirname, "..", "client/src/pages/Home.tsx"), "utf8");
-    const start = home.indexOf("launch-companies");
-    const end = home.indexOf("launch-steps");
-    expect(start).toBeGreaterThan(-1);
-    expect(end).toBeGreaterThan(start);
-    expect(home.slice(start, end)).not.toMatch(availability);
     expect(home).not.toMatch(/available referrers/i);
   });
 

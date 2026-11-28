@@ -66,12 +66,14 @@ describe("goalSurfaces flag module", () => {
     const workflow = readFileSync(join(__dirname, "..", "..", "..", ".github", "workflows", "deploy-pages.yml"), "utf8");
     expect(workflow).not.toMatch(/VITE_GOAL_UI_LANDING/);
     expect(workflow).not.toMatch(/VITE_GOAL_SURFACES/);
-    // Home still reads goalSurfaces; retired sign-in keeps only its goal routes.
+    // Retired Home and sign-in render only their goal routes, without a design switch.
     const home = readFileSync(join(__dirname, "..", "pages", "Home.tsx"), "utf8");
     const signIn = readFileSync(join(__dirname, "..", "pages", "SignIn.tsx"), "utf8");
     expect(home).not.toMatch(/@\/lib\/goalFlags/);
     expect(signIn).not.toMatch(/@\/lib\/goalFlags/);
-    expect(home).toMatch(/goalSurfaceOn\("home"\)/);
+    expect(home).not.toMatch(/goalSurfaceOn|components\/kit/);
+    expect(home).toContain("<GoalLandingV9 />");
+    expect(home).toContain("<HomeSignedIn />");
     expect(signIn).not.toMatch(/goalSurfaceOn|@\/components\/kit/);
     expect(signIn).toContain("<GoalSignInPage />");
     expect(signIn).toContain("<GoalSignIn />");
