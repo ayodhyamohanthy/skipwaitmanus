@@ -9,8 +9,7 @@ import { Link } from "wouter";
 import { ArrowLeft, CircleAlert, LockKeyhole, Send, UserPlus } from "lucide-react";
 import { DM_REFERRER_ACCEPTANCE_ERROR, parseDmFollowRequired, parseDmSendBlock, type DmFollowRequired, type DmSendBlock } from "@shared/directMessages";
 import { useAuth } from "@/_core/auth";
-import { AppShell } from "@/components/AppShell";
-import { GoalButton, GoalNextStep, GoalNum, useOnlineStatus } from "@/components/goal";
+import { GoalAppShell, GoalButton, GoalNextStep, GoalNum, useOnlineStatus } from "@/components/goal";
 import { readApiJson } from "@/lib/apiResponse";
 import { DM_SEND_WORKFLOW, beginPendingSend, clearPendingSend, normalizeMessageBody, readPendingSend } from "@/lib/idempotentSend";
 
@@ -227,7 +226,7 @@ export default function GoalMessages() {
         {children}
       </Content>
     );
-    return isSignedIn ? <AppShell>{content}</AppShell> : content;
+    return isSignedIn ? <GoalAppShell active="inbox" pageTitle="Messages">{content}</GoalAppShell> : content;
   };
 
   if (!isSignedIn) {
