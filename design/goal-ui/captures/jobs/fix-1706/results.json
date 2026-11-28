@@ -1,0 +1,130 @@
+[
+  {
+    "name": "no-search",
+    "width": 1280,
+    "url": "/jobs",
+    "errors": [],
+    "calls": [
+      "/api/jobs"
+    ],
+    "jsonLdHasCatalogRow": false,
+    "overflow": false,
+    "text": "Browse roles worth a referral. Search published roles, save the ones you like, and request a referral when you are ready. Search Have a job link? Paste it inste"
+  },
+  {
+    "name": "careers-results",
+    "width": 1280,
+    "url": "/jobs?q=engineer",
+    "errors": [],
+    "calls": [
+      "/api/jobs?query=engineer",
+      "/api/search?q=engineer"
+    ],
+    "jsonLdHasCatalogRow": false,
+    "overflow": false,
+    "text": "Browse roles worth a referral. Search published roles, save the ones you like, and request a referral when you are ready. Search Have a job link? Paste it inste"
+  },
+  {
+    "name": "careers-location",
+    "width": 1280,
+    "url": "/jobs?q=engineer&location=bengaluru",
+    "errors": [],
+    "calls": [
+      "/api/jobs?query=engineer&location=bengaluru",
+      "/api/search?q=engineer"
+    ],
+    "jsonLdHasCatalogRow": false,
+    "overflow": false,
+    "text": "Browse roles worth a referral. Search published roles, save the ones you like, and request a referral when you are ready. Search Have a job link? Paste it inste"
+  },
+  {
+    "name": "no-match",
+    "width": 1280,
+    "url": "/jobs?q=astronaut",
+    "errors": [],
+    "calls": [
+      "/api/jobs?query=astronaut",
+      "/api/search?q=astronaut"
+    ],
+    "jsonLdHasCatalogRow": false,
+    "overflow": false,
+    "text": "Browse roles worth a referral. Search published roles, save the ones you like, and request a referral when you are ready. Search Have a job link? Paste it inste"
+  },
+  {
+    "name": "search-failed",
+    "width": 1280,
+    "url": "/jobs?q=engineer",
+    "errors": [],
+    "calls": [
+      "/api/jobs?query=engineer",
+      "/api/search?q=engineer"
+    ],
+    "jsonLdHasCatalogRow": false,
+    "overflow": false,
+    "text": "Browse roles worth a referral. Search published roles, save the ones you like, and request a referral when you are ready. Search Have a job link? Paste it inste"
+  },
+  {
+    "name": "no-search",
+    "width": 390,
+    "url": "/jobs",
+    "errors": [],
+    "calls": [
+      "/api/jobs"
+    ],
+    "jsonLdHasCatalogRow": false,
+    "overflow": false,
+    "text": "Browse roles worth a referral. Search published roles, save the ones you like, and request a referral when you are ready. Search Have a job link? Paste it inste"
+  },
+  {
+    "name": "careers-results",
+    "width": 390,
+    "url": "/jobs?q=engineer",
+    "errors": [],
+    "calls": [
+      "/api/jobs?query=engineer",
+      "/api/search?q=engineer"
+    ],
+    "jsonLdHasCatalogRow": false,
+    "overflow": false,
+    "text": "Browse roles worth a referral. Search published roles, save the ones you like, and request a referral when you are ready. Search Have a job link? Paste it inste"
+  },
+  {
+    "name": "careers-location",
+    "width": 390,
+    "url": "/jobs?q=engineer&location=bengaluru",
+    "errors": [],
+    "calls": [
+      "/api/jobs?query=engineer&location=bengaluru",
+      "/api/search?q=engineer"
+    ],
+    "jsonLdHasCatalogRow": false,
+    "overflow": false,
+    "text": "Browse roles worth a referral. Search published roles, save the ones you like, and request a referral when you are ready. Search Have a job link? Paste it inste"
+  },
+  {
+    "name": "no-match",
+    "width": 390,
+    "url": "/jobs?q=astronaut",
+    "errors": [],
+    "calls": [
+      "/api/jobs?query=astronaut",
+      "/api/search?q=astronaut"
+    ],
+    "jsonLdHasCatalogRow": false,
+    "overflow": false,
+    "text": "Browse roles worth a referral. Search published roles, save the ones you like, and request a referral when you are ready. Search Have a job link? Paste it inste"
+  },
+  {
+    "name": "search-failed",
+    "width": 390,
+    "url": "/jobs?q=engineer",
+    "errors": [],
+    "calls": [
+      "/api/jobs?query=engineer",
+      "/api/search?q=engineer"
+    ],
+    "jsonLdHasCatalogRow": false,
+    "overflow": false,
+    "text": "Browse roles worth a referral. Search published roles, save the ones you like, and request a referral when you are ready. Search Have a job link? Paste it inste"
+  }
+]

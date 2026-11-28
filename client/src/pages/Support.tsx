@@ -2,6 +2,8 @@ import { Link } from "wouter";
 import { ArrowRight, CreditCard, LifeBuoy, LockKeyhole, Mail, MailQuestion, UserRoundCheck } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { PolicyPageShell, PolicySection, SUPPORT_EMAIL } from "@/components/PolicyPageShell";
+import { useAuth } from "@/_core/auth";
+import { AppShell } from "@/components/AppShell";
 
 /**
  * /support — Support & contact.
@@ -19,9 +21,16 @@ const selfServe: Array<{ icon: LucideIcon; title: string; body: string; href: st
 
 const mailto = `mailto:${SUPPORT_EMAIL}?subject=${encodeURIComponent("skipwait.me support request")}&body=${encodeURIComponent("Account email:\nWhat happened:\nReference (Ref-, payment id, or link), if any:\n")}`;
 
-export default function Support() {
+/** The browser route owns authentication; the public entry remains safe to prerender. */
+export function SupportRoute() {
+  const { isLoaded, isSignedIn } = useAuth();
+  return isLoaded && isSignedIn ? <AppShell><Support embedded /></AppShell> : <Support />;
+}
+
+export default function Support({ embedded = false }: { embedded?: boolean } = {}) {
   return <PolicyPageShell
     screen="support"
+    embedded={embedded}
     icon={LifeBuoy}
     eyebrow="Support"
     title="Contact support."

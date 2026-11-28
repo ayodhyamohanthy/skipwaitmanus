@@ -1,0 +1,66 @@
+{
+  "implementationCommit": "35cfa6397dee4c2073690d39d99961684b35ac70",
+  "devServerStartHead": "46ddb04dc4d4a64888709aecff657f31c21487bd",
+  "servedMetaNote": "Vite dev metadata was fixed when the server started; captures render the unchanged repair sources committed as implementationCommit.",
+  "environment": "local managed Chromium; synthetic API fixtures, not production acceptance",
+  "apiMocked": true,
+  "actualSessionSignOutInBrowser": false,
+  "results": [
+    {
+      "state": "signed-in",
+      "width": 1280,
+      "mainCount": 1,
+      "signOutVisible": true,
+      "overflow": false,
+      "pageTitle": "Support · skipwait.me",
+      "source": "46ddb04dc",
+      "escapeFocus": "Account menu"
+    },
+    {
+      "state": "signed-in",
+      "width": 390,
+      "mainCount": 1,
+      "signOutVisible": true,
+      "overflow": false,
+      "pageTitle": "Support · skipwait.me",
+      "source": "46ddb04dc",
+      "escapeFocus": "Account menu"
+    },
+    {
+      "state": "signed-out-support",
+      "width": 1280,
+      "mainCount": 1,
+      "accountButtons": 0,
+      "appShells": 0,
+      "overflow": false,
+      "title": "Support · skipwait.me"
+    },
+    {
+      "state": "policy-terms",
+      "width": 1280,
+      "mainCount": 1,
+      "accountButtons": 0,
+      "appShells": 0,
+      "overflow": false,
+      "title": "Terms of Service · skipwait.me"
+    },
+    {
+      "state": "signed-out-support",
+      "width": 390,
+      "mainCount": 1,
+      "accountButtons": 0,
+      "appShells": 0,
+      "overflow": false,
+      "title": "Support · skipwait.me"
+    },
+    {
+      "state": "policy-terms",
+      "width": 390,
+      "mainCount": 1,
+      "accountButtons": 0,
+      "appShells": 0,
+      "overflow": false,
+      "title": "Terms of Service · skipwait.me"
+    }
+  ]
+}

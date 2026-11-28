@@ -48,6 +48,15 @@ A **per-clone single-flight lock** in `scripts/next-task.mjs`:
 Bounds: this governs one clone only. Two clones still race, which is correct (the claim ref is the
 real arbiter) and already tested by the ownership suites.
 
+### Linked-worktree qualification (November 28, 2026)
+
+The completed fixture evidence above covers runs from the same working folder, not every linked worktree.
+On main `3508530aa`, `lockPathOf` uses `git rev-parse --git-dir`, so a root checkout and linked worktree
+can both acquire their own locks while sharing one canonical Git common directory. The bounded correction
+is [PICKER-common-dir-lock](PICKER-common-dir-lock.md), appended at the FIFO tail under D-200. It preserves
+this row's completed live-PID work and does not claim the cross-worktree guarantee is implemented.
+
+
 ## Red-first tests (`scripts/nextTaskSingleFlight.test.ts`, new)
 
 - Two simultaneous CLI runs against one fixture clone: exactly **one** reaches `NEXT:`; the other

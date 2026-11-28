@@ -94,7 +94,7 @@ export function PolicySection({ number, title, children }: { number: string; tit
   </section>;
 }
 
-export function PolicyPageShell({ screen, eyebrow, title, intro, description, updated, status = POLICIES_PUBLISHED ? "published" : "draft", summary, sections, children, footnote }: {
+export function PolicyPageShell({ screen, eyebrow, title, intro, description, updated, status = POLICIES_PUBLISHED ? "published" : "draft", summary, sections, children, footnote, embedded = false }: {
   screen: string;
   /** Accepted for existing callers; the kit legal layout has no icon tile. */
   icon?: LucideIcon;
@@ -112,6 +112,8 @@ export function PolicyPageShell({ screen, eyebrow, title, intro, description, up
   sections?: ReadonlyArray<{ id: string; label: string }>;
   children: ReactNode;
   footnote?: string;
+  /** Support inside the authenticated app frame; public and policy callers keep their own chrome. */
+  embedded?: boolean;
 }) {
   const canonicalPath = POLICY_SCREEN_PATHS[screen];
   const route = canonicalPath ? publicRoute(canonicalPath) : undefined;
@@ -139,8 +141,9 @@ export function PolicyPageShell({ screen, eyebrow, title, intro, description, up
     {footnote ? <p className="text-sm text-muted-foreground">{footnote}</p> : null}
     {sections ? <p className="text-sm text-muted-foreground">Questions? Write to <a href={`mailto:${SUPPORT_EMAIL}`} className="font-bold text-foreground">{SUPPORT_EMAIL}</a>.</p> : null}
   </>;
-  return <div data-skipwait-screen={screen} className="min-h-screen bg-background">
-    <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
+  const Content = embedded ? "div" : "main";
+  return <div data-skipwait-screen={screen} className={embedded ? "bg-background" : "min-h-screen bg-background"}>
+    {!embedded ? <header className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-5 py-4">
       <Link href="/" className="wordmark" aria-label="skipwait.me home"><img src="/brand/lockup-horizontal-v2.svg" alt="skipwait.me" className="wordmark-logo" /></Link>
       <nav aria-label="Legal" className="flex gap-4 text-sm">
         {LEGAL_NAV.map(item => {
@@ -148,8 +151,8 @@ export function PolicyPageShell({ screen, eyebrow, title, intro, description, up
           return <Link key={item.href} href={item.href} aria-current={active ? "page" : undefined} className={cn(active && "font-semibold", !item.phone && "hidden sm:inline")}>{item.label}</Link>;
         })}
       </nav>
-    </header>
-    <main className="mx-auto max-w-5xl px-5 pb-20">
+    </header> : null}
+    <Content className={cn("mx-auto max-w-5xl px-5 pb-20", embedded && "pt-6")}>
       {/* The breadcrumb trail sits where the kit's design-only draft banner sat. */}
       <div className="mb-6 flex min-h-7 items-center">{canonicalPath ? <Breadcrumbs path={canonicalPath} className="" /> : null}</div>
       <span className="eyebrow">{eyebrow}</span>
@@ -173,6 +176,6 @@ export function PolicyPageShell({ screen, eyebrow, title, intro, description, up
       <nav aria-label="Policies" className="mt-16 flex flex-wrap gap-x-4 gap-y-2 border-t border-border pt-6 text-xs text-muted-foreground">
         {policyLinks.map(link => <Link key={link.href} href={link.href} className="hover:text-foreground">{link.label}</Link>)}
       </nav>
-    </main>
+    </Content>
   </div>;
 }

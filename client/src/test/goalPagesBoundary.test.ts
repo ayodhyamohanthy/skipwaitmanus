@@ -38,6 +38,8 @@ const AUDITED: AuditEntry[] = [
   { file: "components/BetaNotice.tsx", kind: "dual-tone", goalCallSites: ["BetaBadge", "BetaNoticeLine"], reason: "beta badge and notice line; the goal tone uses goal tokens only, the kit tone serves the legacy shell" },
   { file: "components/referrer-home/ReferrerSampleRows.tsx", kind: "goal-styled", reason: "referrer-home sample rows drawn with goal tokens only" },
   { file: "components/CookieConsent.tsx", kind: "goal-styled", reason: "cookie consent banner styled with goal tokens only" },
+  { file: "components/AccountMenu.tsx", kind: "goal-styled", reason: "the signed-in account menu (Settings, Language, Sign out) drawn with goal tokens only; AppShell already renders it inside GoalShell, and GoalAppShell needs it so people can sign out (P0-goal-shell-sign-out, D-412 (6))" },
+  { file: "components/NotificationBell.tsx", kind: "goal-styled", reason: "the account menu's unread-alerts bell, goal tokens only; reached through AccountMenu (P0-goal-shell-sign-out, D-412 (6))" },
   { file: "_core/auth.tsx", kind: "behavior-only", reason: "auth hooks; SignInButton is an unstyled wrapper that passes className through" },
   { file: "components/plans/billingApi.ts", kind: "behavior-only", reason: "billing API calls, no UI" },
   { file: "components/plans/format.ts", kind: "behavior-only", reason: "price and date formatting, no UI" },
@@ -61,6 +63,7 @@ const AUDITED: AuditEntry[] = [
   { file: "components/admin/paymentReviewCopy.ts", kind: "behavior-only", reason: "payment-review copy and formatting helpers (dates, amounts, decision labels), no UI; imported read-only by the goal money pages (D-048-p3-admin-money, packet §3)" },
   { file: "components/thread/threadModel.ts", kind: "behavior-only", reason: "pure thread stage/copy helpers (STAGES, stageOf, credit and pending copy strings), 87 lines, no JSX and no className; imported read-only by the goal conversation page (D-048-p3-conversation)" },
   { file: "components/inbox/inboxThreads.ts", kind: "behavior-only", reason: "inbox data loading and threading model (zod contracts, fetchers, split logic), no UI; the goal inbox imports it read-only for the packet-mandated shared data contract carrying the pre-acceptance privacy invariants (D-048-p3-inbox)" },
+  { file: "pages/explore/UniversalSearchResults.tsx", kind: "goal-styled", reason: "SEARCH-universal results (careers-site jobs, presence label, Apply on the careers site and Ask for a referral), goal tokens and GoalButton only; /explore renders it and goal /jobs reuses it when no posted role matches a search (FIX-jobs-catalog-search, issue 1706)" },
 ];
 
 type Read = (file: string) => string | null;

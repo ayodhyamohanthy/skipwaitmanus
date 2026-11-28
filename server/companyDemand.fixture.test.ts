@@ -2,7 +2,13 @@
 // drizzle query path, so the join, the status filter and the domain match are
 // exercised rather than asserted. `jobs.company` holds a DOMAIN; a row whose
 // company column carries the company NAME counts nothing (never fuzzy-matched).
-import { describe, expect, it } from "vitest";
+import { vi, describe, expect, it } from "vitest";
+// D-174-no-expiry-release: this suite pins the legacy ask clocks, so it forces the switch off; the
+// no-expiry path is pinned in the *.noExpiry tests and e2e/reconfirm-money.e2e.ts (D-411).
+vi.mock("../shared/askNoExpiry", async importOriginal => ({
+  ...await importOriginal<typeof import("../shared/askNoExpiry")>(),
+  ASK_NO_EXPIRY_ENABLED: false,
+}));
 import { canonicalPeople, jobs, profiles, referralRequests, referralTransitionEvents, users, type Row } from "../drizzle/schema";
 import type { DemandCompany } from "../shared/companyDemand";
 import { isAskExpired } from "../shared/referral";
