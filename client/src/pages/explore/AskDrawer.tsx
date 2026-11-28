@@ -85,6 +85,9 @@ export type AskDrawerProps = {
   draftState: "idle" | "saving" | "saved";
   error: ReactNode;
   sent: AskSentView | null;
+  /** MOBILE-both-prompt (switch off): the composer's sent-state sheet. Rendered inside the drawer's React tree so the
+   * desktop drawer (non-modal) reads the sheet's focus as its own and stays open under it. */
+  bothRolesPrompt?: ReactNode;
   onAnother(): void;
 };
 
@@ -165,6 +168,7 @@ export function AskDrawer(props: AskDrawerProps) {
           <p className="text-g-heading text-g-ink">Referral request sent to {sent.company}.</p>
           <p className="text-pretty text-g-body text-g-ink-2">{sent.detail}</p>
           {sent.slots ? <p className="text-g-meta text-g-ink-2">{sent.slots}</p> : null}
+          {props.bothRolesPrompt}
         </div>
       ) : (
         <div className="contents" onKeyDown={onKeyDown}>
