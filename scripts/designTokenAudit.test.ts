@@ -15,6 +15,16 @@ const run = (files: Array<{ path: string; source: string }>, opts: Record<string
 const rules = (files: Array<{ path: string; source: string }>, opts: Record<string, unknown> = {}) =>
   run(files, opts).map(f => (f as { rule: string }).rule);
 
+// D-224: the 27 goal colour tokens are exactly the G_VARS declarations whose
+// value is a colour literal (scrim and on-primary-edge are rgb()).
+const COLOUR_TOKENS = Object.entries(G_VARS as Record<string, string>)
+  .filter(([, value]) => /^(#|rgb\()/i.test(value))
+  .map(([name]) => name);
+const darkFile = (source: string, file = "client/src/styles/goalDark.css") => ({ path: file, source });
+const darkSource = () =>
+  `.dark .g-scope {\n  color-scheme: dark;\n${COLOUR_TOKENS.map(name => `  ${name}: #123456;`).join("\n")}\n}`;
+const darkRules = (source: string, file?: string) => rules([], { cssFiles: [darkFile(source, file)] });
+
 describe("A1: the live migration-union hex check is unchanged", () => {
   it("passes an approved kit hex and a third-party brand hex", () => {
     expect(run([live('x "bg-[#0000ff]" y "text-[#25d366]"')])).toEqual([]);
@@ -125,7 +135,7 @@ describe("R7: no token drift in the phase-2 block", () => {
   });
 });
 
-describe("R8: only index.css and kit.css may exist, and --g- only in index.css", () => {
+describe("R8: only index.css, kit.css and goalDark.css may exist, and --g- elsewhere in index.css only", () => {
   it("passes the allowed pair", () => {
     const real = fs.readFileSync("client/src/index.css", "utf8");
     expect(run([], { cssFiles: [{ path: "client/src/index.css", source: real }, { path: "client/src/styles/kit.css", source: fs.readFileSync("client/src/styles/kit.css", "utf8") }] })).toEqual([]);
@@ -135,6 +145,48 @@ describe("R8: only index.css and kit.css may exist, and --g- only in index.css",
   });
   it("rejects a --g- declaration in kit.css", () => {
     expect(rules([], { cssFiles: [{ path: "client/src/styles/kit.css", source: ":root{--g-ink:#0a0a0a;}" }] })).toContain("R8");
+  });
+});
+
+describe("R9: the dark counterpart is one scoped block over the 27 light colour tokens", () => {
+  it("accepts the complete scoped counterpart and permits its path", () => {
+    expect(COLOUR_TOKENS).toHaveLength(27);
+    expect(darkRules(darkSource())).toEqual([]);
+  });
+  it("rejects a wrong path", () => {
+    expect(darkRules(darkSource(), "client/src/styles/goalDark2.css")).toContain("R8");
+  });
+  it("rejects a light or :root selector", () => {
+    expect(darkRules(darkSource().replace(".dark .g-scope", ".g-scope"))).toContain("R9");
+    expect(darkRules(darkSource().replace(".dark .g-scope", ":root"))).toContain("R9");
+  });
+  it("rejects a second rule even when a comment tries to hide it", () => {
+    expect(darkRules(`${darkSource()}\n.dark .other { --g-ink: #ffffff; }`)).toContain("R9");
+    expect(darkRules(`${darkSource()}\n/* } */\n.dark .other { --g-ink: #ffffff; }`)).toContain("R9");
+  });
+  it("rejects a layout or an unknown token", () => {
+    expect(darkRules(darkSource().replace("}", "  --g-rail-w: 104px;\n}"))).toContain("R9");
+    expect(darkRules(darkSource().replace("}", "  --g-bogus: #ffffff;\n}"))).toContain("R9");
+  });
+  it("rejects a missing or a duplicate colour override", () => {
+    const first = COLOUR_TOKENS[0] ?? "--g-canvas";
+    expect(darkRules(darkSource().replace(`  ${first}: #123456;\n`, ""))).toContain("R9");
+    expect(darkRules(darkSource().replace("}", `  ${first}: #123456;\n}`))).toContain("R9");
+  });
+  it("rejects malformed syntax", () => {
+    expect(darkRules(darkSource().replace(/\}\s*$/, ""))).toContain("R9");
+  });
+  it("rejects a changed light palette", () => {
+    const real = fs.readFileSync("client/src/index.css", "utf8");
+    expect(rules([], { cssFiles: [{ path: "client/src/index.css", source: real.replace("--g-ink: #0a0a0a;", "--g-ink: #111111;") }, darkFile(darkSource())] })).toContain("R7");
+  });
+  it("passes the actual stylesheet with the real light table", () => {
+    const cssFiles = [
+      { path: "client/src/index.css", source: fs.readFileSync("client/src/index.css", "utf8") },
+      { path: "client/src/styles/kit.css", source: fs.readFileSync("client/src/styles/kit.css", "utf8") },
+      { path: "client/src/styles/goalDark.css", source: fs.readFileSync("client/src/styles/goalDark.css", "utf8") },
+    ];
+    expect(run([], { cssFiles })).toEqual([]);
   });
 });
 

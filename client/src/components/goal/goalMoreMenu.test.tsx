@@ -1,13 +1,24 @@
 // @vitest-environment jsdom
 // W0 "More" (designer, Oct 21 2026): exact button name, the four disclosure
 // rows, opens upward, closes on Escape and on outside pointer.
+// D-048-dark-mode §3.2: one ghost Appearance control switches Light/Dark.
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { GoalMoreMenu } from "./GoalMoreMenu";
 
 describe("GoalMoreMenu (W0)", () => {
-  afterEach(() => cleanup());
+  beforeEach(() => {
+    localStorage.clear();
+    document.documentElement.classList.remove("dark");
+  });
+
+  afterEach(() => {
+    cleanup();
+    localStorage.clear();
+    document.documentElement.classList.remove("dark");
+  });
 
   it("renders a button named exactly More in both variants", () => {
     render(<><GoalMoreMenu variant="rail" /><GoalMoreMenu variant="bar" /></>);
@@ -35,6 +46,23 @@ describe("GoalMoreMenu (W0)", () => {
     fireEvent.pointerDown(screen.getByRole("menu", { name: "More" }));
     expect(screen.queryByRole("menu")).not.toBeNull();
     fireEvent.pointerDown(screen.getByRole("button", { name: "elsewhere" }));
+    expect(screen.queryByRole("menu")).toBeNull();
+  });
+
+  it("shows Appearance as a ghost control that switches to dark and closes the menu", () => {
+    render(
+      <ThemeProvider switchable>
+        <GoalMoreMenu variant="rail" />
+      </ThemeProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    const toggle = screen.getByRole("menuitem", { name: "Appearance: Light" });
+    expect(toggle.hasAttribute("data-g-primary")).toBe(false);
+    expect(toggle.className).not.toContain("bg-g-primary");
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+    fireEvent.click(toggle);
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(localStorage.getItem("sw-theme")).toBe("dark");
     expect(screen.queryByRole("menu")).toBeNull();
   });
 });

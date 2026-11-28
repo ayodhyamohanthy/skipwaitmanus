@@ -1,0 +1,5246 @@
+[
+  {
+    "viewport": "1280",
+    "scenario": "03-explore-dark-settled",
+    "darkApplied": true,
+    "pageErrors": [],
+    "settle": {
+      "method": "rAF samples of computed colours on h1, body copy and both filter chips; settled = no colour or dark-class change for >= 250 ms AND zero running CSS transitions on those elements; confirmed against the trailing 551 ms of samples",
+      "sampleCount": 48,
+      "preClickSamples": 6,
+      "themeAppliedAtMs": 9,
+      "lastObservedChangeAtMs": 141,
+      "settledDetectedAtMs": 160,
+      "stabilityWindowMs": 551,
+      "finalRunningTransitions": 0,
+      "finalDarkClass": true
+    },
+    "settledColors": {
+      "h1": {
+        "fg": "rgb(244, 244, 245)",
+        "bg": "rgb(15, 15, 15)",
+        "contrast": 17.44
+      },
+      "p": {
+        "fg": "rgb(161, 161, 170)",
+        "bg": "rgb(15, 15, 15)",
+        "contrast": 7.48
+      },
+      "chipUnpressed": {
+        "fg": "rgb(161, 161, 170)",
+        "bg": "rgb(15, 15, 15)",
+        "ownBackground": "rgba(0, 0, 0, 0)",
+        "contrast": 7.48
+      },
+      "chipPressed": {
+        "fg": "rgb(244, 244, 245)",
+        "bg": "rgb(36, 36, 41)",
+        "contrast": 14.05
+      }
+    },
+    "transient": {
+      "fromMs": 0,
+      "toMs": 141,
+      "chipUnpressed": {
+        "minContrast": 2.48,
+        "atMs": 9,
+        "fg": "rgba(82, 82, 91, 1)",
+        "bg": "rgba(15, 15, 15, 1)"
+      },
+      "assessment": "unresolved — this records the real 100 ms token cross-fade; it does not establish that the transient is acceptable or that there is no flash"
+    },
+    "capture": {
+      "file": "03-explore-dark-settled-1280.png",
+      "dimension": {
+        "width": 1280,
+        "height": 900
+      },
+      "captureWindowMsAfterClick": {
+        "before": 717,
+        "after": 767
+      },
+      "colorsUnchangedDuringCapture": true,
+      "runningTransitionsDuringCapture": 0
+    },
+    "curve": [
+      {
+        "msAfterClick": 9,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 2.48,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 25,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 2.48,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 42,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 2.48,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 63,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(117, 117, 126, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(113, 113, 114, 1)",
+        "chipP_bg": "rgba(152, 152, 155, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 4.2,
+          "chipP": 1.69
+        }
+      },
+      {
+        "msAfterClick": 76,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(136, 136, 145, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(170, 170, 171, 1)",
+        "chipP_bg": "rgba(102, 102, 105, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 5.46,
+          "chipP": 2.47
+        }
+      },
+      {
+        "msAfterClick": 93,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(148, 148, 157, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(206, 206, 207, 1)",
+        "chipP_bg": "rgba(69, 69, 74, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 6.37,
+          "chipP": 6.06
+        }
+      },
+      {
+        "msAfterClick": 108,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(156, 156, 165, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(229, 229, 230, 1)",
+        "chipP_bg": "rgba(50, 50, 54, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.04,
+          "chipP": 10.14
+        }
+      },
+      {
+        "msAfterClick": 125,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(160, 160, 169, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(240, 240, 241, 1)",
+        "chipP_bg": "rgba(39, 39, 44, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.39,
+          "chipP": 13.05
+        }
+      },
+      {
+        "msAfterClick": 141,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 160,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 176,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 192,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 209,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 226,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 241,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 258,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 276,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 292,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 309,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 324,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 342,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 359,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 375,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 391,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 408,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 426,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 442,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 459,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 475,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 492,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 509,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 526,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 542,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 559,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 576,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 592,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 609,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 625,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 641,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 659,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 675,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 692,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      }
+    ],
+    "finalState": {
+      "dark": true,
+      "h1": "rgba(244, 244, 245, 1)",
+      "p": "rgba(161, 161, 170, 1)",
+      "chipU": "rgba(161, 161, 170, 1)",
+      "chipU_bg": "rgba(0, 0, 0, 0)",
+      "chipP": "rgba(244, 244, 245, 1)",
+      "chipP_bg": "rgba(36, 36, 41, 1)",
+      "bodyBg": "rgba(15, 15, 15, 1)"
+    }
+  },
+  {
+    "viewport": "1280",
+    "scenario": "05-explore-light-settled",
+    "darkApplied": false,
+    "pageErrors": [],
+    "settle": {
+      "method": "rAF samples of computed colours on h1, body copy and both filter chips; settled = no colour or dark-class change for >= 250 ms AND zero running CSS transitions on those elements; confirmed against the trailing 582 ms of samples",
+      "sampleCount": 46,
+      "preClickSamples": 4,
+      "themeAppliedAtMs": 9,
+      "lastObservedChangeAtMs": 111,
+      "settledDetectedAtMs": 111,
+      "stabilityWindowMs": 582,
+      "finalRunningTransitions": 0,
+      "finalDarkClass": false
+    },
+    "settledColors": {
+      "h1": {
+        "fg": "rgb(10, 10, 10)",
+        "bg": "rgb(255, 255, 255)",
+        "contrast": 19.8
+      },
+      "p": {
+        "fg": "rgb(82, 82, 91)",
+        "bg": "rgb(255, 255, 255)",
+        "contrast": 7.73
+      },
+      "chipUnpressed": {
+        "fg": "rgb(82, 82, 91)",
+        "bg": "rgb(255, 255, 255)",
+        "ownBackground": "rgba(0, 0, 0, 0)",
+        "contrast": 7.73
+      },
+      "chipPressed": {
+        "fg": "rgb(10, 10, 10)",
+        "bg": "rgb(244, 244, 245)",
+        "contrast": 18.01
+      }
+    },
+    "transient": {
+      "fromMs": 0,
+      "toMs": 111,
+      "chipUnpressed": {
+        "minContrast": 2.56,
+        "atMs": 9,
+        "fg": "rgba(161, 161, 170, 1)",
+        "bg": "rgba(255, 255, 255, 1)"
+      },
+      "assessment": "unresolved — this records the real 100 ms token cross-fade; it does not establish that the transient is acceptable or that there is no flash"
+    },
+    "capture": {
+      "file": "05-explore-light-settled-1280.png",
+      "dimension": {
+        "width": 1280,
+        "height": 900
+      },
+      "captureWindowMsAfterClick": {
+        "before": 735,
+        "after": 783
+      },
+      "colorsUnchangedDuringCapture": true,
+      "runningTransitionsDuringCapture": 0
+    },
+    "curve": [
+      {
+        "msAfterClick": 9,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 2.56,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 29,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(126, 126, 135, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(141, 141, 142, 1)",
+        "chipP_bg": "rgba(128, 128, 131, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 4.02,
+          "chipP": 1.19
+        }
+      },
+      {
+        "msAfterClick": 43,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(107, 107, 116, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(84, 84, 84, 1)",
+        "chipP_bg": "rgba(178, 178, 181, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 5.28,
+          "chipP": 3.58
+        }
+      },
+      {
+        "msAfterClick": 59,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(95, 95, 104, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(48, 48, 48, 1)",
+        "chipP_bg": "rgba(210, 210, 212, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 6.32,
+          "chipP": 8.74
+        }
+      },
+      {
+        "msAfterClick": 77,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(87, 87, 96, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(25, 25, 26, 1)",
+        "chipP_bg": "rgba(230, 230, 231, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.15,
+          "chipP": 14.09
+        }
+      },
+      {
+        "msAfterClick": 94,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(83, 83, 92, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(14, 14, 14, 1)",
+        "chipP_bg": "rgba(241, 241, 242, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.61,
+          "chipP": 17.1
+        }
+      },
+      {
+        "msAfterClick": 111,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 127,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 142,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 160,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 176,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 193,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 210,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 226,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 243,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 259,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 276,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 292,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 309,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 326,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 343,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 360,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 376,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 393,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 410,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 426,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 443,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 459,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 476,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 493,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 509,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 526,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 543,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 559,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 576,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 593,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 609,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 626,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 642,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 660,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 676,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 693,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      }
+    ],
+    "finalState": {
+      "dark": false,
+      "h1": "rgba(10, 10, 10, 1)",
+      "p": "rgba(82, 82, 91, 1)",
+      "chipU": "rgba(82, 82, 91, 1)",
+      "chipU_bg": "rgba(0, 0, 0, 0)",
+      "chipP": "rgba(10, 10, 10, 1)",
+      "chipP_bg": "rgba(244, 244, 245, 1)",
+      "bodyBg": "rgba(255, 255, 255, 1)"
+    }
+  },
+  {
+    "viewport": "1280",
+    "scenario": "07-denied-storage-dark-settled",
+    "darkApplied": true,
+    "pageErrors": [],
+    "settle": {
+      "method": "rAF samples of computed colours on h1, body copy and both filter chips; settled = no colour or dark-class change for >= 250 ms AND zero running CSS transitions on those elements; confirmed against the trailing 565 ms of samples",
+      "sampleCount": 47,
+      "preClickSamples": 5,
+      "themeAppliedAtMs": 9,
+      "lastObservedChangeAtMs": 127,
+      "settledDetectedAtMs": 127,
+      "stabilityWindowMs": 565,
+      "finalRunningTransitions": 0,
+      "finalDarkClass": true
+    },
+    "settledColors": {
+      "h1": {
+        "fg": "rgb(244, 244, 245)",
+        "bg": "rgb(15, 15, 15)",
+        "contrast": 17.44
+      },
+      "p": {
+        "fg": "rgb(161, 161, 170)",
+        "bg": "rgb(15, 15, 15)",
+        "contrast": 7.48
+      },
+      "chipUnpressed": {
+        "fg": "rgb(161, 161, 170)",
+        "bg": "rgb(15, 15, 15)",
+        "ownBackground": "rgba(0, 0, 0, 0)",
+        "contrast": 7.48
+      },
+      "chipPressed": {
+        "fg": "rgb(244, 244, 245)",
+        "bg": "rgb(36, 36, 41)",
+        "contrast": 14.05
+      }
+    },
+    "transient": {
+      "fromMs": 0,
+      "toMs": 127,
+      "chipUnpressed": {
+        "minContrast": 2.48,
+        "atMs": 9,
+        "fg": "rgba(82, 82, 91, 1)",
+        "bg": "rgba(15, 15, 15, 1)"
+      },
+      "assessment": "unresolved — this records the real 100 ms token cross-fade; it does not establish that the transient is acceptable or that there is no flash"
+    },
+    "capture": {
+      "file": "07-denied-storage-dark-settled-1280.png",
+      "dimension": {
+        "width": 1280,
+        "height": 900
+      },
+      "captureWindowMsAfterClick": {
+        "before": 718,
+        "after": 766
+      },
+      "colorsUnchangedDuringCapture": true,
+      "runningTransitionsDuringCapture": 0
+    },
+    "curve": [
+      {
+        "msAfterClick": 9,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 2.48,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 25,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 2.48,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 47,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(117, 117, 126, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(113, 113, 114, 1)",
+        "chipP_bg": "rgba(152, 152, 155, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 4.2,
+          "chipP": 1.69
+        }
+      },
+      {
+        "msAfterClick": 59,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(136, 136, 145, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(170, 170, 171, 1)",
+        "chipP_bg": "rgba(101, 101, 105, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 5.46,
+          "chipP": 2.5
+        }
+      },
+      {
+        "msAfterClick": 75,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(148, 148, 157, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(206, 206, 207, 1)",
+        "chipP_bg": "rgba(69, 69, 74, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 6.37,
+          "chipP": 6.06
+        }
+      },
+      {
+        "msAfterClick": 91,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(156, 156, 165, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(229, 229, 229, 1)",
+        "chipP_bg": "rgba(50, 50, 54, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.04,
+          "chipP": 10.13
+        }
+      },
+      {
+        "msAfterClick": 109,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(160, 160, 169, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(240, 240, 241, 1)",
+        "chipP_bg": "rgba(39, 39, 44, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.39,
+          "chipP": 13.05
+        }
+      },
+      {
+        "msAfterClick": 127,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 142,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 159,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 175,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 192,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 209,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 226,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 242,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 259,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 275,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 292,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 309,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 325,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 341,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 358,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 375,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 391,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 409,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 426,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 442,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 459,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 476,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 492,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 509,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 525,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 541,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 559,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 575,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 591,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 608,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 625,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 642,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 658,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 675,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 692,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      }
+    ],
+    "finalState": {
+      "dark": true,
+      "h1": "rgba(244, 244, 245, 1)",
+      "p": "rgba(161, 161, 170, 1)",
+      "chipU": "rgba(161, 161, 170, 1)",
+      "chipU_bg": "rgba(0, 0, 0, 0)",
+      "chipP": "rgba(244, 244, 245, 1)",
+      "chipP_bg": "rgba(36, 36, 41, 1)",
+      "bodyBg": "rgba(15, 15, 15, 1)"
+    },
+    "storedAfterToggle": "threw",
+    "deniedStorage": true
+  },
+  {
+    "viewport": "1280",
+    "scenario": "07-denied-storage-dark-settled-note",
+    "minContrast": 2.48
+  },
+  {
+    "viewport": "1280",
+    "scenario": "03-toggle-sequence",
+    "note": "real-speed CDP screencast frames around the actual menu click; no slowed CSS, no seeded class; frame times are receipt times (approximate within one frame); mobile frames are screencast captures at 390x844 CSS pixels, not DPR2 acceptance captures; colours are the nearest rAF sample to each frame's estimated page time",
+    "capturePath": "design/goal-ui/captures/dark-mode/interaction/sequence/",
+    "clickWindowMs": {
+      "start": 53,
+      "framesInWindow": 7,
+      "selected": 4
+    },
+    "frames": [
+      {
+        "file": "03-toggle-sequence-1280-f01.png",
+        "receivedMsAfterClick": 23,
+        "dimension": {
+          "width": 1280,
+          "height": 900
+        },
+        "screencastTimestampSeconds": 1793174500.0853,
+        "nearestSampleMsAfterClick": 28,
+        "sampleDeltaMs": 7,
+        "colors": {
+          "h1": "rgba(244, 244, 245, 1)",
+          "chipU": "rgba(117, 117, 126, 1)",
+          "chipU_bg": "rgba(0, 0, 0, 0)",
+          "chipP": "rgba(113, 113, 114, 1)",
+          "chipP_bg": "rgba(152, 152, 155, 1)",
+          "bodyBg": "rgba(15, 15, 15, 1)"
+        },
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 4.2,
+          "chipP": 1.69
+        },
+        "runningTransitions": 11
+      },
+      {
+        "file": "03-toggle-sequence-1280-f02.png",
+        "receivedMsAfterClick": 56,
+        "dimension": {
+          "width": 1280,
+          "height": 900
+        },
+        "screencastTimestampSeconds": 1793174500.11953,
+        "nearestSampleMsAfterClick": 75,
+        "sampleDeltaMs": 7,
+        "colors": {
+          "h1": "rgba(244, 244, 245, 1)",
+          "chipU": "rgba(156, 156, 165, 1)",
+          "chipU_bg": "rgba(0, 0, 0, 0)",
+          "chipP": "rgba(229, 229, 230, 1)",
+          "chipP_bg": "rgba(50, 50, 54, 1)",
+          "bodyBg": "rgba(15, 15, 15, 1)"
+        },
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.04,
+          "chipP": 10.14
+        },
+        "runningTransitions": 11
+      },
+      {
+        "file": "03-toggle-sequence-1280-f03.png",
+        "receivedMsAfterClick": 88,
+        "dimension": {
+          "width": 1280,
+          "height": 900
+        },
+        "screencastTimestampSeconds": 1793174500.150824,
+        "nearestSampleMsAfterClick": 93,
+        "sampleDeltaMs": 8,
+        "colors": {
+          "h1": "rgba(244, 244, 245, 1)",
+          "chipU": "rgba(160, 160, 169, 1)",
+          "chipU_bg": "rgba(0, 0, 0, 0)",
+          "chipP": "rgba(240, 240, 241, 1)",
+          "chipP_bg": "rgba(39, 39, 44, 1)",
+          "bodyBg": "rgba(15, 15, 15, 1)"
+        },
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.39,
+          "chipP": 13.05
+        },
+        "runningTransitions": 11
+      },
+      {
+        "file": "03-toggle-sequence-1280-f04.png",
+        "receivedMsAfterClick": 121,
+        "dimension": {
+          "width": 1280,
+          "height": 900
+        },
+        "screencastTimestampSeconds": 1793174500.184144,
+        "nearestSampleMsAfterClick": 126,
+        "sampleDeltaMs": 7,
+        "colors": {
+          "h1": "rgba(244, 244, 245, 1)",
+          "chipU": "rgba(161, 161, 170, 1)",
+          "chipU_bg": "rgba(0, 0, 0, 0)",
+          "chipP": "rgba(244, 244, 245, 1)",
+          "chipP_bg": "rgba(36, 36, 41, 1)",
+          "bodyBg": "rgba(15, 15, 15, 1)"
+        },
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        },
+        "runningTransitions": 0
+      }
+    ],
+    "pageErrors": [],
+    "accessibility": "unresolved — these frames show the transient token cross-fade only; they do not establish acceptable transient contrast or absence of flash"
+  },
+  {
+    "viewport": "390",
+    "scenario": "03-explore-dark-settled",
+    "darkApplied": true,
+    "pageErrors": [],
+    "settle": {
+      "method": "rAF samples of computed colours on h1, body copy and both filter chips; settled = no colour or dark-class change for >= 250 ms AND zero running CSS transitions on those elements; confirmed against the trailing 566 ms of samples",
+      "sampleCount": 47,
+      "preClickSamples": 5,
+      "themeAppliedAtMs": 11,
+      "lastObservedChangeAtMs": 127,
+      "settledDetectedAtMs": 146,
+      "stabilityWindowMs": 566,
+      "finalRunningTransitions": 0,
+      "finalDarkClass": true
+    },
+    "settledColors": {
+      "h1": {
+        "fg": "rgb(244, 244, 245)",
+        "bg": "rgb(15, 15, 15)",
+        "contrast": 17.44
+      },
+      "p": {
+        "fg": "rgb(161, 161, 170)",
+        "bg": "rgb(15, 15, 15)",
+        "contrast": 7.48
+      },
+      "chipUnpressed": {
+        "fg": "rgb(161, 161, 170)",
+        "bg": "rgb(15, 15, 15)",
+        "ownBackground": "rgba(0, 0, 0, 0)",
+        "contrast": 7.48
+      },
+      "chipPressed": {
+        "fg": "rgb(244, 244, 245)",
+        "bg": "rgb(36, 36, 41)",
+        "contrast": 14.05
+      }
+    },
+    "transient": {
+      "fromMs": 0,
+      "toMs": 127,
+      "chipUnpressed": {
+        "minContrast": 2.48,
+        "atMs": 11,
+        "fg": "rgba(82, 82, 91, 1)",
+        "bg": "rgba(15, 15, 15, 1)"
+      },
+      "assessment": "unresolved — this records the real 100 ms token cross-fade; it does not establish that the transient is acceptable or that there is no flash"
+    },
+    "capture": {
+      "file": "03-explore-dark-settled-390.png",
+      "dimension": {
+        "width": 780,
+        "height": 1688
+      },
+      "captureWindowMsAfterClick": {
+        "before": 717,
+        "after": 801
+      },
+      "colorsUnchangedDuringCapture": true,
+      "runningTransitionsDuringCapture": 0
+    },
+    "curve": [
+      {
+        "msAfterClick": 11,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 2.48,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 27,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 2.48,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 47,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(117, 117, 126, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(113, 113, 114, 1)",
+        "chipP_bg": "rgba(152, 152, 155, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 4.2,
+          "chipP": 1.69
+        }
+      },
+      {
+        "msAfterClick": 61,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(136, 136, 145, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(170, 170, 171, 1)",
+        "chipP_bg": "rgba(101, 101, 105, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 5.46,
+          "chipP": 2.5
+        }
+      },
+      {
+        "msAfterClick": 78,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(148, 148, 157, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(206, 206, 207, 1)",
+        "chipP_bg": "rgba(69, 69, 74, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 6.37,
+          "chipP": 6.06
+        }
+      },
+      {
+        "msAfterClick": 94,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(156, 156, 165, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(229, 229, 230, 1)",
+        "chipP_bg": "rgba(50, 50, 54, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.04,
+          "chipP": 10.14
+        }
+      },
+      {
+        "msAfterClick": 110,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(160, 160, 169, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(240, 240, 241, 1)",
+        "chipP_bg": "rgba(39, 39, 44, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.39,
+          "chipP": 13.05
+        }
+      },
+      {
+        "msAfterClick": 127,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 146,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 161,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 177,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 194,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 211,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 227,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 244,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 260,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 277,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 294,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 311,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 327,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 344,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 360,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 377,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 393,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 410,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 427,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 444,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 460,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 477,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 494,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 510,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 526,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 544,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 560,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 578,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 594,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 611,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 627,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 643,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 660,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 677,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 693,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      }
+    ],
+    "finalState": {
+      "dark": true,
+      "h1": "rgba(244, 244, 245, 1)",
+      "p": "rgba(161, 161, 170, 1)",
+      "chipU": "rgba(161, 161, 170, 1)",
+      "chipU_bg": "rgba(0, 0, 0, 0)",
+      "chipP": "rgba(244, 244, 245, 1)",
+      "chipP_bg": "rgba(36, 36, 41, 1)",
+      "bodyBg": "rgba(15, 15, 15, 1)"
+    }
+  },
+  {
+    "viewport": "390",
+    "scenario": "05-explore-light-settled",
+    "darkApplied": false,
+    "pageErrors": [],
+    "settle": {
+      "method": "rAF samples of computed colours on h1, body copy and both filter chips; settled = no colour or dark-class change for >= 250 ms AND zero running CSS transitions on those elements; confirmed against the trailing 584 ms of samples",
+      "sampleCount": 46,
+      "preClickSamples": 4,
+      "themeAppliedAtMs": 10,
+      "lastObservedChangeAtMs": 110,
+      "settledDetectedAtMs": 110,
+      "stabilityWindowMs": 584,
+      "finalRunningTransitions": 0,
+      "finalDarkClass": false
+    },
+    "settledColors": {
+      "h1": {
+        "fg": "rgb(10, 10, 10)",
+        "bg": "rgb(255, 255, 255)",
+        "contrast": 19.8
+      },
+      "p": {
+        "fg": "rgb(82, 82, 91)",
+        "bg": "rgb(255, 255, 255)",
+        "contrast": 7.73
+      },
+      "chipUnpressed": {
+        "fg": "rgb(82, 82, 91)",
+        "bg": "rgb(255, 255, 255)",
+        "ownBackground": "rgba(0, 0, 0, 0)",
+        "contrast": 7.73
+      },
+      "chipPressed": {
+        "fg": "rgb(10, 10, 10)",
+        "bg": "rgb(244, 244, 245)",
+        "contrast": 18.01
+      }
+    },
+    "transient": {
+      "fromMs": 0,
+      "toMs": 110,
+      "chipUnpressed": {
+        "minContrast": 2.56,
+        "atMs": 10,
+        "fg": "rgba(161, 161, 170, 1)",
+        "bg": "rgba(255, 255, 255, 1)"
+      },
+      "assessment": "unresolved — this records the real 100 ms token cross-fade; it does not establish that the transient is acceptable or that there is no flash"
+    },
+    "capture": {
+      "file": "05-explore-light-settled-390.png",
+      "dimension": {
+        "width": 780,
+        "height": 1688
+      },
+      "captureWindowMsAfterClick": {
+        "before": 735,
+        "after": 817
+      },
+      "colorsUnchangedDuringCapture": true,
+      "runningTransitionsDuringCapture": 0
+    },
+    "curve": [
+      {
+        "msAfterClick": 10,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 2.56,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 29,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(126, 126, 135, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(141, 141, 141, 1)",
+        "chipP_bg": "rgba(128, 128, 131, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 4.02,
+          "chipP": 1.19
+        }
+      },
+      {
+        "msAfterClick": 43,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(107, 107, 116, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(84, 84, 84, 1)",
+        "chipP_bg": "rgba(178, 178, 181, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 5.28,
+          "chipP": 3.58
+        }
+      },
+      {
+        "msAfterClick": 61,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(95, 95, 104, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(48, 48, 48, 1)",
+        "chipP_bg": "rgba(211, 211, 212, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 6.32,
+          "chipP": 8.82
+        }
+      },
+      {
+        "msAfterClick": 76,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(87, 87, 96, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(25, 25, 25, 1)",
+        "chipP_bg": "rgba(230, 230, 232, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.15,
+          "chipP": 14.11
+        }
+      },
+      {
+        "msAfterClick": 94,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(83, 83, 92, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(14, 14, 14, 1)",
+        "chipP_bg": "rgba(241, 241, 242, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.61,
+          "chipP": 17.1
+        }
+      },
+      {
+        "msAfterClick": 110,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 127,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 144,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 161,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 177,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 193,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 211,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 227,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 244,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 260,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 276,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 294,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 310,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 327,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 344,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 361,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 377,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 394,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 410,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 427,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 444,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 461,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 477,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 494,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 510,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 527,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 543,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 561,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 577,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 593,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 610,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 627,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 644,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 661,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 677,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 694,
+        "dark": false,
+        "h1": "rgba(10, 10, 10, 1)",
+        "p": "rgba(82, 82, 91, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(255, 255, 255, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 19.8,
+          "p": 7.73,
+          "chipU": 7.73,
+          "chipP": 18.01
+        }
+      }
+    ],
+    "finalState": {
+      "dark": false,
+      "h1": "rgba(10, 10, 10, 1)",
+      "p": "rgba(82, 82, 91, 1)",
+      "chipU": "rgba(82, 82, 91, 1)",
+      "chipU_bg": "rgba(0, 0, 0, 0)",
+      "chipP": "rgba(10, 10, 10, 1)",
+      "chipP_bg": "rgba(244, 244, 245, 1)",
+      "bodyBg": "rgba(255, 255, 255, 1)"
+    }
+  },
+  {
+    "viewport": "390",
+    "scenario": "07-denied-storage-dark-settled",
+    "darkApplied": true,
+    "pageErrors": [],
+    "settle": {
+      "method": "rAF samples of computed colours on h1, body copy and both filter chips; settled = no colour or dark-class change for >= 250 ms AND zero running CSS transitions on those elements; confirmed against the trailing 565 ms of samples",
+      "sampleCount": 47,
+      "preClickSamples": 5,
+      "themeAppliedAtMs": 10,
+      "lastObservedChangeAtMs": 127,
+      "settledDetectedAtMs": 127,
+      "stabilityWindowMs": 565,
+      "finalRunningTransitions": 0,
+      "finalDarkClass": true
+    },
+    "settledColors": {
+      "h1": {
+        "fg": "rgb(244, 244, 245)",
+        "bg": "rgb(15, 15, 15)",
+        "contrast": 17.44
+      },
+      "p": {
+        "fg": "rgb(161, 161, 170)",
+        "bg": "rgb(15, 15, 15)",
+        "contrast": 7.48
+      },
+      "chipUnpressed": {
+        "fg": "rgb(161, 161, 170)",
+        "bg": "rgb(15, 15, 15)",
+        "ownBackground": "rgba(0, 0, 0, 0)",
+        "contrast": 7.48
+      },
+      "chipPressed": {
+        "fg": "rgb(244, 244, 245)",
+        "bg": "rgb(36, 36, 41)",
+        "contrast": 14.05
+      }
+    },
+    "transient": {
+      "fromMs": 0,
+      "toMs": 127,
+      "chipUnpressed": {
+        "minContrast": 2.48,
+        "atMs": 10,
+        "fg": "rgba(82, 82, 91, 1)",
+        "bg": "rgba(15, 15, 15, 1)"
+      },
+      "assessment": "unresolved — this records the real 100 ms token cross-fade; it does not establish that the transient is acceptable or that there is no flash"
+    },
+    "capture": {
+      "file": "07-denied-storage-dark-settled-390.png",
+      "dimension": {
+        "width": 780,
+        "height": 1688
+      },
+      "captureWindowMsAfterClick": {
+        "before": 717,
+        "after": 797
+      },
+      "colorsUnchangedDuringCapture": true,
+      "runningTransitionsDuringCapture": 0
+    },
+    "curve": [
+      {
+        "msAfterClick": 10,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 2.48,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 26,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(82, 82, 91, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(10, 10, 10, 1)",
+        "chipP_bg": "rgba(244, 244, 245, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 2.48,
+          "chipP": 18.01
+        }
+      },
+      {
+        "msAfterClick": 46,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(117, 117, 126, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(114, 114, 114, 1)",
+        "chipP_bg": "rgba(152, 152, 155, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 4.2,
+          "chipP": 1.67
+        }
+      },
+      {
+        "msAfterClick": 59,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(136, 136, 145, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(170, 170, 171, 1)",
+        "chipP_bg": "rgba(102, 102, 105, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 5.46,
+          "chipP": 2.47
+        }
+      },
+      {
+        "msAfterClick": 75,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(148, 148, 157, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(206, 206, 207, 1)",
+        "chipP_bg": "rgba(70, 70, 74, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 6.37,
+          "chipP": 5.97
+        }
+      },
+      {
+        "msAfterClick": 93,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(156, 156, 165, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(229, 229, 230, 1)",
+        "chipP_bg": "rgba(50, 50, 54, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.04,
+          "chipP": 10.14
+        }
+      },
+      {
+        "msAfterClick": 110,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(160, 160, 169, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(240, 240, 241, 1)",
+        "chipP_bg": "rgba(39, 39, 44, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 11,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.39,
+          "chipP": 13.05
+        }
+      },
+      {
+        "msAfterClick": 127,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 143,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 159,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 176,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 193,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 209,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 226,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 243,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 259,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 275,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 292,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 309,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 325,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 343,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 358,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 376,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 392,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 409,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 425,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 443,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 459,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 475,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 493,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 509,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 526,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 542,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 559,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 576,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 593,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 609,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 626,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 642,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 658,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 676,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      },
+      {
+        "msAfterClick": 692,
+        "dark": true,
+        "h1": "rgba(244, 244, 245, 1)",
+        "p": "rgba(161, 161, 170, 1)",
+        "chipU": "rgba(161, 161, 170, 1)",
+        "chipU_bg": "rgba(0, 0, 0, 0)",
+        "chipP": "rgba(244, 244, 245, 1)",
+        "chipP_bg": "rgba(36, 36, 41, 1)",
+        "bodyBg": "rgba(15, 15, 15, 1)",
+        "runningTransitions": 0,
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        }
+      }
+    ],
+    "finalState": {
+      "dark": true,
+      "h1": "rgba(244, 244, 245, 1)",
+      "p": "rgba(161, 161, 170, 1)",
+      "chipU": "rgba(161, 161, 170, 1)",
+      "chipU_bg": "rgba(0, 0, 0, 0)",
+      "chipP": "rgba(244, 244, 245, 1)",
+      "chipP_bg": "rgba(36, 36, 41, 1)",
+      "bodyBg": "rgba(15, 15, 15, 1)"
+    },
+    "storedAfterToggle": "threw",
+    "deniedStorage": true
+  },
+  {
+    "viewport": "390",
+    "scenario": "07-denied-storage-dark-settled-note",
+    "minContrast": 2.48
+  },
+  {
+    "viewport": "390",
+    "scenario": "03-toggle-sequence",
+    "note": "real-speed CDP screencast frames around the actual menu click; no slowed CSS, no seeded class; frame times are receipt times (approximate within one frame); mobile frames are screencast captures at 390x844 CSS pixels, not DPR2 acceptance captures; colours are the nearest rAF sample to each frame's estimated page time",
+    "capturePath": "design/goal-ui/captures/dark-mode/interaction/sequence/",
+    "clickWindowMs": {
+      "start": 42,
+      "framesInWindow": 8,
+      "selected": 4
+    },
+    "frames": [
+      {
+        "file": "03-toggle-sequence-390-f01.png",
+        "receivedMsAfterClick": 14,
+        "dimension": {
+          "width": 390,
+          "height": 844
+        },
+        "screencastTimestampSeconds": 1793174508.650266,
+        "nearestSampleMsAfterClick": 30,
+        "sampleDeltaMs": 6,
+        "colors": {
+          "h1": "rgba(244, 244, 245, 1)",
+          "chipU": "rgba(117, 117, 126, 1)",
+          "chipU_bg": "rgba(0, 0, 0, 0)",
+          "chipP": "rgba(113, 113, 114, 1)",
+          "chipP_bg": "rgba(152, 152, 155, 1)",
+          "bodyBg": "rgba(15, 15, 15, 1)"
+        },
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 4.2,
+          "chipP": 1.69
+        },
+        "runningTransitions": 11
+      },
+      {
+        "file": "03-toggle-sequence-390-f02.png",
+        "receivedMsAfterClick": 47,
+        "dimension": {
+          "width": 390,
+          "height": 844
+        },
+        "screencastTimestampSeconds": 1793174508.683543,
+        "nearestSampleMsAfterClick": 61,
+        "sampleDeltaMs": 5,
+        "colors": {
+          "h1": "rgba(244, 244, 245, 1)",
+          "chipU": "rgba(148, 148, 157, 1)",
+          "chipU_bg": "rgba(0, 0, 0, 0)",
+          "chipP": "rgba(206, 206, 207, 1)",
+          "chipP_bg": "rgba(69, 69, 74, 1)",
+          "bodyBg": "rgba(15, 15, 15, 1)"
+        },
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 6.37,
+          "chipP": 6.06
+        },
+        "runningTransitions": 11
+      },
+      {
+        "file": "03-toggle-sequence-390-f03.png",
+        "receivedMsAfterClick": 80,
+        "dimension": {
+          "width": 390,
+          "height": 844
+        },
+        "screencastTimestampSeconds": 1793174508.71706,
+        "nearestSampleMsAfterClick": 95,
+        "sampleDeltaMs": 5,
+        "colors": {
+          "h1": "rgba(244, 244, 245, 1)",
+          "chipU": "rgba(160, 160, 169, 1)",
+          "chipU_bg": "rgba(0, 0, 0, 0)",
+          "chipP": "rgba(240, 240, 241, 1)",
+          "chipP_bg": "rgba(39, 39, 44, 1)",
+          "bodyBg": "rgba(15, 15, 15, 1)"
+        },
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.39,
+          "chipP": 13.05
+        },
+        "runningTransitions": 11
+      },
+      {
+        "file": "03-toggle-sequence-390-f04.png",
+        "receivedMsAfterClick": 114,
+        "dimension": {
+          "width": 390,
+          "height": 844
+        },
+        "screencastTimestampSeconds": 1793174508.750844,
+        "nearestSampleMsAfterClick": 129,
+        "sampleDeltaMs": 5,
+        "colors": {
+          "h1": "rgba(244, 244, 245, 1)",
+          "chipU": "rgba(161, 161, 170, 1)",
+          "chipU_bg": "rgba(0, 0, 0, 0)",
+          "chipP": "rgba(244, 244, 245, 1)",
+          "chipP_bg": "rgba(36, 36, 41, 1)",
+          "bodyBg": "rgba(15, 15, 15, 1)"
+        },
+        "contrast": {
+          "h1": 17.44,
+          "p": 7.48,
+          "chipU": 7.48,
+          "chipP": 14.05
+        },
+        "runningTransitions": 0
+      }
+    ],
+    "pageErrors": [],
+    "accessibility": "unresolved — these frames show the transient token cross-fade only; they do not establish acceptable transient contrast or absence of flash"
+  }
+]

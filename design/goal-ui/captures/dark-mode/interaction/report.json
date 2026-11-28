@@ -1,0 +1,238 @@
+[
+  {
+    "viewport": "1280",
+    "step": "01-explore-default",
+    "darkClass": false,
+    "stored": null,
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)"
+  },
+  {
+    "viewport": "1280",
+    "step": "02-menu-open-light",
+    "darkClass": false,
+    "stored": null,
+    "shell": true,
+    "menuOpen": true,
+    "appearance": "Appearance: Light",
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "file": "02-menu-open-light-1280.png"
+  },
+  {
+    "viewport": "1280",
+    "step": "03-explore-dark-after-toggle",
+    "darkClass": true,
+    "stored": "dark",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "file": "03-explore-dark-after-toggle-1280.png"
+  },
+  {
+    "viewport": "1280",
+    "step": "04-explore-dark-after-reload",
+    "darkClass": true,
+    "stored": "dark",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "file": "04-explore-dark-after-reload-1280.png"
+  },
+  {
+    "viewport": "1280",
+    "step": "05-explore-light-again",
+    "darkClass": false,
+    "stored": "light",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "appearanceWhileDark": "Appearance: Dark",
+    "file": "05-explore-light-again-1280.png"
+  },
+  {
+    "viewport": "1280",
+    "step": "flow-errors",
+    "pageErrors": []
+  },
+  {
+    "viewport": "1280",
+    "step": "06-denied-storage-default-light",
+    "darkClass": false,
+    "stored": "threw",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "file": "06-denied-storage-default-light-1280.png"
+  },
+  {
+    "viewport": "1280",
+    "step": "07-denied-storage-toggle-dark",
+    "darkClass": true,
+    "stored": "threw",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "pageErrors": [],
+    "file": "07-denied-storage-toggle-dark-1280.png"
+  },
+  {
+    "viewport": "1280",
+    "step": "08-denied-storage-reload-default-light",
+    "darkClass": false,
+    "stored": "threw",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "pageErrors": [],
+    "file": "08-denied-storage-reload-default-light-1280.png"
+  },
+  {
+    "viewport": "1280",
+    "step": "09-landing-forced-light",
+    "light": {
+      "file": "09-landing-light-1280.png",
+      "sha": "b3e006944aea7120",
+      "darkClass": false,
+      "stored": "light",
+      "scopeBg": null,
+      "heroText": "BETA How it goes Fair rules Join as a referrer Sign in PRIVATE JOB REFERRALS Nob",
+      "pageErrors": []
+    },
+    "dark": {
+      "file": "09-landing-dark-1280.png",
+      "sha": "b3e006944aea7120",
+      "darkClass": true,
+      "stored": "dark",
+      "scopeBg": null,
+      "heroText": "BETA How it goes Fair rules Join as a referrer Sign in PRIVATE JOB REFERRALS Nob",
+      "pageErrors": []
+    },
+    "byteIdentical": true
+  },
+  {
+    "viewport": "390",
+    "step": "01-explore-default",
+    "darkClass": false,
+    "stored": null,
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)"
+  },
+  {
+    "viewport": "390",
+    "step": "02-menu-open-light",
+    "darkClass": false,
+    "stored": null,
+    "shell": true,
+    "menuOpen": true,
+    "appearance": "Appearance: Light",
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "file": "02-menu-open-light-390.png"
+  },
+  {
+    "viewport": "390",
+    "step": "03-explore-dark-after-toggle",
+    "darkClass": true,
+    "stored": "dark",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "file": "03-explore-dark-after-toggle-390.png"
+  },
+  {
+    "viewport": "390",
+    "step": "04-explore-dark-after-reload",
+    "darkClass": true,
+    "stored": "dark",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "file": "04-explore-dark-after-reload-390.png"
+  },
+  {
+    "viewport": "390",
+    "step": "05-explore-light-again",
+    "darkClass": false,
+    "stored": "light",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "appearanceWhileDark": "Appearance: Dark",
+    "file": "05-explore-light-again-390.png"
+  },
+  {
+    "viewport": "390",
+    "step": "flow-errors",
+    "pageErrors": []
+  },
+  {
+    "viewport": "390",
+    "step": "06-denied-storage-default-light",
+    "darkClass": false,
+    "stored": "threw",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "file": "06-denied-storage-default-light-390.png"
+  },
+  {
+    "viewport": "390",
+    "step": "07-denied-storage-toggle-dark",
+    "darkClass": true,
+    "stored": "threw",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "pageErrors": [],
+    "file": "07-denied-storage-toggle-dark-390.png"
+  },
+  {
+    "viewport": "390",
+    "step": "08-denied-storage-reload-default-light",
+    "darkClass": false,
+    "stored": "threw",
+    "shell": true,
+    "menuOpen": false,
+    "appearance": null,
+    "scopeBg": "rgba(0, 0, 0, 0)",
+    "pageErrors": [],
+    "file": "08-denied-storage-reload-default-light-390.png"
+  },
+  {
+    "viewport": "390",
+    "step": "09-landing-forced-light",
+    "light": {
+      "file": "09-landing-light-390.png",
+      "sha": "7d9a3ddb54a89da7",
+      "darkClass": false,
+      "stored": "light",
+      "scopeBg": null,
+      "heroText": "BETA Sign in PRIVATE JOB REFERRALS Nobody reads the pile. Mass applications meet",
+      "pageErrors": []
+    },
+    "dark": {
+      "file": "09-landing-dark-390.png",
+      "sha": "7d9a3ddb54a89da7",
+      "darkClass": true,
+      "stored": "dark",
+      "scopeBg": null,
+      "heroText": "BETA Sign in PRIVATE JOB REFERRALS Nobody reads the pile. Mass applications meet",
+      "pageErrors": []
+    },
+    "byteIdentical": true
+  }
+]

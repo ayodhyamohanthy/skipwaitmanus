@@ -25,7 +25,8 @@ export const GOAL_SCOPE = /^client\/src\/(components\/goal|pages\/goal)\//;
 export const GOAL_VERIFIED_MARK = "client/src/components/goal/GoalVerifiedMark.tsx";
 const GOAL_POST_OPPORTUNITY = "client/src/pages/goal/post-opportunity/";
 export const INDEX_CSS = "client/src/index.css";
-export const ALLOWED_CSS_FILES = new Set([INDEX_CSS, "client/src/styles/kit.css"]);
+export const GOAL_DARK_CSS = "client/src/styles/goalDark.css";
+export const ALLOWED_CSS_FILES = new Set([INDEX_CSS, "client/src/styles/kit.css", GOAL_DARK_CSS]);
 export const GOAL_BLOCK_MARKER = "D-048 phase 2 · goal-UI tokens";
 
 /** A3: the only hex literals the phase-2 block may carry. */
@@ -90,6 +91,13 @@ export const G_VARS = {
   "--g-mark-1": "#c9c9c9", "--g-mark-2": "#8a8a8a", "--g-mark-3": "#0a0a0a",
 };
 
+/** D-224: the 27 goal colour tokens the light table declares, and the only names goalDark.css may override. */
+export const GOAL_COLOUR_TOKENS = Object.freeze(
+  Object.entries(G_VARS)
+    .filter(([, value]) => /^(#|rgb\()/i.test(value))
+    .map(([name]) => name),
+);
+
 const HEX_TOKEN = /[a-z-]*\[#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})\](?:\/[0-9]{1,3})?/g;
 const HEX_ANY = /#[0-9A-Fa-f]{3,8}\b/;
 const COLOR_FN = /\b(?:rgb|rgba|hsl|hsla|oklch|oklab|lab|lch)\(/;
@@ -116,6 +124,64 @@ function parseDeclarations(source) {
     if (!declarations.has(match[1])) declarations.set(match[1], normalize(match[2]));
   }
   return declarations;
+}
+
+const COLOUR_VALUE = /^(#[0-9a-f]{3,8}|rgba?\([^()]*\)|hsla?\([^()]*\)|oklch\([^()]*\))$/i;
+
+/** R9 (D-224): one .dark .g-scope block with color-scheme plus exactly the 27 goal colour tokens; comments are stripped first so they cannot hide a second rule. */
+function auditGoalDark(source) {
+  const findings = [];
+  const fail = token => findings.push({ file: GOAL_DARK_CSS, rule: "R9", token });
+  const stripped = source.replace(/\/\*[\s\S]*?\*\//g, "").trim();
+  const block = stripped.match(/^\.dark\s+\.g-scope\s*\{([\s\S]*)\}$/);
+  if (!block) {
+    fail("only one .dark .g-scope block is allowed");
+    return findings;
+  }
+  if (stripped.includes("@")) fail("@-rules and imports are not allowed");
+  const body = block[1];
+  if (/[{}]/.test(body)) {
+    fail("nested or extra rules are not allowed");
+    return findings;
+  }
+  const seen = new Map();
+  let colourScheme = 0;
+  for (const part of body.split(";")) {
+    const statement = part.trim();
+    if (!statement) continue;
+    const declaration = statement.match(/^([a-z-]+|--[a-z0-9-]+)\s*:\s*(.+)$/i);
+    if (!declaration) {
+      fail(`invalid declaration: ${statement.slice(0, 40)}`);
+      continue;
+    }
+    const name = declaration[1];
+    const value = declaration[2].trim();
+    if (name.toLowerCase() === "color-scheme") {
+      colourScheme += 1;
+      if (value.toLowerCase() !== "dark") fail(`color-scheme must be dark, got ${value}`);
+      continue;
+    }
+    if (!name.startsWith("--g-")) {
+      fail(`unexpected property: ${name}`);
+      continue;
+    }
+    if (!GOAL_COLOUR_TOKENS.includes(name)) {
+      fail(`unknown or non-colour token: ${name}`);
+      continue;
+    }
+    if (!COLOUR_VALUE.test(value)) {
+      fail(`invalid colour value for ${name}: ${value}`);
+      continue;
+    }
+    seen.set(name, (seen.get(name) ?? 0) + 1);
+  }
+  if (colourScheme !== 1) fail(`color-scheme must appear exactly once, found ${colourScheme}`);
+  for (const name of GOAL_COLOUR_TOKENS) {
+    const count = seen.get(name) ?? 0;
+    if (count === 0) fail(`missing ${name}`);
+    else if (count > 1) fail(`duplicate ${name}`);
+  }
+  return findings;
 }
 
 /**
@@ -188,14 +254,16 @@ export function auditFiles(files, opts = {}) {
     }
   }
 
-  // A3/R7/R8: CSS checks.
+  // A3/R7/R8/R9: CSS checks.
   const cssFiles = opts.cssFiles ?? [];
   for (const { path: file } of cssFiles) {
     if (!ALLOWED_CSS_FILES.has(file)) findings.push({ file, rule: "R8", token: "unexpected CSS file under client/src" });
   }
   for (const { path: file, source } of cssFiles) {
-    if (file !== INDEX_CSS && source.includes("--g-")) findings.push({ file, rule: "R8", token: "--g-* declared outside index.css" });
+    if (file !== INDEX_CSS && file !== GOAL_DARK_CSS && source.includes("--g-")) findings.push({ file, rule: "R8", token: "--g-* declared outside index.css" });
   }
+  const darkCss = cssFiles.find(({ path: file }) => file === GOAL_DARK_CSS);
+  if (darkCss) findings.push(...auditGoalDark(darkCss.source));
   const indexCss = cssFiles.find(({ path: file }) => file === INDEX_CSS);
   if (indexCss) {
     const markerCount = indexCss.source.split(GOAL_BLOCK_MARKER).length - 1;

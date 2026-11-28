@@ -9,7 +9,7 @@
 ## Overview
 - Direction (D-070): Triage Desk's layout with Signal's type scale. Linear-quiet: dimmed chrome so content leads, a dense list then detail, one pinned decision bar on the referral queue. No "Seeking / Giving" mode switch.
 - Compass (D-048): seekers send referral-worthy asks quickly; referrers decide with confidence; trust is visible; money is honest. Every non-visual decision stays binding: D-006/D-040 fairness, D-030 as amended by D-049/D-057, D-012(3), the money rules, "private until a referrer accepts", no public per-referrer metrics, no invented numbers, the lasting D-001 rules.
-- Light mode only. White surfaces with hairlines.
+- Light by default; a dark counterpart with the values in `client/src/styles/goalDark.css` (owner, Oct 25).
 
 ### Binding rules (a change needs the owner)
 1. **One primary action per screen.** Exactly one solid black element per screen, and it is the commit action (Send referral request, Accept & connect, Request a referral). A screen without a commit action (a list) has none. Selected chips, tabs and nav items use tints and borders, never a black fill. The brand is a wordmark. The Pass confirm is an ink outline.

@@ -1,6 +1,11 @@
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, { createContext, useContext, useLayoutEffect, useState } from "react";
+import { usePathname } from "wouter/use-browser-location";
 
-type Theme = "light" | "dark";
+export type Theme = "light" | "dark";
+
+const STORAGE_KEY = "sw-theme";
+// Keep this exact policy in sync with client/index.html. /request redirects to /ask.
+const DARK_READY_ROUTES = new Set(["/", "/explore", "/ask", "/requests", "/request"]);
 
 interface ThemeContextType {
   theme: Theme;
@@ -16,40 +21,57 @@ interface ThemeProviderProps {
   switchable?: boolean;
 }
 
+function readStoredTheme(): Theme | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored === "light" || stored === "dark" ? stored : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredTheme(theme: Theme): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, theme);
+  } catch {
+    // A denied or full storage must not block the in-memory choice.
+  }
+}
+
 export function ThemeProvider({
   children,
   defaultTheme = "light",
   switchable = false,
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (switchable) {
-      const stored = localStorage.getItem("theme");
-      return (stored as Theme) || defaultTheme;
-    }
-    return defaultTheme;
-  });
+  const pathname = usePathname();
+  const routeSwitchable = switchable && DARK_READY_ROUTES.has(pathname.replace(/([^/])\/$/, "$1"));
+  const [preferredTheme, setPreferredTheme] = useState<Theme>(() =>
+    switchable ? readStoredTheme() ?? defaultTheme : defaultTheme,
+  );
+  const theme: Theme = routeSwitchable ? preferredTheme : "light";
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const root = document.documentElement;
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else {
-      root.classList.remove("dark");
-    }
+    const dark = theme === "dark";
+    if (root.classList.contains("dark") === dark) return;
+    root.classList.add("g-theme-switching");
+    root.classList.toggle("dark", dark);
+    // Flush the new colours while only goal transitions are suppressed, then
+    // restore hover/focus transitions synchronously before the next paint.
+    void root.offsetHeight;
+    root.classList.remove("g-theme-switching");
+  }, [theme]);
 
-    if (switchable) {
-      localStorage.setItem("theme", theme);
-    }
-  }, [theme, switchable]);
-
-  const toggleTheme = switchable
+  const toggleTheme = routeSwitchable
     ? () => {
-        setTheme(prev => (prev === "light" ? "dark" : "light"));
+        const next: Theme = theme === "light" ? "dark" : "light";
+        writeStoredTheme(next);
+        setPreferredTheme(next);
       }
     : undefined;
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, switchable }}>
+    <ThemeContext.Provider value={{ theme, toggleTheme, switchable: routeSwitchable }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -61,4 +83,9 @@ export function useTheme() {
     throw new Error("useTheme must be used within ThemeProvider");
   }
   return context;
+}
+
+/** For shared goal chrome that also renders without a provider (menus, previews). */
+export function useThemeOptional(): ThemeContextType | null {
+  return useContext(ThemeContext) ?? null;
 }

@@ -1,0 +1,72 @@
+D-048-dark-mode: build and local readiness receipt, 2026-11-26
+Code source: a3163a91be0394b17200f033d21a0efa53cee263
+Integrated main: eac7b8e4c544aef10ef7857a3369dea1e7cac50d
+Branch: agent/queue/d048-dark-mode
+Draft PR: https://github.com/ayodhyamohanthy/skipwaitmanus/pull/1691
+
+Source: build.log
+SHA-256: d175da4293b78769d4130cb53e17780eea8b4aac26b10f4d3f871d9208062c17
+COMMAND: pnpm build
+Primary-confirmed worker result: full pnpm build exited 0 on this code source.
+The raw build log has no explicit exit-status record; no COMMAND_EXIT is invented.
+The following completion excerpts omit absolute paths and the asset-size table:
+
+> vite build && tsx scripts/prerender-public-pages.tsx && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist
+vite v7.3.8 building client environment for production...
+✓ 4001 modules transformed.
+✓ built in 1m 20s
+prerendered /terms (14297 chars)
+prerendered / (21571 chars)
+  dist/index.js  2.2mb ⚠️
+⚡ Done in 293ms
+> bridge-referrals@1.0.0 postbuild
+> cp -r functions dist/public/functions
+
+The complete log records 20 prerendered public pages between /terms and /.
+Warnings retained in the source log (not fixed or waived by this receipt):
+- Unset HTML placeholders: %VITE_GIT_COMMIT_SHA%, %VITE_ANALYTICS_ENDPOINT%
+  and %VITE_ANALYTICS_WEBSITE_ID%.
+- shared/shareImpactCard.ts imports design/goal-ui/content.json with JSON import
+  attributes inconsistent with another import of the same module.
+- Rollup cannot interpret two Zod comment annotations in regexes.js and util.js;
+  it removes those comments.
+- Some client chunks exceed 500 kB after minification; the server bundle line
+  also carries its 2.2mb size warning.
+
+Source: preview-readiness.json
+SHA-256: 43be617858895db01c3d268ba39a3e3ca5079a5b2ef6fecfa0cb800d05c09cf5
+Recorded local task preview observations:
+httpStatus=200
+servedCommitMeta=builtCommitMeta=a3163a91b
+head=a3163a91be0394b17200f033d21a0efa53cee263
+headMatchesExpected=true; commitMetaMatchesHead=true; servedMatchesBuiltFile=true
+unsetPlaceholders=[%VITE_ANALYTICS_ENDPOINT%, %VITE_ANALYTICS_WEBSITE_ID%]
+analyticsGuardPresent=true
+/assets/index-Br6aY9az.js: 200, text/javascript
+/assets/index-wmR_UK2C.css: 200, text/css
+
+Source: baseline-readiness.json
+SHA-256: f34b599dc8601a65b99b893d3dcd75a2a96db5dc153e56b08e69ae679654a81e
+Recorded local comparison baseline observations:
+Source SHA: eac7b8e4c544aef10ef7857a3369dea1e7cac50d
+sourceFilesVerified=5864; sourceMismatches=[]
+COMMAND: pnpm exec vite build --configLoader runner
+exitCode=0 (explicit baseline readiness record)
+prerendered=false
+Baseline preview: status=200; servedCommitMeta=eac7b8e4c544aef10ef7857a3369dea1e7cac50d
+commitMetaMatchesExpectedSha=true; servedMatchesBuiltHtml=true
+/assets/index-JVd2839M.js: 200, text/javascript
+/assets/index-D2pavS0f.css: 200, text/css
+Task preview: status=200; servedCommitMeta=a3163a91b
+commitMetaMatchesExpectedSha=true; servedMatchesBuiltHtml=true
+Both previews retain the two analytics placeholders listed above.
+Readiness establishes local served identity and asset responses; it does not
+establish visual parity or a production deployment.
+
+Focused tests and bounded gates: see validation.txt.
+Full suite, visual acceptance, required CI, deployment and exact-release acceptance
+are PENDING / UNVERIFIED as of this bounded receipt. No full-suite log was read.
+
+D-399 draft build-ahead only. D-230/D-333 owner hold remains:
+DO NOT MERGE/AUTO-MERGE, mark ready, landed or done. Release requires
+D-048-K-kit to land or explicit earlier owner release, plus D-230 acceptance.
