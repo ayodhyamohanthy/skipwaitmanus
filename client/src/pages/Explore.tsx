@@ -255,6 +255,7 @@ export default function Explore() {
           draftState={composer.draftState}
           error={composer.sendError}
           sent={composer.sent}
+          bothRolesPrompt={composer.bothRolesPrompt}
           onAnother={another}
         />
       ) : undefined}
