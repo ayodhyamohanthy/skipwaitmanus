@@ -132,7 +132,7 @@ function ReferralLinkPanel() {
         </>
       ) : (
         <>
-          <p className="mt-2 text-g-meta text-g-ink-2">No new referral requests come through your link while it is paused. Turning it back on keeps the same link and screen name.</p>
+          <p className="mt-2 text-g-meta text-g-ink-2">No new referral requests come through it while it is paused. Turning it back on keeps the same link and name.</p>
           <GoalButton className="mt-2" variant="outline" size="sm" leadingIcon={Play} busy={resume.isPending} busyLabel="Turning it on…" disabledReason={!online ? "Reconnect to turn your link back on." : undefined} onClick={() => resume.mutate()}>Turn your link back on</GoalButton>
         </>
       )}
@@ -213,7 +213,7 @@ function ScreenName({ link, online, getToken, onStepUp, reload }: {
 
   return (
     <form className="mt-4 border-t border-g-hairline pt-3" onSubmit={submit} noValidate>
-      <GoalField label="Screen name" htmlFor={inputId} help="Seekers see it on your link before you accept, instead of your real name. Pick one that is not your real name or email: 3 to 30 letters, numbers or dashes.">
+      <GoalField label="Screen name" htmlFor={inputId} help="Seekers see it before you accept, instead of your real name. Not your real name or email: 3 to 30 letters, numbers or dashes. You choose it once.">
         <GoalTextInput
           id={inputId}
           value={draft}
