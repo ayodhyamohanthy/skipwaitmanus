@@ -61,7 +61,7 @@
       "tier": 2,
       "lane": "picker-dep-about-to-land",
       "branch": "agent/queue/picker-dep-about-to-land",
-      "status": "todo",
+      "status": "done",
       "syncedTo": "D-415",
       "dependsOn": [],
       "epic": "D-212",

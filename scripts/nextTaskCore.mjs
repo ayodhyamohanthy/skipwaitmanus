@@ -1358,7 +1358,13 @@ function pickNextTaskLegacy({ tasks, mainCi, branches, openPrs, prCi = new Map()
     // about to become landable: withheld solely by unmet dependencies, each of which already has an open pull request
     // with green required CI (and more than status notes, D-412 (3)). Anything else is passed over, so WAIT returns.
     const behindOf = v => { const n = prBehind.get(v.work); return Number.isSafeInteger(n) && n >= 0 ? n : null; };
-    const depAboutToLand = d => { const dep = byId.get(d); return Boolean(dep?.pr) && dep.ci === "green" && !dep.statusOnly; };
+    // PICKER-dep-about-to-land (D-415 (4)(c)): a dependency parked at `owner`, blocked, or itself waiting on unmet
+    // dependencies cannot land soon, whatever its pull request shows, so it never makes a draft worth refreshing.
+    const depAboutToLand = d => {
+      const dep = byId.get(d);
+      if (!dep?.pr || dep.ci !== "green" || dep.statusOnly) return false;
+      return dep.task.status !== "owner" && !dep.blockWaitingForEvidence && unmetOf(dep).length === 0;
+    };
     const withheld = v => v.task.status !== "owner" && !v.blockWaitingForEvidence && unmetOf(v).length > 0 && unmetOf(v).every(depAboutToLand);
     for (const v of view) {
       if ((only && v.task.id !== only) || v.done || !v.pr || !v.info || !withheld(v) || avoid.has(v.task.id) || staleOf(v) || !quiet(workAt(v))) continue;
